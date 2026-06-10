@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Menu() {
   const { restaurantId } = useParams()
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selection, setSelection] = useState({})
+  const [showModal, setShowModal] = useState(false)
+  const [tableNumber, setTableNumber] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     async function fetchMenu() {
@@ -34,10 +38,7 @@ export default function Menu() {
   function addItem(item) {
     setSelection(prev => ({
       ...prev,
-      [item.id]: {
-        ...item,
-        qty: (prev[item.id]?.qty || 0) + 1
-      }
+      [item.id]: { ...item, qty: (prev[item.id]?.qty || 0) + 1 }
     }))
   }
 
@@ -51,6 +52,40 @@ export default function Menu() {
       }
       return { ...prev, [itemId]: { ...prev[itemId], qty } }
     })
+  }
+
+  async function submitOrder() {
+    if (!tableNumber || isNaN(tableNumber)) return
+    setSubmitting(true)
+
+    const selectedItems = Object.values(selection)
+    const maxMinutes = Math.max(...selectedItems.map(i => i.estimated_minutes))
+    const estimatedReadyAt = new Date(Date.now() + maxMinutes * 60 * 1000)
+
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        restaurant_id: restaurantId,
+        table_number: parseInt(tableNumber),
+        items: selectedItems.map(i => ({
+          id: i.id,
+          name: i.name,
+          price: i.price,
+          qty: i.qty
+        })),
+        status: 'received',
+        estimated_ready_at: estimatedReadyAt.toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      alert('Erreur lors de la commande. Réessaie.')
+      setSubmitting(false)
+      return
+    }
+
+    navigate(`/tracking/${data.id}`)
   }
 
   const selectedItems = Object.values(selection)
@@ -82,10 +117,7 @@ export default function Menu() {
         {items.map(item => {
           const qty = selection[item.id]?.qty || 0
           return (
-            <div
-              key={item.id}
-              className="flex justify-between items-center border rounded-xl p-4 bg-white shadow-sm"
-            >
+            <div key={item.id} className="flex justify-between items-center border rounded-xl p-4 bg-white shadow-sm">
               <div>
                 <p className="font-medium">{item.name}</p>
                 <p className="text-sm text-gray-400">~{item.estimated_minutes} min</p>
@@ -133,8 +165,41 @@ export default function Menu() {
             </div>
             <div className="flex justify-between items-center">
               <p className="font-bold text-lg">{total.toLocaleString()} FCFA</p>
-              <button className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold">
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold"
+              >
                 Commander →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-t-2xl p-6">
+            <h2 className="text-lg font-bold mb-4">Votre numéro de table</h2>
+            <input
+              type="number"
+              placeholder="Ex: 4"
+              value={tableNumber}
+              onChange={e => setTableNumber(e.target.value)}
+              className="w-full border rounded-xl px-4 py-3 text-xl text-center mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 border rounded-xl py-3 text-gray-600 font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={submitOrder}
+                disabled={!tableNumber || submitting}
+                className="flex-1 bg-green-600 text-white rounded-xl py-3 font-bold disabled:opacity-50"
+              >
+                {submitting ? 'Envoi...' : 'Confirmer'}
               </button>
             </div>
           </div>
