@@ -1,12 +1,16 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Menu from './pages/Menu'
 import Tracking from './pages/Tracking'
+import Dashboard from './pages/Dashboard'
+import Login from './pages/Login'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/menu/:restaurantId" element={<Menu />} />
       <Route path="/tracking/:orderId" element={<Tracking />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/" element={<Navigate to="/menu/a1b2c3d4-0000-0000-0000-000000000001" />} />
     </Routes>
   )
