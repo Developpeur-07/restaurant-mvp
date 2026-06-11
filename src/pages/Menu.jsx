@@ -129,7 +129,7 @@ export default function Menu() {
                 {qty === 0 ? (
                   <button
                     onClick={() => addItem(item)}
-                    className="w-8 h-8 rounded-full bg-green-600 text-white font-bold text-lg flex items-center justify-center"
+                    className="w-8 h-8 rounded-full hover:bg-green-500 cursor-pointer bg-green-600 text-white font-bold text-lg flex items-center justify-center"
                   >
                     +
                   </button>
@@ -137,14 +137,14 @@ export default function Menu() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => removeItem(item.id)}
-                      className="w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-bold text-lg flex items-center justify-center"
+                      className="w-8 h-8 rounded-full cursor-pointer hover:bg-gray-300 bg-gray-200 text-gray-700 font-bold text-lg flex items-center justify-center"
                     >
                       −
                     </button>
                     <span className="w-4 text-center font-bold">{qty}</span>
                     <button
                       onClick={() => addItem(item)}
-                      className="w-8 h-8 rounded-full bg-green-600 text-white font-bold text-lg flex items-center justify-center"
+                      className="w-8 h-8 rounded-full cursor-pointer hover:bg-green-500 bg-green-600 text-white font-bold text-lg flex items-center justify-center"
                     >
                       +
                     </button>
@@ -166,8 +166,8 @@ export default function Menu() {
             <div className="flex justify-between items-center">
               <p className="font-bold text-lg">{total.toLocaleString()} FCFA</p>
               <button
-                onClick={() => setShowModal(true)}
-                className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold"
+                onClick={() => setShowModal(true)} 
+                className="bg-green-600 hover:bg-green-700 cursor-pointer text-white px-6 py-2 rounded-xl font-bold"
               >
                 Commander →
               </button>
