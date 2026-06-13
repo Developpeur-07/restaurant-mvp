@@ -2,6 +2,47 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+const CATEGORIES = [
+  { label: 'Croissanterie', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
+  { label: 'Gâteaux', keywords: ['moka', 'lunette', 'boutonnier', 'cake', 'tarte', 'maria'] },
+  { label: 'Crêpes', keywords: ['crêpe', 'crepe'] },
+  { label: 'Hamburgers', keywords: ['hamburger', 'big burger', 'assiette hb'] },
+  { label: 'Sandwichs & Chawarma', keywords: ['sandwich', 'chawarma', 'bog dog'] },
+  { label: 'Petit Déjeuner', keywords: ['œuf', 'omelette'] },
+  { label: 'Volailles', keywords: ['poulet', 'volaille', 'yassa', 'demi-poulet'] },
+  { label: 'Viandes', keywords: ['steak', 'brochette de bœuf', 'saucisse'] },
+  { label: 'KFC', keywords: ['ailes', 'trio', 'ailerons'] },
+  { label: 'Poissons', keywords: ['poisson', 'carpe', 'bar', 'likouf', 'sole', 'fillet'] },
+  { label: 'Pizza', keywords: ['pizza'] },
+  { label: 'Salades', keywords: ['salade', 'verte', 'choux', 'mixte', 'avocat', 'nicoise', 'niçoise', 'tomate', 'pomme de terre'] },
+  { label: 'Accompagnements', keywords: ['riz', 'banane', 'frites'] },
+  { label: 'Thé & Café', keywords: ['lait', 'chocolat', 'thé', 'café', 'nescafé', 'expresso'] },
+  { label: 'Boissons', keywords: ['orangina', 'yaourt', 'fresco', 'eau', 'coca', 'sprite', 'fanta', 'pulp', 'grenadine', 'reactor', 'tonic', 'jus', 'red bull', 'bavard'] },
+  { label: 'Glaces', keywords: ['glace'] },
+]
+
+function categorize(items) {
+  const result = {}
+  const used = new Set()
+
+  CATEGORIES.forEach(cat => {
+    const matched = items.filter(item => {
+      if (used.has(item.id)) return false
+      const name = item.name.toLowerCase()
+      return cat.keywords.some(k => name.includes(k))
+    })
+    if (matched.length > 0) {
+      matched.forEach(i => used.add(i.id))
+      result[cat.label] = matched
+    }
+  })
+
+  const uncategorized = items.filter(i => !used.has(i.id))
+  if (uncategorized.length > 0) result['Autres'] = uncategorized
+
+  return result
+}
+
 export default function Menu() {
   const { restaurantId } = useParams()
   const navigate = useNavigate()
@@ -31,7 +72,6 @@ export default function Menu() {
       setItems(menuItems || [])
       setLoading(false)
     }
-
     fetchMenu()
   }, [restaurantId])
 
@@ -68,10 +108,7 @@ export default function Menu() {
         restaurant_id: restaurantId,
         table_number: parseInt(tableNumber),
         items: selectedItems.map(i => ({
-          id: i.id,
-          name: i.name,
-          price: i.price,
-          qty: i.qty
+          id: i.id, name: i.name, price: i.price, qty: i.qty
         })),
         status: 'received',
         estimated_ready_at: estimatedReadyAt.toISOString()
@@ -90,116 +127,200 @@ export default function Menu() {
 
   const selectedItems = Object.values(selection)
   const total = selectedItems.reduce((sum, i) => sum + i.price * i.qty, 0)
+  const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0)
   const maxMinutes = selectedItems.length
     ? Math.max(...selectedItems.map(i => i.estimated_minutes))
     : 0
 
+  const categorized = categorize(items)
+
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-gray-500">Chargement du menu...</p>
+    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '1.1rem' }}>Chargement du menu...</p>
     </div>
   )
 
   if (!restaurant) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-red-500">Restaurant introuvable.</p>
+    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#8B0000' }}>Restaurant introuvable.</p>
     </div>
   )
 
   return (
-    <div className="max-w-md mx-auto px-4 py-8 pb-36">
-      <h1 className="text-2xl font-bold text-center mb-2">{restaurant.name}</h1>
-      <p className="text-center text-gray-500 text-sm mb-8">
-        Sélectionnez vos articles
-      </p>
+    <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
-      <div className="space-y-3">
-        {items.map(item => {
-          const qty = selection[item.id]?.qty || 0
-          return (
-            <div key={item.id} className="flex justify-between items-center border rounded-xl p-4 bg-white shadow-sm">
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-gray-400">~{item.estimated_minutes} min</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <p className="font-bold text-green-600">
-                  {item.price.toLocaleString()} FCFA
-                </p>
-                {qty === 0 ? (
-                  <button
-                    onClick={() => addItem(item)}
-                    className="w-8 h-8 rounded-full hover:bg-green-500 cursor-pointer bg-green-600 text-white font-bold text-lg flex items-center justify-center"
-                  >
-                    +
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="w-8 h-8 rounded-full cursor-pointer hover:bg-gray-300 bg-gray-200 text-gray-700 font-bold text-lg flex items-center justify-center"
-                    >
-                      −
-                    </button>
-                    <span className="w-4 text-center font-bold">{qty}</span>
-                    <button
-                      onClick={() => addItem(item)}
-                      className="w-8 h-8 rounded-full cursor-pointer hover:bg-green-500 bg-green-600 text-white font-bold text-lg flex items-center justify-center"
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })}
+      {/* HEADER */}
+      <div style={{
+        background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
+        padding: '32px 20px 24px',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%)',
+        }} />
+        <p style={{ color: '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
+          Pâtisserie · Snack · Restaurant
+        </p>
+        <h1 style={{ color: '#FFFFFF', fontSize: '2rem', fontFamily: 'Georgia, serif', fontWeight: 'bold', margin: '0 0 4px', textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+          Le Bourgeois
+        </h1>
+        <div style={{ width: '40px', height: '2px', background: '#C9A84C', margin: '10px auto 8px' }} />
+        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontFamily: 'Georgia, serif' }}>
+          Marché Moungali · Brazzaville
+        </p>
       </div>
 
+      {/* MENU PAR CATÉGORIE */}
+      <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px' }}>
+        {Object.entries(categorized).map(([category, catItems]) => (
+          <div key={category} style={{ marginTop: '28px' }}>
+
+            {/* Titre catégorie */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <div style={{ width: '4px', height: '20px', background: '#8B0000', borderRadius: '2px' }} />
+              <h2 style={{ color: '#8B0000', fontSize: '0.85rem', fontWeight: 'bold', letterSpacing: '0.15em', textTransform: 'uppercase', fontFamily: 'Georgia, serif', margin: 0 }}>
+                {category}
+              </h2>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(139,0,0,0.15)' }} />
+            </div>
+
+            {/* Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {catItems.map(item => {
+                const qty = selection[item.id]?.qty || 0
+                return (
+                  <div key={item.id} style={{
+                    background: '#FFFFFF',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    boxShadow: '0 1px 4px rgba(139,0,0,0.08)',
+                    borderLeft: qty > 0 ? '3px solid #8B0000' : '3px solid transparent',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontWeight: qty > 0 ? 'bold' : '500', color: '#1a1a1a', fontSize: '0.9rem' }}>
+                        {item.name}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#999' }}>
+                        ~{item.estimated_minutes} min
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                        {item.price.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>FCFA</span>
+                      </p>
+
+                      {qty === 0 ? (
+                        <button onClick={() => addItem(item)} style={{
+                          width: '30px', height: '30px', borderRadius: '50%',
+                          background: '#8B0000', color: '#fff', border: 'none',
+                          fontSize: '1.2rem', cursor: 'pointer', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          transition: 'background 0.2s'
+                        }}>+</button>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button onClick={() => removeItem(item.id)} style={{
+                            width: '28px', height: '28px', borderRadius: '50%',
+                            background: '#f0f0f0', color: '#333', border: 'none',
+                            fontSize: '1rem', cursor: 'pointer'
+                          }}>−</button>
+                          <span style={{ fontWeight: 'bold', minWidth: '16px', textAlign: 'center', color: '#8B0000' }}>{qty}</span>
+                          <button onClick={() => addItem(item)} style={{
+                            width: '28px', height: '28px', borderRadius: '50%',
+                            background: '#8B0000', color: '#fff', border: 'none',
+                            fontSize: '1rem', cursor: 'pointer'
+                          }}>+</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* BARRE COMMANDER */}
       {selectedItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
-          <div className="max-w-md mx-auto">
-            <div className="flex justify-between text-sm text-gray-500 mb-1">
-              <span>{selectedItems.reduce((s, i) => s + i.qty, 0)} article(s)</span>
-              <span>~{maxMinutes} min</span>
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: '#8B0000',
+          padding: '14px 20px',
+          boxShadow: '0 -4px 20px rgba(139,0,0,0.3)'
+        }}>
+          <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>
+                {totalQty} article(s) · ~{maxMinutes} min
+              </p>
+              <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                {total.toLocaleString()} FCFA
+              </p>
             </div>
-            <div className="flex justify-between items-center">
-              <p className="font-bold text-lg">{total.toLocaleString()} FCFA</p>
-              <button
-                onClick={() => setShowModal(true)} 
-                className="bg-green-600 hover:bg-green-700 cursor-pointer text-white px-6 py-2 rounded-xl font-bold"
-              >
-                Commander →
-              </button>
-            </div>
+            <button onClick={() => setShowModal(true)} style={{
+              background: '#C9A84C', color: '#fff', border: 'none',
+              padding: '10px 24px', borderRadius: '25px',
+              fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            }}>
+              Commander →
+            </button>
           </div>
         </div>
       )}
 
+      {/* MODALE TABLE */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-          <div className="bg-white w-full max-w-md rounded-t-2xl p-6">
-            <h2 className="text-lg font-bold mb-4">Votre numéro de table</h2>
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50
+        }}>
+          <div style={{
+            background: '#FFF8F0', width: '100%', maxWidth: '480px',
+            borderRadius: '20px 20px 0 0', padding: '28px 24px'
+          }}>
+            <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
+            <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
+              Numéro de table
+            </h2>
+            <p style={{ margin: '0 0 16px', color: '#999', fontSize: '0.8rem' }}>
+              Entrez le numéro indiqué sur votre table
+            </p>
             <input
               type="number"
               placeholder="Ex: 4"
               value={tableNumber}
               onChange={e => setTableNumber(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 text-xl text-center mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+              style={{
+                width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
+                padding: '14px', fontSize: '1.5rem', textAlign: 'center',
+                background: '#fff', color: '#1a1a1a', outline: 'none',
+                boxSizing: 'border-box', marginBottom: '16px'
+              }}
             />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 border rounded-xl py-3 text-gray-600 font-medium"
-              >
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowModal(false)} style={{
+                flex: 1, border: '2px solid #ddd', background: 'transparent',
+                borderRadius: '12px', padding: '14px', color: '#666',
+                fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem'
+              }}>
                 Annuler
               </button>
-              <button
-                onClick={submitOrder}
-                disabled={!tableNumber || submitting}
-                className="flex-1 bg-green-600 text-white rounded-xl py-3 font-bold disabled:opacity-50"
-              >
-                {submitting ? 'Envoi...' : 'Confirmer'}
+              <button onClick={submitOrder} disabled={!tableNumber || submitting} style={{
+                flex: 2, background: '#8B0000', color: '#fff', border: 'none',
+                borderRadius: '12px', padding: '14px', fontWeight: 'bold',
+                cursor: 'pointer', fontSize: '0.9rem', opacity: (!tableNumber || submitting) ? 0.5 : 1
+              }}>
+                {submitting ? 'Envoi...' : 'Confirmer la commande'}
               </button>
             </div>
           </div>
