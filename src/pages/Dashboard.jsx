@@ -22,7 +22,7 @@ const NEXT_LABEL = {
 export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [restaurantId, setRestaurantId] = useState(null);
+ 
 
   useEffect(() => {
     let channel;

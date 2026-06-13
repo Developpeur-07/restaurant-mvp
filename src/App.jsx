@@ -8,12 +8,12 @@ import QRCodePage from './pages/QRCode'
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<Navigate to="/menu/b0b0b0b0-0000-0000-0000-000000000001" />} />
       <Route path="/menu/:restaurantId" element={<Menu />} />
       <Route path="/tracking/:orderId" element={<Tracking />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/login" element={<Login />} />
       <Route path="/qrcode" element={<QRCodePage />} />
-     <Route path="/" element={<Navigate to="/login" />} />
     </Routes>
   )
 }
