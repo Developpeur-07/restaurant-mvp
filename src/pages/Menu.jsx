@@ -191,7 +191,7 @@ const categorized = categorize(filteredItems)
       width: '16px', height: '16px', display: 'inline-block',
        background: 'url(../../public/Icon/loupe.png) no-repeat center center', 
        backgroundSize: 'contain'
-    }}><img src="../../public/Icon/loupe.png" alt="Rechercher" /></span>
+    }}><img src="/Icon/loupe.png" alt="Rechercher" /></span>
     <input
       type="text"
       placeholder="Rechercher un plat..."
