@@ -12,47 +12,16 @@ import History from './pages/History'
 export default function App() {
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<Navigate to="/menu/b0b0b0b0-0000-0000-0000-000000000001" />}
-      />
+      <Route path="/" element={<Navigate to="/menu/b0b0b0b0-0000-0000-0000-000000000001" />} />
       <Route path="/menu/:restaurantId" element={<Menu />} />
+      <Route path="/menu/:restaurantId/:category" element={<Menu />} />
       <Route path="/tracking/:orderId" element={<Tracking />} />
       <Route path="/login" element={<Login />} />
       <Route path="/update-password" element={<UpdatePassword />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/qrcode"
-        element={
-          <ProtectedRoute>
-            <QRCodePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/history"
-        element={
-          <ProtectedRoute>
-            <History />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/qrcode" element={<ProtectedRoute><QRCodePage /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
     </Routes>
   );
 }
