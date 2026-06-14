@@ -50,6 +50,7 @@ export default function Menu() {
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selection, setSelection] = useState({})
+  const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [tableNumber, setTableNumber] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -132,7 +133,11 @@ export default function Menu() {
     ? Math.max(...selectedItems.map(i => i.estimated_minutes))
     : 0
 
-  const categorized = categorize(items)
+ const filteredItems = search.trim()
+  ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+  : items
+
+const categorized = categorize(filteredItems)
 
   if (loading) return (
     <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -172,6 +177,42 @@ export default function Menu() {
           Marché Moungali · Brazzaville
         </p>
       </div>
+
+        {/* BARRE DE RECHERCHE */}
+<div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px 16px 0' }}>
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: '10px',
+    background: '#fff', borderRadius: '12px', padding: '10px 16px',
+    boxShadow: '0 2px 8px rgba(139,0,0,0.08)',
+    border: '1px solid rgba(139,0,0,0.1)'
+  }}>
+    <span style={{ 
+      fontSize: '1px' ,
+      width: '16px', height: '16px', display: 'inline-block',
+       background: 'url(../../public/Icon/loupe.png) no-repeat center center', 
+       backgroundSize: 'contain'
+    }}><img src="../../public/Icon/loupe.png" alt="Rechercher" /></span>
+    <input
+      type="text"
+      placeholder="Rechercher un plat..."
+      value={search}
+      onChange={e => setSearch(e.target.value)}
+      style={{
+        flex: 1, border: 'none', outline: 'none',
+        background: 'transparent', fontSize: '0.9rem',
+        color: '#1a1a1a', fontFamily: 'Georgia, serif'
+      }}
+    />
+    {search && (
+      <button
+        onClick={() => setSearch('')}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: '1rem' }}
+      >
+        ✕
+      </button>
+    )}
+  </div>
+</div>
 
       {/* MENU PAR CATÉGORIE */}
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px' }}>

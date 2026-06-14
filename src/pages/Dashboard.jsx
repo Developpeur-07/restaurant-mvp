@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 const STATUS_LABELS = {
-  received: { label: "Reçue", color: "bg-yellow-100 text-yellow-800" },
-  preparing: { label: "En préparation", color: "bg-blue-100 text-blue-800" },
-  ready: { label: "Prête", color: "bg-green-100 text-green-800" },
-};
+  received: { label: 'Reçue', color: 'bg-yellow-100 text-yellow-800' },
+  preparing: { label: 'En préparation', color: 'bg-blue-100 text-blue-800' },
+  ready: { label: 'Prête', color: 'bg-green-100 text-green-800' },
+  cancelled: { label: 'Annulée', color: 'bg-gray-100 text-gray-500' }
+}
 
 const NEXT_STATUS = {
   received: "preparing",
@@ -34,10 +35,11 @@ export default function Dashboard() {
       if (!user) return;
 
       const { data: resto } = await supabase
-        .from("restaurants")
-        .select("id")
-        .eq("owner_id", user.id)
-        .single();
+        .from('restaurants')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .single()
 
       if (!resto) return;
 

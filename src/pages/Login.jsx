@@ -1,49 +1,179 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [mode, setMode] = useState('login')
+  const [resetSent, setResetSent] = useState(false)
 
   async function handleLogin() {
     setLoading(true)
-    await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + '/dashboard' }
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError('Email ou mot de passe incorrect')
+      setLoading(false)
+      return
+    }
+    navigate('/dashboard')
+  }
+
+  async function handleReset() {
+    setLoading(true)
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/update-password'
     })
-    setSent(true)
+    setResetSent(true)
     setLoading(false)
   }
 
-  if (sent) return (
-    <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="text-center">
-        <p className="text-4xl mb-4">📧</p>
-        <p className="font-bold text-lg mb-2">Vérifiez votre email</p>
-        <p className="text-gray-500 text-sm">Un lien de connexion a été envoyé à {email}</p>
+  if (resetSent) return (
+    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ fontSize: '3rem', marginBottom: '16px' }}>📧</p>
+        <p style={{ fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
+          Email envoyé
+        </p>
+        <p style={{ color: '#999', fontSize: '0.85rem' }}>
+          Vérifiez votre boîte mail pour réinitialiser votre mot de passe
+        </p>
+        <button
+          onClick={() => { setResetSent(false); setMode('login') }}
+          style={{ marginTop: '20px', color: '#8B0000', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
+        >
+          ← Retour à la connexion
+        </button>
       </div>
     </div>
   )
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-8">Accès restaurateur</h1>
-        <input
-          type="email"
-          placeholder="votre@email.com"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full border rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
-        <button
-          onClick={handleLogin}
-          disabled={!email || loading}
-          className="w-full bg-green-600 text-white rounded-xl py-3 font-bold disabled:opacity-50"
-        >
-          {loading ? 'Envoi...' : 'Recevoir le lien de connexion'}
-        </button>
+    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      {/* HEADER */}
+      <div style={{
+        background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
+        padding: '40px 20px 32px',
+        textAlign: 'center'
+      }}>
+        <p style={{ color: '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
+          Espace Administration
+        </p>
+        <h1 style={{ color: '#fff', fontSize: '1.8rem', fontFamily: 'Georgia, serif', margin: '0 0 8px' }}>
+          Le Bourgeois
+        </h1>
+        <div style={{ width: '40px', height: '2px', background: '#C9A84C', margin: '0 auto' }} />
+      </div>
+
+      {/* FORMULAIRE */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' }}>
+        <div style={{ width: '100%', maxWidth: '380px' }}>
+
+          <h2 style={{ fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.3rem', marginBottom: '6px' }}>
+            {mode === 'login' ? 'Connexion' : 'Mot de passe oublié'}
+          </h2>
+          <p style={{ color: '#999', fontSize: '0.8rem', marginBottom: '24px' }}>
+            {mode === 'login' ? 'Accédez à votre tableau de bord' : 'Entrez votre email pour réinitialiser'}
+          </p>
+
+          {error && (
+            <div style={{ background: '#fff0f0', border: '1px solid #ffcccc', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+              <p style={{ color: '#cc0000', fontSize: '0.82rem', margin: 0 }}>{error}</p>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+              Email
+            </label>
+            <input
+              type="email"
+              placeholder="votre@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              style={{
+                width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
+                padding: '12px 14px', fontSize: '0.9rem', background: '#fff',
+                outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={e => e.target.style.borderColor = '#8B0000'}
+              onBlur={e => e.target.style.borderColor = '#e8ddd4'}
+            />
+          </div>
+
+          {mode === 'login' && (
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                Mot de passe
+              </label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                style={{
+                  width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
+                  padding: '12px 14px', fontSize: '0.9rem', background: '#fff',
+                  outline: 'none', boxSizing: 'border-box'
+                }}
+                onFocus={e => e.target.style.borderColor = '#8B0000'}
+                onBlur={e => e.target.style.borderColor = '#e8ddd4'}
+              />
+            </div>
+          )}
+
+          {mode === 'login' ? (
+            <>
+              <button
+                onClick={handleLogin}
+                disabled={!email || !password || loading}
+                style={{
+                  width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+                  borderRadius: '12px', padding: '14px', fontWeight: 'bold',
+                  fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
+                  opacity: (!email || !password || loading) ? 0.6 : 1,
+                  transition: 'opacity 0.2s'
+                }}
+              >
+                {loading ? 'Connexion...' : 'Se connecter'}
+              </button>
+              <button
+                onClick={() => setMode('reset')}
+                style={{ width: '100%', background: 'none', border: 'none', color: '#8B0000', fontSize: '0.82rem', cursor: 'pointer' }}
+              >
+                Mot de passe oublié ?
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleReset}
+                disabled={!email || loading}
+                style={{
+                  width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+                  borderRadius: '12px', padding: '14px', fontWeight: 'bold',
+                  fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
+                  opacity: (!email || loading) ? 0.6 : 1
+                }}
+              >
+                {loading ? 'Envoi...' : 'Envoyer le lien'}
+              </button>
+              <button
+                onClick={() => setMode('login')}
+                style={{ width: '100%', background: 'none', border: 'none', color: '#666', fontSize: '0.82rem', cursor: 'pointer' }}
+              >
+                ← Retour à la connexion
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

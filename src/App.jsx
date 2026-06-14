@@ -4,6 +4,7 @@ import Tracking from './pages/Tracking'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import QRCodePage from './pages/QRCode'
+import UpdatePassword from './pages/UpdatePassword'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <Route path="/tracking/:orderId" element={<Tracking />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/update-password" element={<UpdatePassword />} />
       <Route path="/qrcode" element={<QRCodePage />} />
     </Routes>
   )
