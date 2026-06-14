@@ -6,22 +6,25 @@ const STATUS_LABELS = {
   received: { label: 'Reçue', bg: '#FFF9C4', color: '#7B6000' },
   preparing: { label: 'En préparation', bg: '#DBEAFE', color: '#1E40AF' },
   ready: { label: 'Prête', bg: '#DCFCE7', color: '#166534' },
+  paid: { label: 'Soldée', bg: '#F0FDF4', color: '#166534' },
   cancelled: { label: 'Annulée', bg: '#F3F4F6', color: '#6B7280' }
 }
 
 const NEXT_STATUS = {
   received: "preparing",
   preparing: "ready",
-  ready: null,
+  ready: "paid",
+  paid: null,
   cancelled: null,
-};
+}
 
 const NEXT_LABEL = {
   received: "Démarrer préparation",
   preparing: "Marquer prête",
-  ready: null,
+  ready: "Marquer soldée 💰",
+  paid: null,
   cancelled: null,
-};
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -48,7 +51,7 @@ export default function Dashboard() {
         .from("orders")
         .select("*")
         .eq("restaurant_id", resto.id)
-        .neq("status", "ready")
+        .not("status", "in", '("ready","paid")')
         .order("created_at", { ascending: true });
 
       setOrders(data || []);
@@ -67,7 +70,7 @@ export default function Dashboard() {
           }
           if (payload.eventType === "UPDATE") {
             setOrders(prev =>
-              payload.new.status === "ready"
+              ['ready', 'paid'].includes(payload.new.status)
                 ? prev.filter(o => o.id !== payload.new.id)
                 : prev.map(o => o.id === payload.new.id ? payload.new : o)
             );
@@ -85,6 +88,12 @@ export default function Dashboard() {
 
   async function updateStatus(orderId, newStatus) {
     await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
+  }
+
+  async function markAsPaid(order) {
+    await supabase.from('orders_archive').insert({ ...order, status: 'paid' })
+    await supabase.from('orders').delete().eq('id', order.id)
+    setOrders(prev => prev.filter(o => o.id !== order.id))
   }
 
   async function deleteOrder(orderId) {
@@ -192,7 +201,9 @@ export default function Dashboard() {
                   <div style={{ borderTop: '1px solid #f0e8de', paddingTop: '12px', marginBottom: '14px' }}>
                     {order.items.map((item, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-                        <span style={{ color: '#333' }}><span style={{ color: '#8B0000', fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
+                        <span style={{ color: '#333' }}>
+                          <span style={{ color: '#8B0000', fontWeight: 'bold' }}>{item.qty}×</span> {item.name}
+                        </span>
                         <span style={{ color: '#C9A84C', fontWeight: '600' }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
                       </div>
                     ))}
@@ -204,9 +215,11 @@ export default function Dashboard() {
 
                   {nextStatus && (
                     <button
-                      onClick={() => updateStatus(order.id, nextStatus)}
+                      onClick={() => order.status === 'ready' ? markAsPaid(order) : updateStatus(order.id, nextStatus)}
                       style={{
-                        width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+                        width: '100%',
+                        background: order.status === 'ready' ? '#C9A84C' : '#8B0000',
+                        color: '#fff', border: 'none',
                         borderRadius: '10px', padding: '11px', fontWeight: 'bold',
                         fontSize: '0.88rem', cursor: 'pointer'
                       }}
@@ -222,7 +235,7 @@ export default function Dashboard() {
 
         {/* COMMANDES ANNULÉES */}
         {cancelledOrders.length > 0 && (
-          <div>
+          <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
               <div style={{ width: '4px', height: '16px', background: '#6B7280', borderRadius: '2px' }} />
               <h2 style={{ margin: 0, fontSize: '0.8rem', color: '#6B7280', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -252,6 +265,21 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* HISTORIQUE */}
+        <button
+          onClick={() => navigate('/history')}
+          style={{
+            width: '100%', background: 'transparent',
+            border: '2px solid #e8ddd4', borderRadius: '12px',
+            padding: '12px', color: '#8B0000', fontWeight: '600',
+            fontSize: '0.85rem', cursor: 'pointer',
+            fontFamily: 'Georgia, serif'
+          }}
+        >
+          📊 Voir l'historique des ventes
+        </button>
+
       </div>
     </div>
   );
