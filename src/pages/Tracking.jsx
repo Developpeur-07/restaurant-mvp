@@ -95,9 +95,9 @@ export default function Tracking() {
   const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.received;
   const estimatedTime = order.estimated_ready_at
     ? new Date(order.estimated_ready_at).toLocaleTimeString("fr-FR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+      hour: "2-digit",
+      minute: "2-digit",
+    })
     : null;
   const total = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const isReady = order.status === "ready";
@@ -171,7 +171,7 @@ export default function Tracking() {
                   : isReady
                     ? "linear-gradient(135deg, #1a6b1a, #2d8b2d)"
                     : "linear-gradient(135deg, #6B0000, #8B0000)",
-                    
+
             }}
           >
             {order.status === "received"
@@ -346,15 +346,10 @@ export default function Tracking() {
             }}
           >
             <div>
-              <p
-                style={{
-                  margin: 0,
-                  fontWeight: "bold",
-                  color: "#8B0000",
-                  fontFamily: "Georgia, serif",
-                }}
-              >
-                Table {order.table_number}
+              <p style={{ margin: 0, fontWeight: 'bold', color: '#8B0000', fontFamily: 'Georgia, serif' }}>
+                {order.order_type === 'emporter'
+                  ? `🥡 À emporter — ${order.customer_name}`
+                  : `🪑 Table ${order.table_number}`}
               </p>
               <p
                 style={{

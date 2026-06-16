@@ -334,16 +334,10 @@ export default function Dashboard() {
                     }}
                   >
                     <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontWeight: "bold",
-                          fontSize: "1.1rem",
-                          color: "#8B0000",
-                          fontFamily: "Georgia, serif",
-                        }}
-                      >
-                        Table {order.table_number}
+                      <p style={{ margin: 0, fontWeight: 'bold', color: '#999', fontSize: '0.9rem' }}>
+                        {order.order_type === 'emporter'
+                          ? `🥡 ${order.customer_name}`
+                          : `🪑 Table ${order.table_number}`}
                       </p>
                       <p
                         style={{

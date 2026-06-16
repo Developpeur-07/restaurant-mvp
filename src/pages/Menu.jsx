@@ -39,6 +39,103 @@ function categorize(items) {
   return result
 }
 
+// Modale réutilisable
+function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNumber, setTableNumber, customerName, setCustomerName, submitting, submitOrder }) {
+  if (!showModal) return null
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50
+    }}>
+      <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
+        <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
+        <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
+          Type de commande
+        </h2>
+        <p style={{ margin: '0 0 20px', color: '#999', fontSize: '0.8rem' }}>
+          Comment souhaitez-vous recevoir votre commande ?
+        </p>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+          {[
+            { value: 'sur_place', label: 'Sur place', emoji: '🪑', desc: 'Numéro de table' },
+            { value: 'emporter', label: 'À emporter', emoji: '🥡', desc: 'Votre nom' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setOrderType(opt.value)}
+              style={{
+                flex: 1, padding: '16px 12px', borderRadius: '14px', cursor: 'pointer',
+                border: `2px solid ${orderType === opt.value ? '#8B0000' : '#e8ddd4'}`,
+                background: orderType === opt.value ? '#FFF0F0' : '#fff',
+                textAlign: 'center', transition: 'all 0.2s'
+              }}
+            >
+              <p style={{ fontSize: '1.8rem', margin: '0 0 6px' }}>{opt.emoji}</p>
+              <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem' }}>{opt.label}</p>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: '#999' }}>{opt.desc}</p>
+            </button>
+          ))}
+        </div>
+        {orderType === 'sur_place' ? (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+              Numéro de table
+            </label>
+            <input
+              type="number"
+              placeholder="Ex: 4"
+              value={tableNumber}
+              onChange={e => setTableNumber(e.target.value)}
+              style={{
+                width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
+                padding: '14px', fontSize: '1.5rem', textAlign: 'center',
+                background: '#fff', outline: 'none', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        ) : (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+              Votre nom
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: Jean"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              style={{
+                width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
+                padding: '14px', fontSize: '1.2rem', textAlign: 'center',
+                background: '#fff', outline: 'none', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={() => setShowModal(false)} style={{
+            flex: 1, border: '2px solid #ddd', background: 'transparent',
+            borderRadius: '12px', padding: '14px', color: '#666', fontWeight: '600', cursor: 'pointer'
+          }}>
+            Annuler
+          </button>
+          <button
+            onClick={submitOrder}
+            disabled={orderType === 'sur_place' ? !tableNumber || submitting : !customerName || submitting}
+            style={{
+              flex: 2, background: '#8B0000', color: '#fff', border: 'none',
+              borderRadius: '12px', padding: '14px', fontWeight: 'bold',
+              cursor: 'pointer',
+              opacity: (orderType === 'sur_place' ? !tableNumber : !customerName) || submitting ? 0.5 : 1
+            }}
+          >
+            {submitting ? 'Envoi...' : 'Confirmer la commande'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Menu() {
   const { restaurantId, category } = useParams()
   const navigate = useNavigate()
@@ -48,6 +145,8 @@ export default function Menu() {
   const [selection, setSelection] = useState({})
   const [showModal, setShowModal] = useState(false)
   const [tableNumber, setTableNumber] = useState('')
+  const [customerName, setCustomerName] = useState('')
+  const [orderType, setOrderType] = useState('sur_place')
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -92,8 +191,10 @@ export default function Menu() {
   }
 
   async function submitOrder() {
-    if (!tableNumber || isNaN(tableNumber)) return
+    if (orderType === 'sur_place' && !tableNumber) return
+    if (orderType === 'emporter' && !customerName) return
     setSubmitting(true)
+
     const selectedItems = Object.values(selection)
     const maxMinutes = Math.max(...selectedItems.map(i => i.estimated_minutes))
     const estimatedReadyAt = new Date(Date.now() + maxMinutes * 60 * 1000)
@@ -102,7 +203,9 @@ export default function Menu() {
       .from('orders')
       .insert({
         restaurant_id: restaurantId,
-        table_number: parseInt(tableNumber),
+        table_number: orderType === 'sur_place' ? parseInt(tableNumber) : null,
+        customer_name: orderType === 'emporter' ? customerName : null,
+        order_type: orderType,
         items: selectedItems.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
         status: 'received',
         estimated_ready_at: estimatedReadyAt.toISOString()
@@ -115,6 +218,7 @@ export default function Menu() {
       setSubmitting(false)
       return
     }
+
     navigate(`/tracking/${data.id}`)
   }
 
@@ -141,7 +245,6 @@ export default function Menu() {
     const decoded = decodeURIComponent(category)
     const catData = categorized[decoded]
     const catItems = catData?.items || []
-
     const filteredItems = search.trim()
       ? catItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
       : catItems
@@ -189,9 +292,7 @@ export default function Menu() {
               onChange={e => setSearch(e.target.value)}
               style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#1a1a1a' }}
             />
-            {search && (
-              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>
-            )}
+            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>}
           </div>
 
           {/* ITEMS */}
@@ -268,49 +369,13 @@ export default function Menu() {
           </div>
         )}
 
-        {/* MODALE TABLE */}
-        {showModal && (
-          <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-            display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50
-          }}>
-            <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
-              <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
-              <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
-                Numéro de table
-              </h2>
-              <p style={{ margin: '0 0 16px', color: '#999', fontSize: '0.8rem' }}>
-                Entrez le numéro indiqué sur votre table
-              </p>
-              <input
-                type="number"
-                placeholder="Ex: 4"
-                value={tableNumber}
-                onChange={e => setTableNumber(e.target.value)}
-                style={{
-                  width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
-                  padding: '14px', fontSize: '1.5rem', textAlign: 'center',
-                  background: '#fff', outline: 'none', boxSizing: 'border-box', marginBottom: '16px'
-                }}
-              />
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setShowModal(false)} style={{
-                  flex: 1, border: '2px solid #ddd', background: 'transparent',
-                  borderRadius: '12px', padding: '14px', color: '#666', fontWeight: '600', cursor: 'pointer'
-                }}>
-                  Annuler
-                </button>
-                <button onClick={submitOrder} disabled={!tableNumber || submitting} style={{
-                  flex: 2, background: '#8B0000', color: '#fff', border: 'none',
-                  borderRadius: '12px', padding: '14px', fontWeight: 'bold',
-                  cursor: 'pointer', opacity: (!tableNumber || submitting) ? 0.5 : 1
-                }}>
-                  {submitting ? 'Envoi...' : 'Confirmer la commande'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <OrderModal
+          showModal={showModal} setShowModal={setShowModal}
+          orderType={orderType} setOrderType={setOrderType}
+          tableNumber={tableNumber} setTableNumber={setTableNumber}
+          customerName={customerName} setCustomerName={setCustomerName}
+          submitting={submitting} submitOrder={submitOrder}
+        />
       </div>
     )
   }
@@ -373,7 +438,7 @@ export default function Menu() {
         </div>
       </div>
 
-      {/* BARRE COMMANDER si sélection depuis catégorie */}
+      {/* BARRE COMMANDER */}
       {selectedItems.length > 0 && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -400,46 +465,13 @@ export default function Menu() {
         </div>
       )}
 
-      {/* MODALE TABLE */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50
-        }}>
-          <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
-            <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
-            <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
-              Numéro de table
-            </h2>
-            <input
-              type="number"
-              placeholder="Ex: 4"
-              value={tableNumber}
-              onChange={e => setTableNumber(e.target.value)}
-              style={{
-                width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
-                padding: '14px', fontSize: '1.5rem', textAlign: 'center',
-                background: '#fff', outline: 'none', boxSizing: 'border-box', marginBottom: '16px'
-              }}
-            />
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => setShowModal(false)} style={{
-                flex: 1, border: '2px solid #ddd', background: 'transparent',
-                borderRadius: '12px', padding: '14px', color: '#666', fontWeight: '600', cursor: 'pointer'
-              }}>
-                Annuler
-              </button>
-              <button onClick={submitOrder} disabled={!tableNumber || submitting} style={{
-                flex: 2, background: '#8B0000', color: '#fff', border: 'none',
-                borderRadius: '12px', padding: '14px', fontWeight: 'bold',
-                cursor: 'pointer', opacity: (!tableNumber || submitting) ? 0.5 : 1
-              }}>
-                {submitting ? 'Envoi...' : 'Confirmer la commande'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OrderModal
+        showModal={showModal} setShowModal={setShowModal}
+        orderType={orderType} setOrderType={setOrderType}
+        tableNumber={tableNumber} setTableNumber={setTableNumber}
+        customerName={customerName} setCustomerName={setCustomerName}
+        submitting={submitting} submitOrder={submitOrder}
+      />
     </div>
   )
 }
