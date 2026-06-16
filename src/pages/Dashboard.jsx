@@ -2,6 +2,51 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
+function playNotification() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+
+    // Son 1 — ding aigu plus fort et plus long
+    const osc1 = ctx.createOscillator()
+    const gain1 = ctx.createGain()
+    osc1.connect(gain1)
+    gain1.connect(ctx.destination)
+    osc1.frequency.setValueAtTime(880, ctx.currentTime)
+    osc1.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.3)
+    gain1.gain.setValueAtTime(0.8, ctx.currentTime)
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+    osc1.start(ctx.currentTime)
+    osc1.stop(ctx.currentTime + 0.6)
+
+    // Son 2 — ding médium
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+    osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.4)
+    osc2.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.7)
+    gain2.gain.setValueAtTime(0.6, ctx.currentTime + 0.4)
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9)
+    osc2.start(ctx.currentTime + 0.4)
+    osc2.stop(ctx.currentTime + 0.9)
+
+    // Son 3 — ding bas final
+    const osc3 = ctx.createOscillator()
+    const gain3 = ctx.createGain()
+    osc3.connect(gain3)
+    gain3.connect(ctx.destination)
+    osc3.frequency.setValueAtTime(550, ctx.currentTime + 0.8)
+    osc3.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 1.2)
+    gain3.gain.setValueAtTime(0.5, ctx.currentTime + 0.8)
+    gain3.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4)
+    osc3.start(ctx.currentTime + 0.8)
+    osc3.stop(ctx.currentTime + 1.4)
+
+  } catch {
+    console.log('Audio non supporté')
+  }
+}
+
 const STATUS_LABELS = {
   received: { label: "Reçue", bg: "#FFF9C4", color: "#7B6000" },
   preparing: { label: "En préparation", bg: "#DBEAFE", color: "#1E40AF" },
@@ -30,6 +75,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [newOrderAlert, setNewOrderAlert] = useState(false)
 
   useEffect(() => {
     let channel;
@@ -71,6 +117,9 @@ export default function Dashboard() {
           },
           (payload) => {
             if (payload.eventType === "INSERT") {
+              playNotification();
+              setNewOrderAlert(true);
+              setTimeout(() => setNewOrderAlert(false), 3000)
               setOrders((prev) => [...prev, payload.new]);
             }
             if (payload.eventType === "UPDATE") {
@@ -166,16 +215,20 @@ export default function Dashboard() {
             >
               Tableau de bord
             </p>
-            <h1
-              style={{
-                color: "#fff",
-                fontSize: "1.5rem",
-                fontFamily: "Georgia, serif",
-                margin: 0,
-              }}
-            >
-              Le Bourgeois
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1 style={{ color: '#fff', fontSize: '1.5rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+                Le Bourgeois
+              </h1>
+              {newOrderAlert && (
+                <div style={{
+                  background: '#C9A84C', borderRadius: '20px', padding: '4px 10px',
+                  fontSize: '0.72rem', fontWeight: 'bold', color: '#fff',
+                  animation: 'pulse 0.5s ease infinite alternate'
+                }}>
+                  🔔 Nouvelle commande !
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button
