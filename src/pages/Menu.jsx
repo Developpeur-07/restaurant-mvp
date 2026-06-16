@@ -76,9 +76,18 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
           </div>
         ) : (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Votre nom</label>
-            <input type="text" placeholder="Ex: Jean" value={customerName} onChange={e => setCustomerName(e.target.value)}
-              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Votre nom complet</label>
+            <input
+              type="text"
+              placeholder="Ex: Jean"
+              value={customerName}
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
+                setCustomerName(value);
+              }}
+              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }} 
+              />
+              
           </div>
         )}
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -111,25 +120,45 @@ export default function Menu() {
   const [detailItem, setDetailItem] = useState(null)
 
   useEffect(() => {
-    async function fetchMenu() {
-      const { data: resto } = await supabase
-        .from('restaurants')
-        .select('name')
-        .eq('id', restaurantId)
-        .single()
+  async function fetchMenu() {
+    const { data: resto } = await supabase
+      .from('restaurants')
+      .select('name')
+      .eq('id', restaurantId)
+      .single()
 
-      const { data: menuItems } = await supabase
-        .from('menu_items')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .eq('available', true)
+    const { data: menuItems } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('available', true)
 
-      setRestaurant(resto)
-      setItems(menuItems || [])
-      setLoading(false)
+    setRestaurant(resto)
+    setItems(menuItems || [])
+    setLoading(false)
+
+    // Charger sélection sauvegardée
+    const saved = localStorage.getItem(`selection_${restaurantId}`)
+    if (saved) {
+      try {
+        setSelection(JSON.parse(saved))
+      } catch  {
+        localStorage.removeItem(`selection_${restaurantId}`)
+      }
     }
-    fetchMenu()
-  }, [restaurantId])
+  }
+  fetchMenu()
+}, [restaurantId])
+
+// Sauvegarder à chaque changement de sélection
+useEffect(() => {
+  if (Object.keys(selection).length > 0) {
+    localStorage.setItem(`selection_${restaurantId}`, JSON.stringify(selection))
+  } else {
+    localStorage.removeItem(`selection_${restaurantId}`)
+  }
+}, [selection, restaurantId])
+  
 
   function addItem(item) {
     setSelection(prev => ({
