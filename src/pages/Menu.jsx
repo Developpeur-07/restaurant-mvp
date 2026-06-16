@@ -39,37 +39,29 @@ function categorize(items) {
   return result
 }
 
-// Modale réutilisable
+function getEmoji(item) {
+  return CATEGORIES.find(c => c.keywords.some(k => item.name.toLowerCase().includes(k)))?.emoji || '🍽'
+}
+
 function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNumber, setTableNumber, customerName, setCustomerName, submitting, submitOrder }) {
   if (!showModal) return null
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50
-    }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}>
       <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
         <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
-        <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
-          Type de commande
-        </h2>
-        <p style={{ margin: '0 0 20px', color: '#999', fontSize: '0.8rem' }}>
-          Comment souhaitez-vous recevoir votre commande ?
-        </p>
+        <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>Type de commande</h2>
+        <p style={{ margin: '0 0 20px', color: '#999', fontSize: '0.8rem' }}>Comment souhaitez-vous recevoir votre commande ?</p>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           {[
             { value: 'sur_place', label: 'Sur place', emoji: '🪑', desc: 'Numéro de table' },
             { value: 'emporter', label: 'À emporter', emoji: '🥡', desc: 'Votre nom' },
           ].map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => setOrderType(opt.value)}
-              style={{
-                flex: 1, padding: '16px 12px', borderRadius: '14px', cursor: 'pointer',
-                border: `2px solid ${orderType === opt.value ? '#8B0000' : '#e8ddd4'}`,
-                background: orderType === opt.value ? '#FFF0F0' : '#fff',
-                textAlign: 'center', transition: 'all 0.2s'
-              }}
-            >
+            <button key={opt.value} onClick={() => setOrderType(opt.value)} style={{
+              flex: 1, padding: '16px 12px', borderRadius: '14px', cursor: 'pointer',
+              border: `2px solid ${orderType === opt.value ? '#8B0000' : '#e8ddd4'}`,
+              background: orderType === opt.value ? '#FFF0F0' : '#fff',
+              textAlign: 'center', transition: 'all 0.2s'
+            }}>
               <p style={{ fontSize: '1.8rem', margin: '0 0 6px' }}>{opt.emoji}</p>
               <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem' }}>{opt.label}</p>
               <p style={{ margin: 0, fontSize: '0.7rem', color: '#999' }}>{opt.desc}</p>
@@ -78,56 +70,23 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
         </div>
         {orderType === 'sur_place' ? (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
-              Numéro de table
-            </label>
-            <input
-              type="number"
-              placeholder="Ex: 4"
-              value={tableNumber}
-              onChange={e => setTableNumber(e.target.value)}
-              style={{
-                width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
-                padding: '14px', fontSize: '1.5rem', textAlign: 'center',
-                background: '#fff', outline: 'none', boxSizing: 'border-box'
-              }}
-            />
+            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Numéro de table</label>
+            <input type="number" placeholder="Ex: 4" value={tableNumber} onChange={e => setTableNumber(e.target.value)}
+              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.5rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }} />
           </div>
         ) : (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
-              Votre nom
-            </label>
-            <input
-              type="text"
-              placeholder="Ex: Jean"
-              value={customerName}
-              onChange={e => setCustomerName(e.target.value)}
-              style={{
-                width: '100%', border: '2px solid #8B0000', borderRadius: '12px',
-                padding: '14px', fontSize: '1.2rem', textAlign: 'center',
-                background: '#fff', outline: 'none', boxSizing: 'border-box'
-              }}
-            />
+            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Votre nom</label>
+            <input type="text" placeholder="Ex: Jean" value={customerName} onChange={e => setCustomerName(e.target.value)}
+              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }} />
           </div>
         )}
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => setShowModal(false)} style={{
-            flex: 1, border: '2px solid #ddd', background: 'transparent',
-            borderRadius: '12px', padding: '14px', color: '#666', fontWeight: '600', cursor: 'pointer'
-          }}>
+          <button onClick={() => setShowModal(false)} style={{ flex: 1, border: '2px solid #ddd', background: 'transparent', borderRadius: '12px', padding: '14px', color: '#666', fontWeight: '600', cursor: 'pointer' }}>
             Annuler
           </button>
-          <button
-            onClick={submitOrder}
-            disabled={orderType === 'sur_place' ? !tableNumber || submitting : !customerName || submitting}
-            style={{
-              flex: 2, background: '#8B0000', color: '#fff', border: 'none',
-              borderRadius: '12px', padding: '14px', fontWeight: 'bold',
-              cursor: 'pointer',
-              opacity: (orderType === 'sur_place' ? !tableNumber : !customerName) || submitting ? 0.5 : 1
-            }}
-          >
+          <button onClick={submitOrder} disabled={orderType === 'sur_place' ? !tableNumber || submitting : !customerName || submitting}
+            style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer', opacity: (orderType === 'sur_place' ? !tableNumber : !customerName) || submitting ? 0.5 : 1 }}>
             {submitting ? 'Envoi...' : 'Confirmer la commande'}
           </button>
         </div>
@@ -149,6 +108,7 @@ export default function Menu() {
   const [orderType, setOrderType] = useState('sur_place')
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState('')
+  const [detailItem, setDetailItem] = useState(null)
 
   useEffect(() => {
     async function fetchMenu() {
@@ -253,15 +213,10 @@ export default function Menu() {
       <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
         {/* HEADER */}
-        <div style={{
-          background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
-          padding: '28px 20px 24px'
-        }}>
+        <div style={{ background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)', padding: '28px 20px 24px' }}>
           <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => navigate(`/menu/${restaurantId}`)}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
+            <button onClick={() => navigate(`/menu/${restaurantId}`)}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>
               ← Retour
             </button>
             <div>
@@ -278,63 +233,42 @@ export default function Menu() {
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
 
           {/* RECHERCHE */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            background: '#fff', borderRadius: '12px', padding: '10px 16px',
-            boxShadow: '0 2px 8px rgba(139,0,0,0.08)',
-            border: '1px solid rgba(139,0,0,0.1)', marginBottom: '16px'
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', border: '1px solid rgba(139,0,0,0.1)', marginBottom: '16px' }}>
             <span>🔍</span>
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#1a1a1a' }}
-            />
+            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#1a1a1a' }} />
             {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>}
           </div>
 
-          {/* ITEMS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* GRILLE CARRÉE */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {filteredItems.map(item => {
               const qty = selection[item.id]?.qty || 0
               return (
-                <div key={item.id} style={{
-                  background: '#fff', borderRadius: '12px', padding: '14px 16px',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  boxShadow: '0 1px 4px rgba(139,0,0,0.08)',
-                  borderLeft: qty > 0 ? '3px solid #8B0000' : '3px solid transparent'
+                <div key={item.id} onClick={() => setDetailItem(item)} style={{
+                  background: '#fff', borderRadius: '16px',
+                  boxShadow: qty > 0 ? '0 4px 16px rgba(139,0,0,0.2)' : '0 2px 8px rgba(139,0,0,0.08)',
+                  border: qty > 0 ? '2px solid #8B0000' : '2px solid transparent',
+                  overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease'
                 }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontWeight: qty > 0 ? 'bold' : '500', color: '#1a1a1a', fontSize: '0.9rem' }}>
-                      {item.name}
-                    </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#999' }}>~{item.estimated_minutes} min</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
-                      {item.price.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>FCFA</span>
-                    </p>
-                    {qty === 0 ? (
-                      <button onClick={() => addItem(item)} style={{
-                        width: '30px', height: '30px', borderRadius: '50%',
-                        background: '#8B0000', color: '#fff', border: 'none',
-                        fontSize: '1.2rem', cursor: 'pointer'
-                      }}>+</button>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <button onClick={() => removeItem(item.id)} style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: '#f0f0f0', color: '#333', border: 'none', cursor: 'pointer'
-                        }}>−</button>
-                        <span style={{ fontWeight: 'bold', minWidth: '16px', textAlign: 'center', color: '#8B0000' }}>{qty}</span>
-                        <button onClick={() => addItem(item)} style={{
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: '#8B0000', color: '#fff', border: 'none', cursor: 'pointer'
-                        }}>+</button>
+                  <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', position: 'relative' }}>
+                    {item.image_url
+                      ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      : <span>{getEmoji(item)}</span>
+                    }
+                    {qty > 0 && (
+                      <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#8B0000', color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        {qty}
                       </div>
                     )}
+                  </div>
+                  <div style={{ padding: '10px 12px' }}>
+                    <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.82rem', fontFamily: 'Georgia, serif', lineHeight: 1.3 }}>
+                      {item.name}
+                    </p>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '0.8rem' }}>
+                      {item.price.toLocaleString()} FCFA
+                    </p>
                   </div>
                 </div>
               )
@@ -344,27 +278,69 @@ export default function Menu() {
 
         {/* BARRE COMMANDER */}
         {selectedItems.length > 0 && (
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: '#8B0000', padding: '14px 20px',
-            boxShadow: '0 -4px 20px rgba(139,0,0,0.3)'
-          }}>
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#8B0000', padding: '14px 20px', boxShadow: '0 -4px 20px rgba(139,0,0,0.3)' }}>
             <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>
-                  {totalQty} article(s) · ~{maxMinutes} min
-                </p>
-                <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                  {total.toLocaleString()} FCFA
-                </p>
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>{totalQty} article(s) · ~{maxMinutes} min</p>
+                <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>{total.toLocaleString()} FCFA</p>
               </div>
-              <button onClick={() => setShowModal(true)} style={{
-                background: '#C9A84C', color: '#fff', border: 'none',
-                padding: '10px 24px', borderRadius: '25px',
-                fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer'
-              }}>
+              <button onClick={() => setShowModal(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
                 Commander →
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE DÉTAIL PLAT */}
+        {detailItem && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
+            onClick={() => setDetailItem(null)}>
+            <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '0 0 28px' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem', borderRadius: '20px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
+                {detailItem.image_url
+                  ? <img src={detailItem.image_url} alt={detailItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span>{getEmoji(detailItem)}</span>
+                }
+              </div>
+              <div style={{ padding: '20px 24px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem', flex: 1 }}>
+                    {detailItem.name}
+                  </h2>
+                  <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '1.1rem', marginLeft: '12px' }}>
+                    {detailItem.price.toLocaleString()} FCFA
+                  </p>
+                </div>
+                <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: '#999' }}>
+                  ⏱ ~{detailItem.estimated_minutes} min de préparation
+                </p>
+                {detailItem.description ? (
+                  <p style={{ margin: '12px 0 0', fontSize: '0.85rem', color: '#555', lineHeight: 1.6, background: '#fff', borderRadius: '10px', padding: '12px' }}>
+                    {detailItem.description}
+                  </p>
+                ) : (
+                  <p style={{ margin: '12px 0 0', fontSize: '0.82rem', color: '#bbb', fontStyle: 'italic' }}>
+                    Aucune description disponible
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                  <button onClick={() => setDetailItem(null)} style={{ flex: 1, border: '2px solid #ddd', background: 'transparent', borderRadius: '12px', padding: '12px', color: '#666', fontWeight: '600', cursor: 'pointer' }}>
+                    Fermer
+                  </button>
+                  {selection[detailItem.id]?.qty > 0 ? (
+                    <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button onClick={() => removeItem(detailItem.id)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: '#f0f0f0', border: 'none', color: '#333', fontSize: '1.2rem', cursor: 'pointer' }}>−</button>
+                      <span style={{ fontWeight: 'bold', color: '#8B0000', minWidth: '20px', textAlign: 'center' }}>{selection[detailItem.id].qty}</span>
+                      <button onClick={() => addItem(detailItem)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: '#8B0000', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>+</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { addItem(detailItem); setDetailItem(null) }} style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      Ajouter au panier
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -385,80 +361,42 @@ export default function Menu() {
     <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
       {/* HEADER */}
-      <div style={{
-        background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
-        padding: '32px 20px 28px', textAlign: 'center', position: 'relative', overflow: 'hidden'
-      }}>
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)',
-        }} />
+      <div style={{ background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)', padding: '32px 20px 28px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)' }} />
         <p style={{ color: '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
           Pâtisserie · Snack · Restaurant
         </p>
-        <h1 style={{ color: '#fff', fontSize: '2rem', fontFamily: 'Georgia, serif', margin: '0 0 4px' }}>
-          Le Bourgeois
-        </h1>
+        <h1 style={{ color: '#fff', fontSize: '2rem', fontFamily: 'Georgia, serif', margin: '0 0 4px' }}>Le Bourgeois</h1>
         <div style={{ width: '40px', height: '2px', background: '#C9A84C', margin: '10px auto 8px' }} />
-        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontFamily: 'Georgia, serif' }}>
-          Marché Moungali · Brazzaville
-        </p>
+        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontFamily: 'Georgia, serif' }}>Marché Moungali · Brazzaville</p>
       </div>
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px' }}>
         <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
           Choisissez une catégorie
         </p>
-
-        {/* GRILLE CATÉGORIES */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.entries(categorized).map(([label, data]) => (
-            <button
-              key={label}
-              onClick={() => navigate(`/menu/${restaurantId}/${encodeURIComponent(label)}`)}
-              style={{
-                background: '#fff', border: 'none', borderRadius: '16px',
-                padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(139,0,0,0.08)',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                borderBottom: '3px solid #8B0000'
-              }}
+            <button key={label} onClick={() => navigate(`/menu/${restaurantId}/${encodeURIComponent(label)}`)}
+              style={{ background: '#fff', border: 'none', borderRadius: '16px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', borderBottom: '3px solid #8B0000' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-            >
+              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
               <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>{data.emoji}</p>
-              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
-                {label}
-              </p>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: '#999' }}>
-                {data.items.length} article(s)
-              </p>
+              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>{label}</p>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: '#999' }}>{data.items.length} article(s)</p>
             </button>
           ))}
         </div>
       </div>
 
-      {/* BARRE COMMANDER */}
       {selectedItems.length > 0 && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#8B0000', padding: '14px 20px',
-          boxShadow: '0 -4px 20px rgba(139,0,0,0.3)'
-        }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#8B0000', padding: '14px 20px', boxShadow: '0 -4px 20px rgba(139,0,0,0.3)' }}>
           <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>
-                {totalQty} article(s) · ~{maxMinutes} min
-              </p>
-              <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                {total.toLocaleString()} FCFA
-              </p>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>{totalQty} article(s) · ~{maxMinutes} min</p>
+              <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>{total.toLocaleString()} FCFA</p>
             </div>
-            <button onClick={() => setShowModal(true)} style={{
-              background: '#C9A84C', color: '#fff', border: 'none',
-              padding: '10px 24px', borderRadius: '25px',
-              fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer'
-            }}>
+            <button onClick={() => setShowModal(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
               Commander →
             </button>
           </div>
