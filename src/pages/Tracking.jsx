@@ -29,6 +29,7 @@ export default function Tracking() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [restaurant, setRestaurant] = useState(null)
 
   useEffect(() => {
     async function fetchOrder() {
@@ -39,7 +40,17 @@ export default function Tracking() {
         .single();
       setOrder(data);
       setLoading(false);
+
+      const { data: resto } = await supabase
+        .from('restaurants')
+        .select('name, primary_color, secondary_color, slogan, address, logo_url')
+        .eq('id', data.restaurant_id)
+        .single()
+
+      setRestaurant(resto)
     }
+
+
 
     fetchOrder();
 
@@ -105,44 +116,20 @@ export default function Tracking() {
   return (
     <div style={{ background: "#FFF8F0", minHeight: "100vh" }}>
       {/* HEADER */}
-      <div
-        style={{
-          background:
-            "linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)",
-          padding: "28px 20px 24px",
-          textAlign: "center",
-        }}
-      >
-        <p
-          style={{
-            color: "#C9A84C",
-            fontSize: "0.7rem",
-            letterSpacing: "0.3em",
-            textTransform: "uppercase",
-            marginBottom: "4px",
-            fontFamily: "Georgia, serif",
-          }}
-        >
-          Patisserie · Snack · Restaurant
+      <div style={{
+        background: `linear-gradient(135deg, ${restaurant?.primary_color || '#6B0000'}, ${restaurant?.primary_color || '#8B0000'}CC)`,
+        padding: '28px 20px 24px', textAlign: 'center'
+      }}>
+        {restaurant?.logo_url && (
+          <img src={restaurant.logo_url} alt="logo" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}` }} />
+        )}
+        <p style={{ color: restaurant?.secondary_color || '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '4px', fontFamily: 'Georgia, serif' }}>
+          {restaurant?.slogan || 'Patisserie · Snack · Restaurant'}
         </p>
-        <h1
-          style={{
-            color: "#fff",
-            fontSize: "1.6rem",
-            fontFamily: "Georgia, serif",
-            margin: "0 0 4px",
-          }}
-        >
-          Le Bourgeois
+        <h1 style={{ color: '#fff', fontSize: '1.6rem', fontFamily: 'Georgia, serif', margin: '0 0 4px' }}>
+          {restaurant?.name || 'Le Bourgeois'}
         </h1>
-        <div
-          style={{
-            width: "40px",
-            height: "2px",
-            background: "#C9A84C",
-            margin: "8px auto",
-          }}
-        />
+        <div style={{ width: '40px', height: '2px', background: restaurant?.secondary_color || '#C9A84C', margin: '8px auto' }} />
       </div>
 
       <div

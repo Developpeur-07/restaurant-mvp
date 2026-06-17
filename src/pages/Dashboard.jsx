@@ -75,7 +75,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newOrderAlert, setNewOrderAlert] = useState(false)
+  const [newOrderAlert, setNewOrderAlert] = useState(false);
+  const [brand, setBrand] = useState({ name: 'Le Bourgeois', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' })
 
   useEffect(() => {
     let channel;
@@ -94,6 +95,14 @@ export default function Dashboard() {
         .single();
 
       if (!resto) return;
+
+      setBrand({
+        name: resto.name || 'Le Bourgeois',
+        primary_color: resto.primary_color || '#8B0000',
+        secondary_color: resto.secondary_color || '#C9A84C',
+        logo_url: resto.logo_url || ''
+      })
+
 
       const { data } = await supabase
         .from("orders")
@@ -186,95 +195,55 @@ export default function Dashboard() {
   return (
     <div style={{ background: "#FFF8F0", minHeight: "100vh" }}>
       {/* HEADER */}
-      <div
-        style={{
-          background:
-            "linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)",
-          padding: "28px 20px 24px",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "640px",
-            margin: "0 auto",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <p
-              style={{
-                color: "#C9A84C",
-                fontSize: "0.65rem",
-                letterSpacing: "0.25em",
-                textTransform: "uppercase",
-                margin: "0 0 4px",
-                fontFamily: "Georgia, serif",
-              }}
-            >
-              Tableau de bord
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ color: '#fff', fontSize: '1.5rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                Le Bourgeois
+      <div style={{
+        background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
+        padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {brand.logo_url && (
+              <img src={brand.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }} />
+            )}
+            <div>
+              <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
+                Tableau de bord
+              </p>
+              <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+                {brand.name}
               </h1>
+
+
               {newOrderAlert && (
+
                 <div style={{
+
                   background: '#C9A84C', borderRadius: '20px', padding: '4px 10px',
+
                   fontSize: '0.72rem', fontWeight: 'bold', color: '#fff',
+
                   animation: 'pulse 0.5s ease infinite alternate'
+
                 }}>
+
                   🔔 Nouvelle commande !
+
                 </div>
+
               )}
+
+
             </div>
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              onClick={() => navigate("/qrcode")}
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                border: "none",
-                borderRadius: "8px",
-                padding: "8px 12px",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "0.78rem",
-                fontWeight: "600",
-              }}
-            >
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => navigate('/qrcode')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
               QR Code
             </button>
-            <button
-              onClick={() => navigate("/menu-manager")}
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                border: "none",
-                borderRadius: "8px",
-                padding: "8px 12px",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "0.78rem",
-                fontWeight: "600",
-              }}
-            >
+            <button onClick={() => navigate('/menu-manager')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
               📋 Menu
             </button>
-            <button
-              onClick={() => navigate("/settings")}
-              style={{
-                background: "#C9A84C",
-                border: "none",
-                borderRadius: "8px",
-                padding: "8px 12px",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "0.78rem",
-                fontWeight: "600",
-              }}
-            >
-              ⚙️ Paramètres
+            <button onClick={() => navigate('/settings')} style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
+              ⚙️
             </button>
           </div>
         </div>

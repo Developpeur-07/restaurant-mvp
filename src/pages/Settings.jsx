@@ -10,10 +10,63 @@ export default function Settings() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [brand, setBrand] = useState({
+    name: '',
+    primary_color: '#8B0000',
+    secondary_color: '#C9A84C',
+    slogan: '',
+    address: '',
+    logo_url: ''
+  })
+  const [brandLoading, setBrandLoading] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-  }, []);
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUser(user)
+
+      const { data: resto } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .single()
+
+      if (resto) {
+        setBrand({
+          name: resto.name || '',
+          primary_color: resto.primary_color || '#8B0000',
+          secondary_color: resto.secondary_color || '#C9A84C',
+          slogan: resto.slogan || '',
+          address: resto.address || '',
+          logo_url: resto.logo_url || ''
+        })
+      }
+    }
+    init()
+  }, [])
+
+  async function handleBrandSave() {
+    setBrandLoading(true)
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const { error } = await supabase
+      .from('restaurants')
+      .update({
+        name: brand.name,
+        primary_color: brand.primary_color,
+        secondary_color: brand.secondary_color,
+        slogan: brand.slogan,
+        address: brand.address,
+        logo_url: brand.logo_url
+      })
+      .eq('owner_id', user.id)
+
+    setBrandLoading(false)
+    setMessage({ type: error ? 'error' : 'success', text: error ? 'Erreur lors de la sauvegarde' : 'Identité mise à jour ✓' })
+    setTimeout(() => setMessage(null), 3000)
+  }
 
   async function handlePasswordChange() {
     if (newPassword !== confirmPassword) {
@@ -164,6 +217,98 @@ export default function Settings() {
           <p style={{ color: "#666", fontSize: "0.85rem", margin: 0 }}>
             📧 {user?.email}
           </p>
+        </div>
+
+        {/* IDENTITÉ VISUELLE */}
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(139,0,0,0.08)' }}>
+          <h2 style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '1rem', margin: '0 0 16px' }}>
+            Identité visuelle
+          </h2>
+
+          {/* PREVIEW */}
+          <div style={{
+            background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`,
+            borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px'
+          }}>
+            {brand.logo_url && (
+              <img src={brand.logo_url} alt="logo" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px' }} />
+            )}
+            <p style={{ color: brand.secondary_color, fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>
+              {brand.slogan || 'Votre slogan ici'}
+            </p>
+            <p style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', fontWeight: 'bold', margin: '0 0 4px' }}>
+              {brand.name || 'Nom du restaurant'}
+            </p>
+            <div style={{ width: '30px', height: '2px', background: brand.secondary_color, margin: '6px auto' }} />
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem', margin: 0 }}>
+              {brand.address || 'Votre adresse'}
+            </p>
+          </div>
+
+          {/* CHAMPS */}
+          {[
+            { label: 'Nom du restaurant', key: 'name', type: 'text', placeholder: 'Ex: Le Bourgeois' },
+            { label: 'Slogan', key: 'slogan', type: 'text', placeholder: 'Ex: Le Goût Du Bon Gâteau' },
+            { label: 'Adresse', key: 'address', type: 'text', placeholder: 'Ex: Marché Moungali, Brazzaville' },
+            { label: 'URL du logo', key: 'logo_url', type: 'text', placeholder: 'https://...' },
+          ].map(field => (
+            <div key={field.key} style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                {field.label}
+              </label>
+              <input
+                type={field.type}
+                placeholder={field.placeholder}
+                value={brand[field.key]}
+                onChange={e => setBrand(prev => ({ ...prev, [field.key]: e.target.value }))}
+                style={{
+                  width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
+                  padding: '10px 14px', fontSize: '0.88rem', background: '#FFF8F0',
+                  outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          ))}
+
+          {/* COULEURS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+            {[
+              { label: 'Couleur principale', key: 'primary_color' },
+              { label: 'Couleur accent', key: 'secondary_color' },
+            ].map(field => (
+              <div key={field.key}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                  {field.label}
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="color"
+                    value={brand[field.key]}
+                    onChange={e => setBrand(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    style={{ width: '44px', height: '44px', borderRadius: '8px', border: '2px solid #e8ddd4', cursor: 'pointer', padding: '2px', flexShrink: 0 }}
+                  />
+                  <input
+                    type="text"
+                    value={brand[field.key]}
+                    onChange={e => setBrand(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    style={{ flex: 1, border: '2px solid #e8ddd4', borderRadius: '8px', padding: '10px', fontSize: '0.82rem', background: '#FFF8F0', outline: 'none', minWidth: 0 }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleBrandSave}
+            disabled={brandLoading}
+            style={{
+              width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+              borderRadius: '10px', padding: '12px', fontWeight: 'bold',
+              fontSize: '0.88rem', cursor: 'pointer', opacity: brandLoading ? 0.6 : 1
+            }}
+          >
+            {brandLoading ? 'Sauvegarde...' : 'Sauvegarder l\'identité'}
+          </button>
         </div>
 
         {/* CHANGER MOT DE PASSE */}

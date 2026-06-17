@@ -85,9 +85,9 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
                 const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
                 setCustomerName(value);
               }}
-              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }} 
-              />
-              
+              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            />
+
           </div>
         )}
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -119,46 +119,47 @@ export default function Menu() {
   const [search, setSearch] = useState('')
   const [detailItem, setDetailItem] = useState(null)
 
+
   useEffect(() => {
-  async function fetchMenu() {
-    const { data: resto } = await supabase
-      .from('restaurants')
-      .select('name')
-      .eq('id', restaurantId)
-      .single()
+    async function fetchMenu() {
+      const { data: resto } = await supabase
+        .from('restaurants')
+        .select('name, primary_color, secondary_color, slogan, address, logo_url')
+        .eq('id', restaurantId)
+        .single()
 
-    const { data: menuItems } = await supabase
-      .from('menu_items')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('available', true)
+      const { data: menuItems } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('available', true)
 
-    setRestaurant(resto)
-    setItems(menuItems || [])
-    setLoading(false)
+      setRestaurant(resto)
+      setItems(menuItems || [])
+      setLoading(false)
 
-    // Charger sélection sauvegardée
-    const saved = localStorage.getItem(`selection_${restaurantId}`)
-    if (saved) {
-      try {
-        setSelection(JSON.parse(saved))
-      } catch  {
-        localStorage.removeItem(`selection_${restaurantId}`)
+      // Charger sélection sauvegardée
+      const saved = localStorage.getItem(`selection_${restaurantId}`)
+      if (saved) {
+        try {
+          setSelection(JSON.parse(saved))
+        } catch {
+          localStorage.removeItem(`selection_${restaurantId}`)
+        }
       }
     }
-  }
-  fetchMenu()
-}, [restaurantId])
+    fetchMenu()
+  }, [restaurantId])
 
-// Sauvegarder à chaque changement de sélection
-useEffect(() => {
-  if (Object.keys(selection).length > 0) {
-    localStorage.setItem(`selection_${restaurantId}`, JSON.stringify(selection))
-  } else {
-    localStorage.removeItem(`selection_${restaurantId}`)
-  }
-}, [selection, restaurantId])
-  
+  // Sauvegarder à chaque changement de sélection
+  useEffect(() => {
+    if (Object.keys(selection).length > 0) {
+      localStorage.setItem(`selection_${restaurantId}`, JSON.stringify(selection))
+    } else {
+      localStorage.removeItem(`selection_${restaurantId}`)
+    }
+  }, [selection, restaurantId])
+
 
   function addItem(item) {
     setSelection(prev => ({
@@ -241,18 +242,30 @@ useEffect(() => {
     return (
       <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
-        {/* HEADER */}
-        <div style={{ background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)', padding: '28px 20px 24px' }}>
+        {/* HEADER CATÉGORIE — FIXED */}
+        <div
+          style={{
+            background: `linear-gradient(135deg, ${restaurant.primary_color || '#6B0000'}, ${restaurant.primary_color || '#8B0000'}CC)`,
+            padding: '28px 20px 24px',
+            position: 'sticky', top: 0, zIndex: 40,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+
+          }}>
           <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={() => navigate(`/menu/${restaurantId}`)}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
               ← Retour
             </button>
-            <div>
-              <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-                {restaurant.name}
+
+            {restaurant.logo_url && (
+              <img src={restaurant.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}`, flexShrink: 0 }} />
+            )}
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {restaurant.slogan || restaurant.name}
               </p>
-              <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+              <h1 style={{ color: '#fff', fontSize: '1.1rem', fontFamily: 'Georgia, serif', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {catData?.emoji} {decoded}
               </h1>
             </div>
@@ -387,17 +400,50 @@ useEffect(() => {
 
   // PAGE ACCUEIL — GRILLE CATÉGORIES
   return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
+    <div style={{
+      background: '#FFF8F0',
+      minHeight: '100vh',
+      paddingBottom: selectedItems.length > 0 ? '100px' : '40px'
+    }}>
 
       {/* HEADER */}
-      <div style={{ background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)', padding: '32px 20px 28px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)' }} />
-        <p style={{ color: '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
-          Pâtisserie · Snack · Restaurant
-        </p>
-        <h1 style={{ color: '#fff', fontSize: '2rem', fontFamily: 'Georgia, serif', margin: '0 0 4px' }}>Le Bourgeois</h1>
-        <div style={{ width: '40px', height: '2px', background: '#C9A84C', margin: '10px auto 8px' }} />
-        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontFamily: 'Georgia, serif' }}>Marché Moungali · Brazzaville</p>
+      <div style={{
+        background: `linear-gradient(135deg, ${restaurant.primary_color || '#6B0000'}CC, ${restaurant.primary_color || '#8B0000'})`,
+        padding: '16px 20px 20px',
+        position: 'sticky', top: 0, zIndex: 40,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{
+          maxWidth: '480px',
+          margin: '0 auto'
+        }}>
+
+          {/* LIGNE 1 — navigation + logo */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '12px'
+          }}>
+            <button onClick={() => navigate(`/menu/${restaurantId}`)}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+              ← Retour
+            </button>
+            {restaurant.logo_url && (
+              <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}` }} />
+            )}
+          </div>
+
+          {/* LIGNE 2 — identité + catégorie */}
+          <div  style={{ textAlign: 'center' }}>
+            <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
+              {restaurant.slogan || restaurant.name}
+            </p>
+            <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+              Découvrez Notre Menu
+            </h1>
+          </div>
+        </div>
       </div>
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px' }}>

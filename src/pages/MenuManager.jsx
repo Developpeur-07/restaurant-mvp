@@ -39,20 +39,24 @@ function categorize(items) {
   return result
 }
 
+function getEmoji(item) {
+  return CATEGORIES.find(c => c.keywords.some(k => item.name.toLowerCase().includes(k)))?.emoji || '🍽'
+}
+
 export default function MenuManager() {
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [restaurantId, setRestaurantId] = useState(null)
+  const [brand, setBrand] = useState({ name: '', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' })
   const [activeCategory, setActiveCategory] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [search, setSearch] = useState('')
-  const [form, setForm] = useState({
-    name: '', price: '', estimated_minutes: ''
-  })
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [form, setForm] = useState({ name: '', price: '', estimated_minutes: '', description: '', image_url: '' })
 
   useEffect(() => {
     async function init() {
@@ -61,13 +65,19 @@ export default function MenuManager() {
 
       const { data: resto } = await supabase
         .from('restaurants')
-        .select('id')
+        .select('*')
         .eq('owner_id', user.id)
         .limit(1)
         .single()
 
       if (!resto) return
       setRestaurantId(resto.id)
+      setBrand({
+        name: resto.name || '',
+        primary_color: resto.primary_color || '#8B0000',
+        secondary_color: resto.secondary_color || '#C9A84C',
+        logo_url: resto.logo_url || ''
+      })
 
       const { data } = await supabase
         .from('menu_items')
@@ -83,14 +93,49 @@ export default function MenuManager() {
 
   function openAdd() {
     setEditItem(null)
-    setForm({ name: '', price: '', estimated_minutes: '' })
+    setForm({ name: '', price: '', estimated_minutes: '', description: '', image_url: '' })
     setShowForm(true)
   }
 
   function openEdit(item) {
     setEditItem(item)
-    setForm({ name: item.name, price: item.price, estimated_minutes: item.estimated_minutes })
+    setForm({
+      name: item.name,
+      price: item.price,
+      estimated_minutes: item.estimated_minutes,
+      description: item.description || '',
+      image_url: item.image_url || ''
+    })
     setShowForm(true)
+  }
+
+  async function handleImageUpload(file, itemId) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Format invalide. JPG, PNG ou WebP uniquement.' })
+      return null
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image trop lourde. Maximum 2MB.' })
+      return null
+    }
+    const ext = file.name.split('.').pop().toLowerCase()
+    const safeName = `${itemId || Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { data, error } = await supabase.storage
+      .from('menu-images')
+      .upload(safeName, file, { upsert: true, contentType: file.type })
+
+    if (error) {
+      setMessage({ type: 'error', text: 'Erreur upload : ' + error.message })
+      return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('menu-images')
+      .getPublicUrl(data.path)
+
+    return publicUrl
   }
 
   async function handleSave() {
@@ -107,6 +152,8 @@ export default function MenuManager() {
           name: form.name,
           price: parseInt(form.price),
           estimated_minutes: parseInt(form.estimated_minutes),
+          description: form.description || null,
+          image_url: form.image_url || null,
         })
         .eq('id', editItem.id)
         .select()
@@ -124,6 +171,8 @@ export default function MenuManager() {
           name: form.name,
           price: parseInt(form.price),
           estimated_minutes: parseInt(form.estimated_minutes),
+          description: form.description || null,
+          image_url: form.image_url || null,
           available: true
         })
         .select()
@@ -176,40 +225,46 @@ export default function MenuManager() {
     return (
       <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: '40px' }}>
 
-        {/* HEADER */}
+        {/* HEADER — 2 lignes, identique structure au menu client */}
         <div style={{
-          background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
-          padding: '28px 20px 24px'
+          background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
+          padding: '16px 20px 20px',
+          position: 'sticky', top: 0, zIndex: 40,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <button
                 onClick={() => { setActiveCategory(null); setSearch('') }}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
+                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}
               >
                 ← Retour
               </button>
-              <div>
-                <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-                  Gestion menu
-                </p>
-                <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                  {catData?.emoji} {activeCategory}
-                </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {brand.logo_url && (
+                  <img src={brand.logo_url} alt="logo" style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
+                )}
+                <button
+                  onClick={openAdd}
+                  style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
+                >
+                  + Ajouter
+                </button>
               </div>
             </div>
-            <button
-              onClick={openAdd}
-              style={{ background: '#C9A84C', border: 'none', borderRadius: '10px', padding: '10px 16px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              + Ajouter
-            </button>
+            <div>
+              <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
+                Gestion menu · {brand.name}
+              </p>
+              <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+                {catData?.emoji} {activeCategory}
+              </h1>
+            </div>
           </div>
         </div>
 
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '20px 16px' }}>
 
-          {/* MESSAGE */}
           {message && (
             <div style={{
               background: message.type === 'success' ? '#f0fff0' : '#fff0f0',
@@ -222,7 +277,6 @@ export default function MenuManager() {
             </div>
           )}
 
-          {/* RECHERCHE */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
             background: '#fff', borderRadius: '12px', padding: '10px 16px',
@@ -239,7 +293,6 @@ export default function MenuManager() {
             {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>}
           </div>
 
-          {/* LISTE PLATS */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#bbb' }}>
@@ -255,45 +308,57 @@ export default function MenuManager() {
             ) : (
               filtered.map(item => (
                 <div key={item.id} style={{
-                  background: '#fff', borderRadius: '12px', padding: '14px 16px',
+                  background: '#fff', borderRadius: '12px', padding: '12px 16px',
                   boxShadow: '0 1px 4px rgba(139,0,0,0.06)',
                   borderLeft: `4px solid ${item.available ? '#8B0000' : '#e0e0e0'}`,
-                  opacity: item.available ? 1 : 0.6
+                  opacity: item.available ? 1 : 0.6,
+                  display: 'flex', alignItems: 'center', gap: '12px'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.9rem' }}>
-                        {item.name}
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#999' }}>
-                        {item.price.toLocaleString()} FCFA · ~{item.estimated_minutes} min
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <button
-                        onClick={() => toggleAvailable(item)}
-                        style={{
-                          background: item.available ? '#DCFCE7' : '#F3F4F6',
-                          color: item.available ? '#166534' : '#6B7280',
-                          border: 'none', borderRadius: '20px', padding: '4px 10px',
-                          fontSize: '0.7rem', fontWeight: '600', cursor: 'pointer'
-                        }}
-                      >
-                        {item.available ? '✓ Dispo' : '✗ Indispo'}
-                      </button>
-                      <button
-                        onClick={() => openEdit(item)}
-                        style={{ background: '#FFF8F0', border: '1px solid #e8ddd4', borderRadius: '8px', padding: '6px 10px', color: '#8B0000', cursor: 'pointer', fontSize: '0.78rem' }}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => deleteItem(item.id)}
-                        style={{ background: '#fee2e2', border: 'none', borderRadius: '8px', padding: '6px 10px', color: '#dc2626', cursor: 'pointer', fontSize: '0.78rem' }}
-                      >
-                        🗑
-                      </button>
-                    </div>
+                  {/* THUMBNAIL */}
+                  <div style={{
+                    width: '48px', height: '48px', borderRadius: '10px', flexShrink: 0,
+                    background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.5rem', overflow: 'hidden'
+                  }}>
+                    {item.image_url
+                      ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span>{getEmoji(item)}</span>
+                    }
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.name}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#999' }}>
+                      {item.price.toLocaleString()} FCFA · ~{item.estimated_minutes} min
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                    <button
+                      onClick={() => toggleAvailable(item)}
+                      style={{
+                        background: item.available ? '#DCFCE7' : '#F3F4F6',
+                        color: item.available ? '#166534' : '#6B7280',
+                        border: 'none', borderRadius: '20px', padding: '4px 10px',
+                        fontSize: '0.7rem', fontWeight: '600', cursor: 'pointer'
+                      }}
+                    >
+                      {item.available ? '✓' : '✗'}
+                    </button>
+                    <button
+                      onClick={() => openEdit(item)}
+                      style={{ background: '#FFF8F0', border: '1px solid #e8ddd4', borderRadius: '8px', padding: '6px 10px', color: '#8B0000', cursor: 'pointer', fontSize: '0.78rem' }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => deleteItem(item.id)}
+                      style={{ background: '#fee2e2', border: 'none', borderRadius: '8px', padding: '6px 10px', color: '#dc2626', cursor: 'pointer', fontSize: '0.78rem' }}
+                    >
+                      🗑
+                    </button>
                   </div>
                 </div>
               ))
@@ -303,12 +368,54 @@ export default function MenuManager() {
 
         {/* FORMULAIRE MODALE */}
         {showForm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}>
-            <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50, overflowY: 'auto' }}>
+            <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px', maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
               <h2 style={{ margin: '0 0 20px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
                 {editItem ? 'Modifier le plat' : `Ajouter dans ${activeCategory}`}
               </h2>
+
+              {/* UPLOAD IMAGE */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                  Image du plat (JPG, PNG, WebP · max 2MB)
+                </label>
+                {form.image_url && (
+                  <div style={{ marginBottom: '8px', position: 'relative', display: 'inline-block' }}>
+                    <img src={form.image_url} alt="preview" style={{ width: '80px', height: '80px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #e8ddd4' }} />
+                    <button
+                      onClick={() => setForm(prev => ({ ...prev, image_url: '' }))}
+                      style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >✕</button>
+                  </div>
+                )}
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: '#fff', border: '2px dashed #e8ddd4', borderRadius: '10px',
+                  padding: '12px', cursor: 'pointer'
+                }}>
+                  <span style={{ fontSize: '1.5rem' }}>📷</span>
+                  <span style={{ fontSize: '0.82rem', color: '#666' }}>
+                    {uploadingImage ? 'Upload en cours...' : 'Choisir une image'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    style={{ display: 'none' }}
+                    disabled={uploadingImage}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setUploadingImage(true)
+                      const url = await handleImageUpload(file, editItem?.id)
+                      if (url) setForm(prev => ({ ...prev, image_url: url }))
+                      setUploadingImage(false)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+
               {[
                 { label: 'Nom du plat', key: 'name', type: 'text', placeholder: 'Ex: Croissant au beurre' },
                 { label: 'Prix (FCFA)', key: 'price', type: 'number', placeholder: 'Ex: 500' },
@@ -331,6 +438,24 @@ export default function MenuManager() {
                   />
                 </div>
               ))}
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                  Description / composition (allergies)
+                </label>
+                <textarea
+                  placeholder="Ex: Pâte feuilletée, beurre, sucre. Contient gluten, lactose."
+                  value={form.description}
+                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  style={{
+                    width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
+                    padding: '11px 14px', fontSize: '0.88rem', background: '#fff',
+                    outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                 <button
                   onClick={() => setShowForm(false)}
@@ -340,8 +465,8 @@ export default function MenuManager() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saving}
-                  style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '13px', fontWeight: 'bold', cursor: 'pointer', opacity: saving ? 0.6 : 1 }}
+                  disabled={saving || uploadingImage}
+                  style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '13px', fontWeight: 'bold', cursor: 'pointer', opacity: (saving || uploadingImage) ? 0.6 : 1 }}
                 >
                   {saving ? 'Enregistrement...' : editItem ? 'Mettre à jour' : 'Ajouter'}
                 </button>
@@ -359,22 +484,26 @@ export default function MenuManager() {
 
       {/* HEADER */}
       <div style={{
-        background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
-        padding: '28px 20px 24px'
+        background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
+        padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               onClick={() => navigate('/dashboard')}
               style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
             >
               ← Retour
             </button>
+            {brand.logo_url && (
+              <img src={brand.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
+            )}
             <div>
-              <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-                Administration
+              <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
+                Administration · {brand.name}
               </p>
-              <h1 style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+              <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
                 Gestion du menu
               </h1>
             </div>
@@ -384,7 +513,6 @@ export default function MenuManager() {
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px' }}>
 
-        {/* MESSAGE */}
         {message && (
           <div style={{
             background: message.type === 'success' ? '#f0fff0' : '#fff0f0',
@@ -397,7 +525,6 @@ export default function MenuManager() {
           </div>
         )}
 
-        {/* STATS */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           {[
             { label: 'Total plats', value: items.length, color: '#8B0000' },
@@ -415,7 +542,6 @@ export default function MenuManager() {
           Sélectionnez une catégorie à gérer
         </p>
 
-        {/* GRILLE CATÉGORIES */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.entries(categorized).map(([label, data]) => (
             <button
