@@ -425,10 +425,7 @@ export default function Menu() {
             alignItems: 'center',
             marginBottom: '12px'
           }}>
-            <button onClick={() => navigate(`/menu/${restaurantId}`)}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
-              ← Retour
-            </button>
+            
             {restaurant.logo_url && (
               <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}` }} />
             )}
