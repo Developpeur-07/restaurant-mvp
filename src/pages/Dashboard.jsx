@@ -1,58 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 
-function playNotification() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-
-    // Son 1 — ding aigu plus fort et plus long
-    const osc1 = ctx.createOscillator()
-    const gain1 = ctx.createGain()
-    osc1.connect(gain1)
-    gain1.connect(ctx.destination)
-    osc1.frequency.setValueAtTime(880, ctx.currentTime)
-    osc1.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.3)
-    gain1.gain.setValueAtTime(0.8, ctx.currentTime)
-    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
-    osc1.start(ctx.currentTime)
-    osc1.stop(ctx.currentTime + 0.6)
-
-    // Son 2 — ding médium
-    const osc2 = ctx.createOscillator()
-    const gain2 = ctx.createGain()
-    osc2.connect(gain2)
-    gain2.connect(ctx.destination)
-    osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.4)
-    osc2.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.7)
-    gain2.gain.setValueAtTime(0.6, ctx.currentTime + 0.4)
-    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9)
-    osc2.start(ctx.currentTime + 0.4)
-    osc2.stop(ctx.currentTime + 0.9)
-
-    // Son 3 — ding bas final
-    const osc3 = ctx.createOscillator()
-    const gain3 = ctx.createGain()
-    osc3.connect(gain3)
-    gain3.connect(ctx.destination)
-    osc3.frequency.setValueAtTime(550, ctx.currentTime + 0.8)
-    osc3.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 1.2)
-    gain3.gain.setValueAtTime(0.5, ctx.currentTime + 0.8)
-    gain3.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4)
-    osc3.start(ctx.currentTime + 0.8)
-    osc3.stop(ctx.currentTime + 1.4)
-
-  } catch {
-    console.log('Audio non supporté')
-  }
-}
-
 const STATUS_LABELS = {
-  received: { label: "Reçue", bg: "#FFF9C4", color: "#7B6000" },
-  preparing: { label: "En préparation", bg: "#DBEAFE", color: "#1E40AF" },
-  ready: { label: "Prête", bg: "#DCFCE7", color: "#166534" },
-  paid: { label: "Soldée", bg: "#F0FDF4", color: "#166534" },
-  cancelled: { label: "Annulée", bg: "#F3F4F6", color: "#6B7280" },
+  received: { label: 'Reçue', bg: '#FFF9C4', color: '#7B6000' },
+  preparing: { label: 'En préparation', bg: '#DBEAFE', color: '#1E40AF' },
+  ready: { label: 'Prête', bg: '#DCFCE7', color: '#166534' },
+  paid: { label: 'Soldée', bg: '#F0FDF4', color: '#166534' },
+  cancelled: { label: 'Annulée', bg: '#F3F4F6', color: '#6B7280' },
 };
 
 const NEXT_STATUS = {
@@ -71,44 +26,86 @@ const NEXT_LABEL = {
   cancelled: null,
 };
 
+function playNotification() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.frequency.setValueAtTime(880, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.3);
+    gain1.gain.setValueAtTime(0.8, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.6);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.frequency.setValueAtTime(660, ctx.currentTime + 0.4);
+    osc2.frequency.exponentialRampToValueAtTime(550, ctx.currentTime + 0.7);
+    gain2.gain.setValueAtTime(0.6, ctx.currentTime + 0.4);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
+    osc2.start(ctx.currentTime + 0.4);
+    osc2.stop(ctx.currentTime + 0.9);
+
+    const osc3 = ctx.createOscillator();
+    const gain3 = ctx.createGain();
+    osc3.connect(gain3);
+    gain3.connect(ctx.destination);
+    osc3.frequency.setValueAtTime(550, ctx.currentTime + 0.8);
+    osc3.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 1.2);
+    gain3.gain.setValueAtTime(0.5, ctx.currentTime + 0.8);
+    gain3.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+    osc3.start(ctx.currentTime + 0.8);
+    osc3.stop(ctx.currentTime + 1.4);
+  } catch {
+    console.log('Audio non supporté');
+  }
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [restaurantId, setRestaurantId] = useState(null);
+  const [brand, setBrand] = useState({ name: 'Le Bourgeois', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' });
   const [newOrderAlert, setNewOrderAlert] = useState(false);
-  const [brand, setBrand] = useState({ name: 'Le Bourgeois', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' })
+  const [todayStats, setTodayStats] = useState({ count: 0, revenue: 0, topItem: null });
 
+  // ─── INIT : restaurant + brand + commandes actives + channel Realtime ───
   useEffect(() => {
     let channel;
 
     async function init() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: resto } = await supabase
         .from("restaurants")
-        .select("id, name")
+        .select("id, name, primary_color, secondary_color, logo_url")
         .eq("owner_id", user.id)
         .limit(1)
         .single();
 
       if (!resto) return;
 
+      setRestaurantId(resto.id);
       setBrand({
         name: resto.name || 'Le Bourgeois',
         primary_color: resto.primary_color || '#8B0000',
         secondary_color: resto.secondary_color || '#C9A84C',
         logo_url: resto.logo_url || ''
-      })
-
+      });
 
       const { data } = await supabase
         .from("orders")
         .select("*")
         .eq("restaurant_id", resto.id)
-        .not("status", "in", '("ready","paid")')
+        .neq("status", "paid")
         .order("created_at", { ascending: true });
 
       setOrders(data || []);
@@ -116,55 +113,92 @@ export default function Dashboard() {
 
       channel = supabase
         .channel("dashboard-" + resto.id)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "orders",
-            filter: `restaurant_id=eq.${resto.id}`,
-          },
-          (payload) => {
-            if (payload.eventType === "INSERT") {
-              playNotification();
-              setNewOrderAlert(true);
-              setTimeout(() => setNewOrderAlert(false), 3000)
-              setOrders((prev) => [...prev, payload.new]);
-            }
-            if (payload.eventType === "UPDATE") {
-              setOrders((prev) =>
-                ["ready", "paid"].includes(payload.new.status)
-                  ? prev.filter((o) => o.id !== payload.new.id)
-                  : prev.map((o) =>
-                    o.id === payload.new.id ? payload.new : o,
-                  ),
-              );
-            }
-            if (payload.eventType === "DELETE") {
-              setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
-            }
-          },
-        )
+        .on("postgres_changes", {
+          event: "*", schema: "public", table: "orders",
+          filter: `restaurant_id=eq.${resto.id}`,
+        }, (payload) => {
+          if (payload.eventType === "INSERT") {
+            playNotification();
+            setNewOrderAlert(true);
+            setTimeout(() => setNewOrderAlert(false), 3000);
+            setOrders((prev) => [...prev, payload.new]);
+          }
+          if (payload.eventType === "UPDATE") {
+            setOrders((prev) =>
+              payload.new.status === "paid"
+                ? prev.filter((o) => o.id !== payload.new.id)
+                : prev.map((o) => o.id === payload.new.id ? payload.new : o)
+            );
+          }
+          if (payload.eventType === "DELETE") {
+            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+          }
+        })
         .subscribe();
     }
 
     init();
+
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
+  // ─── STATS : dépend uniquement de restaurantId, pas de getUser() répété ───
+  const fetchTodayStats = useCallback(async () => {
+    if (!restaurantId) return;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const { data: paidToday } = await supabase
+      .from('orders_archive')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('status', 'paid')
+      .gte('created_at', startOfDay.toISOString());
+
+    const ordersToday = paidToday || [];
+    const revenue = ordersToday.reduce((sum, o) =>
+      sum + o.items.reduce((s, i) => s + i.price * i.qty, 0), 0);
+
+    const itemCounts = {};
+    ordersToday.forEach(o => {
+      o.items.forEach(i => {
+        itemCounts[i.name] = (itemCounts[i.name] || 0) + i.qty;
+      });
+    });
+    const topEntry = Object.entries(itemCounts).sort((a, b) => b[1] - a[1])[0];
+    const topItem = topEntry ? { name: topEntry[0], qty: topEntry[1] } : null;
+
+    setTodayStats(prev => {
+      const same = prev.count === ordersToday.length
+        && prev.revenue === revenue
+        && prev.topItem?.name === topItem?.name
+        && prev.topItem?.qty === topItem?.qty;
+      return same ? prev : { count: ordersToday.length, revenue, topItem };
+    });
+  }, [restaurantId]);
+
+  // ─── POLLING : se déclenche seulement quand restaurantId devient disponible ───
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    fetchTodayStats();
+    const interval = setInterval(fetchTodayStats, 60000);
+
+    return () => clearInterval(interval);
+  }, [restaurantId, fetchTodayStats]);
+
   async function updateStatus(orderId, newStatus) {
-    await supabase
-      .from("orders")
-      .update({ status: newStatus })
-      .eq("id", orderId);
+    await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
   }
 
   async function markAsPaid(order) {
     await supabase.from("orders_archive").insert({ ...order, status: "paid" });
     await supabase.from("orders").delete().eq("id", order.id);
     setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    fetchTodayStats();
   }
 
   async function deleteOrder(orderId) {
@@ -172,6 +206,7 @@ export default function Dashboard() {
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
   }
 
+  // ... reste du JSX inchangé (header, stats du jour, liste commandes, etc.) ...
   if (loading)
     return (
       <div
@@ -252,6 +287,46 @@ export default function Dashboard() {
       <div
         style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}
       >
+        {/* STATS DU JOUR */}
+        <div style={{
+          background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
+          borderRadius: '16px', padding: '18px', marginBottom: '20px',
+          boxShadow: '0 4px 16px rgba(139,0,0,0.2)'
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
+            Aujourd'hui
+          </p>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
+              <p style={{ margin: 0, color: '#fff', fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+                {todayStats.count}
+              </p>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
+                commande(s) vendue(s)
+              </p>
+            </div>
+            <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
+              <p style={{ margin: 0, color: brand.secondary_color, fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+                {todayStats.revenue.toLocaleString()}
+              </p>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
+                FCFA encaissés
+              </p>
+            </div>
+            {todayStats.topItem && (
+              <div style={{ flex: '1 1 auto', minWidth: '120px' }}>
+                <p style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  🔥 {todayStats.topItem.name}
+                </p>
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
+                  {todayStats.topItem.qty} vendus aujourd'hui
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+
         {/* STATS */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
           {[
