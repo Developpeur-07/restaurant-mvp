@@ -139,21 +139,27 @@ export default function MenuManager() {
   }
 
   async function handleSave() {
-    const price = parseInt(form.price)
-    const minutes = parseInt(form.estimated_minutes)
+    const cleanName = form.name.trim()
+    const price = parseInt(form.price, 10)
+    const minutes = parseInt(form.estimated_minutes, 10)
 
-    if (!form.name.trim() || form.name.length > 60) {
+    if (!cleanName || cleanName.length > 60) {
       setMessage({ type: 'error', text: 'Nom invalide (1-60 caractères)' })
       return
     }
     if (isNaN(price) || price < 1 || price > 1000000) {
-      setMessage({ type: 'error', text: 'Prix invalide' })
+      setMessage({ type: 'error', text: 'Prix invalide (1 à 1 000 000 FCFA)' })
       return
     }
     if (isNaN(minutes) || minutes < 1 || minutes > 180) {
       setMessage({ type: 'error', text: 'Temps de préparation invalide (1-180 min)' })
       return
     }
+    if (form.description && form.description.length > 300) {
+      setMessage({ type: 'error', text: 'Description trop longue (max 300 caractères)' })
+      return
+    }
+
     setSaving(true)
 
     if (editItem) {
@@ -456,8 +462,15 @@ export default function MenuManager() {
                 </label>
                 <textarea
                   maxLength={300}
+                  placeholder="Ex: Pâte feuilletée, beurre, sucre. Contient gluten, lactose."
                   value={form.description}
-                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value.slice(0, 300) }))}
+                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  style={{
+                    width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
+                    padding: '11px 14px', fontSize: '0.88rem', background: '#fff',
+                    outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit'
+                  }}
                 />
               </div>
 
