@@ -80,9 +80,10 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
             <input
               type="text"
               placeholder="Ex: Jean"
+              maxLength={40}
               value={customerName}
               onChange={(e) => {
-                const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
+                const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '').slice(0, 40);
                 setCustomerName(value);
               }}
               style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
@@ -120,36 +121,66 @@ export default function Menu() {
   const [detailItem, setDetailItem] = useState(null)
 
 
+
   useEffect(() => {
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    let isMounted = true;
+
     async function fetchMenu() {
-      const { data: resto } = await supabase
-        .from('restaurants')
-        .select('name, primary_color, secondary_color, slogan, address, logo_url')
-        .eq('id', restaurantId)
-        .single()
+      setLoading(true); // 🔥 UNE SEULE FOIS ICI
 
-      const { data: menuItems } = await supabase
-        .from('menu_items')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .eq('available', true)
+      if (!UUID_REGEX.test(restaurantId)) {
+        if (isMounted) {
+          setRestaurant(null);
+          setItems([]);
+          setLoading(false);
+        }
+        return;
+      }
 
-      setRestaurant(resto)
-      setItems(menuItems || [])
-      setLoading(false)
+      try {
+        const { data: resto, error: restoError } = await supabase
+          .from('restaurants')
+          .select('name, primary_color, secondary_color, slogan, address, logo_url')
+          .eq('id', restaurantId)
+          .single();
 
-      // Charger sélection sauvegardée
-      const saved = localStorage.getItem(`selection_${restaurantId}`)
-      if (saved) {
-        try {
-          setSelection(JSON.parse(saved))
-        } catch {
-          localStorage.removeItem(`selection_${restaurantId}`)
+        if (restoError) throw restoError;
+
+        const { data: menuItems, error: menuError } = await supabase
+          .from('menu_items')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .eq('available', true);
+
+        if (menuError) throw menuError;
+
+        if (!isMounted) return;
+
+        setRestaurant(resto || null);
+        setItems(menuItems || []);
+
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setRestaurant(null);
+          setItems([]);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false); // 🔥 UNIQUE POINT FINAL
         }
       }
     }
-    fetchMenu()
-  }, [restaurantId])
+
+    fetchMenu();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [restaurantId]);
 
   // Sauvegarder à chaque changement de sélection
   useEffect(() => {
@@ -162,10 +193,14 @@ export default function Menu() {
 
 
   function addItem(item) {
-    setSelection(prev => ({
-      ...prev,
-      [item.id]: { ...item, qty: (prev[item.id]?.qty || 0) + 1 }
-    }))
+    setSelection(prev => {
+      const currentQty = prev[item.id]?.qty || 0
+      if (currentQty >= 20) return prev // plafond raisonnable
+      return {
+        ...prev,
+        [item.id]: { ...item, qty: currentQty + 1 }
+      }
+    })
   }
 
   function removeItem(itemId) {
@@ -180,9 +215,20 @@ export default function Menu() {
     })
   }
 
+
+  function validateTableNumber(value) {
+    const num = parseInt(value, 10)
+    if (isNaN(num) || num < 1 || num > 999) return null
+    return num
+  }
+
   async function submitOrder() {
-    if (orderType === 'sur_place' && !tableNumber) return
-    if (orderType === 'emporter' && !customerName) return
+    if (submitting) return
+    const validTable = validateTableNumber(tableNumber)
+    if (orderType === 'sur_place' && !validTable) {
+      alert('Numéro de table invalide')
+      return
+    }
     setSubmitting(true)
 
     const selectedItems = Object.values(selection)
@@ -193,7 +239,7 @@ export default function Menu() {
       .from('orders')
       .insert({
         restaurant_id: restaurantId,
-        table_number: orderType === 'sur_place' ? parseInt(tableNumber) : null,
+        table_number: orderType === 'sur_place' ? validTable : null,
         customer_name: orderType === 'emporter' ? customerName : null,
         order_type: orderType,
         items: selectedItems.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
@@ -425,14 +471,14 @@ export default function Menu() {
             alignItems: 'center',
             marginBottom: '12px'
           }}>
-            
+
             {restaurant.logo_url && (
               <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}` }} />
             )}
           </div>
 
           {/* LIGNE 2 — identité + catégorie */}
-          <div  style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
             <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
               {restaurant.slogan || restaurant.name}
             </p>

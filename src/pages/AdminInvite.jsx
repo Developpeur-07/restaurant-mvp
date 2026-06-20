@@ -24,7 +24,8 @@ export default function AdminInvite() {
   }
 
   async function generateToken() {
-    if (!restaurantName.trim()) return
+    const cleanName = restaurantName.trim().slice(0, 60).replace(/[<>{}]/g, '')
+    if (!cleanName) return
     setGenerating(true)
 
     const token = crypto.randomUUID()
@@ -35,7 +36,7 @@ export default function AdminInvite() {
       .from('invitation_tokens')
       .insert({
         token,
-        restaurant_name: restaurantName,
+        restaurant_name: cleanName,
         expires_at: expiresAt.toISOString()
       })
 

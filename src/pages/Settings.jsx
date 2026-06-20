@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function Settings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [newAdminEmail, setNewAdminEmail] = useState("");
@@ -67,29 +68,44 @@ export default function Settings() {
     setMessage({ type: error ? 'error' : 'success', text: error ? 'Erreur lors de la sauvegarde' : 'Identité mise à jour ✓' })
     setTimeout(() => setMessage(null), 3000)
   }
-
   async function handlePasswordChange() {
+    if (!currentPassword) {
+      setMessage({ type: 'error', text: 'Entrez votre mot de passe actuel' })
+      return
+    }
     if (newPassword !== confirmPassword) {
-      setMessage({
-        type: "error",
-        text: "Les mots de passe ne correspondent pas",
-      });
-      return;
+      setMessage({ type: 'error', text: 'Les mots de passe ne correspondent pas' })
+      return
     }
     if (newPassword.length < 6) {
-      setMessage({ type: "error", text: "Minimum 6 caractères" });
-      return;
+      setMessage({ type: 'error', text: 'Minimum 6 caractères' })
+      return
     }
-    setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setLoading(false);
+
+    setLoading(true)
+
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    const { error: reAuthError } = await supabase.auth.signInWithPassword({
+      email: currentUser.email,
+      password: currentPassword
+    })
+
+    if (reAuthError) {
+      setMessage({ type: 'error', text: 'Mot de passe actuel incorrect' })
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setLoading(false)
     if (error) {
-      setMessage({ type: "error", text: "Erreur lors du changement" });
-      return;
+      setMessage({ type: 'error', text: 'Erreur lors du changement' })
+      return
     }
-    setMessage({ type: "success", text: "Mot de passe mis à jour ✓" });
-    setNewPassword("");
-    setConfirmPassword("");
+    setMessage({ type: 'success', text: 'Mot de passe mis à jour ✓' })
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
   }
 
   async function handleAddAdmin() {
@@ -334,6 +350,17 @@ export default function Settings() {
 
           <input
             type="password"
+            placeholder="Mot de passe actuel"
+            value={currentPassword}
+            onChange={e => setCurrentPassword(e.target.value)}
+            style={{
+              width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
+              padding: '11px 14px', fontSize: '0.88rem', marginBottom: '10px',
+              outline: 'none', boxSizing: 'border-box', background: '#FFF8F0'
+            }}
+          />
+          <input
+            type="password"
             placeholder="Nouveau mot de passe"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -367,8 +394,11 @@ export default function Settings() {
             }}
           />
           <button
+            type="button"
             onClick={handlePasswordChange}
-            disabled={!newPassword || !confirmPassword || loading}
+            disabled={!currentPassword || !newPassword || !confirmPassword || loading}
+            aria-disabled={!currentPassword || !newPassword || !confirmPassword || loading}
+            aria-busy={loading}
             style={{
               width: "100%",
               background: "#8B0000",
@@ -379,7 +409,7 @@ export default function Settings() {
               fontWeight: "bold",
               fontSize: "0.88rem",
               cursor: "pointer",
-              opacity: !newPassword || !confirmPassword || loading ? 0.6 : 1,
+              opacity: !currentPassword || !newPassword || !confirmPassword || loading ? 0.6 : 1,
             }}
           >
             {loading ? "Mise à jour..." : "Mettre à jour"}

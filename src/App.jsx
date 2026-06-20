@@ -12,6 +12,9 @@ import MenuManager from "./pages/MenuManager";
 import AdminInvite from "./pages/AdminInvite";
 import Onboarding from "./pages/Onboarding";
 
+import SuperAdminRoute from './components/SuperAdminRoute'
+
+
 export default function App() {
   return (
     <Routes>
@@ -68,6 +71,9 @@ export default function App() {
         <ProtectedRoute><AdminInvite /></ProtectedRoute>
       } />
       <Route path="/onboarding/:token" element={<Onboarding />} />
+      <Route path="/admin-invite" element={
+        <SuperAdminRoute><AdminInvite /></SuperAdminRoute>
+      } />
     </Routes>
   );
 }

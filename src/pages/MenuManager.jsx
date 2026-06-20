@@ -120,7 +120,7 @@ export default function MenuManager() {
       return null
     }
     const ext = file.name.split('.').pop().toLowerCase()
-    const safeName = `${itemId || Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const safeName = `${itemId || Date.now()}_${crypto.randomUUID()}.${ext}`
 
     const { data, error } = await supabase.storage
       .from('menu-images')
@@ -139,8 +139,19 @@ export default function MenuManager() {
   }
 
   async function handleSave() {
-    if (!form.name || !form.price || !form.estimated_minutes) {
-      setMessage({ type: 'error', text: 'Tous les champs sont obligatoires' })
+    const price = parseInt(form.price)
+    const minutes = parseInt(form.estimated_minutes)
+
+    if (!form.name.trim() || form.name.length > 60) {
+      setMessage({ type: 'error', text: 'Nom invalide (1-60 caractères)' })
+      return
+    }
+    if (isNaN(price) || price < 1 || price > 1000000) {
+      setMessage({ type: 'error', text: 'Prix invalide' })
+      return
+    }
+    if (isNaN(minutes) || minutes < 1 || minutes > 180) {
+      setMessage({ type: 'error', text: 'Temps de préparation invalide (1-180 min)' })
       return
     }
     setSaving(true)
@@ -444,15 +455,9 @@ export default function MenuManager() {
                   Description / composition (allergies)
                 </label>
                 <textarea
-                  placeholder="Ex: Pâte feuilletée, beurre, sucre. Contient gluten, lactose."
+                  maxLength={300}
                   value={form.description}
-                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                  style={{
-                    width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
-                    padding: '11px 14px', fontSize: '0.88rem', background: '#fff',
-                    outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit'
-                  }}
+                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value.slice(0, 300) }))}
                 />
               </div>
 

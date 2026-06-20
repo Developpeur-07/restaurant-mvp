@@ -61,6 +61,11 @@ export default function Onboarding() {
   }, [token])
 
   async function handleCreateAccount() {
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(email)) {
+      setError('Email invalide')
+      return
+    }
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas')
       return
@@ -99,10 +104,13 @@ export default function Onboarding() {
     }
 
     // Marquer le token comme utilisé
-    await supabase
-      .from('invitation_tokens')
-      .update({ used: true })
-      .eq('id', tokenData.id)
+    const { data: tokenUsed } = await supabase.rpc('use_invitation_token', { p_token: token })
+
+    if (!tokenUsed) {
+      setError('Ce lien a déjà été utilisé par quelqu\'un d\'autre.')
+      setCreating(false)
+      return
+    }
 
     setRestaurantId(resto.id)
     setCreating(false)

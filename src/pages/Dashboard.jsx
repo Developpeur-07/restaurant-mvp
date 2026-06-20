@@ -18,6 +18,12 @@ const NEXT_STATUS = {
   cancelled: null,
 };
 
+const VALID_TRANSITIONS = {
+  received: ['preparing', 'cancelled'],
+  preparing: ['ready', 'cancelled'],
+  ready: ['paid'],
+}
+
 const NEXT_LABEL = {
   received: "Démarrer préparation",
   preparing: "Marquer prête",
@@ -75,6 +81,7 @@ export default function Dashboard() {
   const [brand, setBrand] = useState({ name: 'Le Bourgeois', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' });
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const [todayStats, setTodayStats] = useState({ count: 0, revenue: 0, topItem: null });
+  const [processingOrderId, setProcessingOrderId] = useState(null)
 
   // ─── INIT : restaurant + brand + commandes actives + channel Realtime ───
   useEffect(() => {
@@ -184,21 +191,37 @@ export default function Dashboard() {
   useEffect(() => {
     if (!restaurantId) return;
 
-    fetchTodayStats();
+    let cancelled = false
+
+    async function runFetch() {
+      if (!cancelled) await fetchTodayStats()
+    }
+
+    runFetch()
     const interval = setInterval(fetchTodayStats, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    };
   }, [restaurantId, fetchTodayStats]);
 
-  async function updateStatus(orderId, newStatus) {
-    await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
+  async function updateStatus(orderId, currentStatus, newStatus) {
+    if (!VALID_TRANSITIONS[currentStatus]?.includes(newStatus)) {
+      console.error('Transition de statut invalide')
+      return
+    }
+    await supabase.from("orders").update({ status: newStatus }).eq("id", orderId)
   }
 
   async function markAsPaid(order) {
-    await supabase.from("orders_archive").insert({ ...order, status: "paid" });
-    await supabase.from("orders").delete().eq("id", order.id);
-    setOrders((prev) => prev.filter((o) => o.id !== order.id));
-    fetchTodayStats();
+    if (processingOrderId === order.id) return
+    setProcessingOrderId(order.id)
+    await supabase.from("orders_archive").insert({ ...order, status: "paid" })
+    await supabase.from("orders").delete().eq("id", order.id)
+    setOrders((prev) => prev.filter((o) => o.id !== order.id))
+    fetchTodayStats()
+    setProcessingOrderId(null)
   }
 
   async function deleteOrder(orderId) {
@@ -526,10 +549,11 @@ export default function Dashboard() {
 
                   {nextStatus && (
                     <button
+                      disabled={processingOrderId === order.id}
                       onClick={() =>
                         order.status === "ready"
                           ? markAsPaid(order)
-                          : updateStatus(order.id, nextStatus)
+                          : updateStatus(order.id, order.status, nextStatus)
                       }
                       style={{
                         width: "100%",

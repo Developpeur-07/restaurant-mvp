@@ -30,6 +30,7 @@ export default function Tracking() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [restaurant, setRestaurant] = useState(null)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     async function fetchOrder() {
@@ -112,6 +113,12 @@ export default function Tracking() {
     : null;
   const total = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const isReady = order.status === "ready";
+  const now = Date.now();
+
+const orderAge = order
+  ? now - new Date(order.created_at).getTime()
+  : 0;
+  const canCancel = order && order.status === "received" && orderAge < 5 * 60 * 1000;
 
   return (
     <div style={{ background: "#FFF8F0", minHeight: "100vh" }}>
@@ -287,16 +294,23 @@ export default function Tracking() {
         </div>
 
         {/* BOUTON ANNULER — visible seulement si statut received */}
-        {order.status === "received" && (
+
+
+
+        
+        {canCancel && (
           <div style={{ marginBottom: "16px" }}>
             <button
+              disabled={cancelling}
               onClick={async () => {
                 const confirm = window.confirm("Annuler cette commande ?");
                 if (!confirm) return;
-                await supabase
+                setCancelling(true)
+                await supabase 
                   .from("orders")
                   .update({ status: "cancelled" })
                   .eq("id", orderId);
+                setCancelling(false)
               }}
               style={{
                 width: "100%",
@@ -307,11 +321,12 @@ export default function Tracking() {
                 color: "#8B0000",
                 fontWeight: "bold",
                 fontSize: "0.9rem",
-                cursor: "pointer",
+                cursor: cancelling ? "not-allowed" : "pointer",
                 fontFamily: "Georgia, serif",
+                opacity: cancelling ? 0.6 : 1,
               }}
             >
-              Annuler la commande
+              {cancelling ? "Annulation..." : "Annuler la commande"}
             </button>
           </div>
         )}
