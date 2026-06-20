@@ -9,6 +9,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
 import MenuManager from "./pages/MenuManager";
+import AdminInvite from "./pages/AdminInvite";
+import Onboarding from "./pages/Onboarding";
 
 export default function App() {
   return (
@@ -62,6 +64,10 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/admin-invite" element={
+        <ProtectedRoute><AdminInvite /></ProtectedRoute>
+      } />
+      <Route path="/onboarding/:token" element={<Onboarding />} />
     </Routes>
   );
 }
