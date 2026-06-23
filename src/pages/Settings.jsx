@@ -12,100 +12,162 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [brand, setBrand] = useState({
-    name: '',
-    primary_color: '#8B0000',
-    secondary_color: '#C9A84C',
-    slogan: '',
-    address: '',
-    logo_url: ''
-  })
-  const [brandLoading, setBrandLoading] = useState(false)
+    name: "",
+    primary_color: "#8B0000",
+    secondary_color: "#C9A84C",
+    slogan: "",
+    address: "",
+    logo_url: "",
+  });
+  const [brandLoading, setBrandLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      setUser(user)
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      setUser(user);
 
       const { data: resto } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('owner_id', user.id)
+        .from("restaurants")
+        .select("*")
+        .eq("owner_id", user.id)
         .limit(1)
-        .single()
+        .single();
 
       if (resto) {
         setBrand({
-          name: resto.name || '',
-          primary_color: resto.primary_color || '#8B0000',
-          secondary_color: resto.secondary_color || '#C9A84C',
-          slogan: resto.slogan || '',
-          address: resto.address || '',
-          logo_url: resto.logo_url || ''
-        })
+          name: resto.name || "",
+          primary_color: resto.primary_color || "#8B0000",
+          secondary_color: resto.secondary_color || "#C9A84C",
+          slogan: resto.slogan || "",
+          address: resto.address || "",
+          logo_url: resto.logo_url || "",
+        });
       }
     }
-    init()
-  }, [])
+    init();
+  }, []);
+
+  async function handleLogoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setMessage({ type: "error", text: "Le fichier doit être une image" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Image trop lourde (max 2 Mo)" });
+      return;
+    }
+
+    setUploadingLogo(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setUploadingLogo(false);
+      setMessage({ type: "error", text: "Session expirée, reconnecte-toi" });
+      return;
+    }
+
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/logo-${Date.now()}.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("logos")
+      .upload(path, file, { upsert: true, cacheControl: "3600" });
+
+    if (upErr) {
+      setUploadingLogo(false);
+      setMessage({ type: "error", text: "Échec upload : " + upErr.message });
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("logos").getPublicUrl(path);
+
+    setBrand((prev) => ({ ...prev, logo_url: publicUrl }));
+    setUploadingLogo(false);
+    setMessage({ type: "success", text: "Logo uploadé ✓ — pense à sauvegarder" });
+    setTimeout(() => setMessage(null), 3000);
+  }
 
   async function handleBrandSave() {
-    setBrandLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    setBrandLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setBrandLoading(false);
+      setMessage({ type: "error", text: "Session expirée, reconnecte-toi" });
+      return;
+    }
 
     const { error } = await supabase
-      .from('restaurants')
+      .from("restaurants")
       .update({
         name: brand.name,
         primary_color: brand.primary_color,
         secondary_color: brand.secondary_color,
         slogan: brand.slogan,
         address: brand.address,
-        logo_url: brand.logo_url
+        logo_url: brand.logo_url,
       })
-      .eq('owner_id', user.id)
+      .eq("owner_id", user.id);
 
-    setBrandLoading(false)
-    setMessage({ type: error ? 'error' : 'success', text: error ? 'Erreur lors de la sauvegarde' : 'Identité mise à jour ✓' })
-    setTimeout(() => setMessage(null), 3000)
+    setBrandLoading(false);
+    setMessage({
+      type: error ? "error" : "success",
+      text: error ? "Erreur lors de la sauvegarde" : "Identité mise à jour ✓",
+    });
+    setTimeout(() => setMessage(null), 3000);
   }
+
   async function handlePasswordChange() {
     if (!currentPassword) {
-      setMessage({ type: 'error', text: 'Entrez votre mot de passe actuel' })
-      return
+      setMessage({ type: "error", text: "Entrez votre mot de passe actuel" });
+      return;
     }
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Les mots de passe ne correspondent pas' })
-      return
+      setMessage({ type: "error", text: "Les mots de passe ne correspondent pas" });
+      return;
     }
     if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Minimum 6 caractères' })
-      return
+      setMessage({ type: "error", text: "Minimum 6 caractères" });
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
     const { error: reAuthError } = await supabase.auth.signInWithPassword({
       email: currentUser.email,
-      password: currentPassword
-    })
+      password: currentPassword,
+    });
 
     if (reAuthError) {
-      setMessage({ type: 'error', text: 'Mot de passe actuel incorrect' })
-      setLoading(false)
-      return
+      setMessage({ type: "error", text: "Mot de passe actuel incorrect" });
+      setLoading(false);
+      return;
     }
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    setLoading(false)
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setLoading(false);
     if (error) {
-      setMessage({ type: 'error', text: 'Erreur lors du changement' })
-      return
+      setMessage({ type: "error", text: "Erreur lors du changement" });
+      return;
     }
-    setMessage({ type: 'success', text: 'Mot de passe mis à jour ✓' })
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmPassword('')
+    setMessage({ type: "success", text: "Mot de passe mis à jour ✓" });
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
   }
 
   async function handleAddAdmin() {
@@ -119,6 +181,7 @@ export default function Settings() {
       text: `Ouvre le lien → Invite User → entre ${newAdminEmail}`,
     });
   }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     navigate("/login");
@@ -184,9 +247,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div
-        style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}
-      >
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>
         {/* MESSAGE */}
         {message && (
           <div
@@ -236,78 +297,291 @@ export default function Settings() {
         </div>
 
         {/* IDENTITÉ VISUELLE */}
-        <div style={{ background: '#fff', borderRadius: '16px', padding: '20px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(139,0,0,0.08)' }}>
-          <h2 style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '1rem', margin: '0 0 16px' }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: "16px",
+            padding: "20px",
+            marginBottom: "16px",
+            boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
+          }}
+        >
+          <h2
+            style={{
+              color: "#8B0000",
+              fontFamily: "Georgia, serif",
+              fontSize: "1rem",
+              margin: "0 0 16px",
+            }}
+          >
             Identité visuelle
           </h2>
 
           {/* PREVIEW */}
-          <div style={{
-            background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`,
-            borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px'
-          }}>
+          <div
+            style={{
+              background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`,
+              borderRadius: "12px",
+              padding: "16px",
+              textAlign: "center",
+              marginBottom: "16px",
+            }}
+          >
             {brand.logo_url && (
-              <img src={brand.logo_url} alt="logo" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px' }} />
+              <img
+                src={brand.logo_url}
+                alt="logo"
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  marginBottom: "8px",
+                }}
+              />
             )}
-            <p style={{ color: brand.secondary_color, fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>
-              {brand.slogan || 'Votre slogan ici'}
+            <p
+              style={{
+                color: brand.secondary_color,
+                fontSize: "0.65rem",
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                margin: "0 0 4px",
+                fontFamily: "Georgia, serif",
+              }}
+            >
+              {brand.slogan || "Votre slogan ici"}
             </p>
-            <p style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', fontWeight: 'bold', margin: '0 0 4px' }}>
-              {brand.name || 'Nom du restaurant'}
+            <p
+              style={{
+                color: "#fff",
+                fontSize: "1.3rem",
+                fontFamily: "Georgia, serif",
+                fontWeight: "bold",
+                margin: "0 0 4px",
+              }}
+            >
+              {brand.name || "Nom du restaurant"}
             </p>
-            <div style={{ width: '30px', height: '2px', background: brand.secondary_color, margin: '6px auto' }} />
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem', margin: 0 }}>
-              {brand.address || 'Votre adresse'}
+            <div
+              style={{
+                width: "30px",
+                height: "2px",
+                background: brand.secondary_color,
+                margin: "6px auto",
+              }}
+            />
+            <p
+              style={{
+                color: "rgba(255,255,255,0.7)",
+                fontSize: "0.7rem",
+                margin: 0,
+              }}
+            >
+              {brand.address || "Votre adresse"}
             </p>
           </div>
 
-          {/* CHAMPS */}
+          {/* CHAMPS TEXTE */}
           {[
-            { label: 'Nom du restaurant', key: 'name', type: 'text', placeholder: 'Ex: Le Bourgeois' },
-            { label: 'Slogan', key: 'slogan', type: 'text', placeholder: 'Ex: Le Goût Du Bon Gâteau' },
-            { label: 'Adresse', key: 'address', type: 'text', placeholder: 'Ex: Marché Moungali, Brazzaville' },
-            { label: 'URL du logo', key: 'logo_url', type: 'text', placeholder: 'https://...' },
-          ].map(field => (
-            <div key={field.key} style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+            {
+              label: "Nom du restaurant",
+              key: "name",
+              type: "text",
+              placeholder: "Ex: Le Bourgeois",
+            },
+            {
+              label: "Slogan",
+              key: "slogan",
+              type: "text",
+              placeholder: "Ex: Le Goût Du Bon Gâteau",
+            },
+            {
+              label: "Adresse",
+              key: "address",
+              type: "text",
+              placeholder: "Ex: Marché Moungali, Brazzaville",
+            },
+          ].map((field) => (
+            <div key={field.key} style={{ marginBottom: "12px" }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "0.78rem",
+                  color: "#666",
+                  marginBottom: "6px",
+                  fontWeight: "600",
+                }}
+              >
                 {field.label}
               </label>
+
               <input
                 type={field.type}
                 placeholder={field.placeholder}
-                value={brand[field.key]}
-                onChange={e => setBrand(prev => ({ ...prev, [field.key]: e.target.value }))}
+                value={brand[field.key] || ""}
+                onChange={(e) =>
+                  setBrand((prev) => ({
+                    ...prev,
+                    [field.key]: e.target.value,
+                  }))
+                }
                 style={{
-                  width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
-                  padding: '10px 14px', fontSize: '0.88rem', background: '#FFF8F0',
-                  outline: 'none', boxSizing: 'border-box'
+                  width: "100%",
+                  border: "2px solid #e8ddd4",
+                  borderRadius: "10px",
+                  padding: "10px 14px",
+                  fontSize: "0.88rem",
+                  background: "#FFF8F0",
+                  outline: "none",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
           ))}
 
+          {/* LOGO — Upload fichier + URL fallback */}
+          <div style={{ marginBottom: "12px" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.78rem",
+                color: "#666",
+                marginBottom: "6px",
+                fontWeight: "600",
+              }}
+            >
+              Logo
+            </label>
+
+            <input
+              type="file"
+              accept="image/png, image/jpeg, image/webp, image/svg+xml"
+              onChange={handleLogoUpload}
+              disabled={uploadingLogo}
+              style={{
+                width: "100%",
+                border: "2px solid #e8ddd4",
+                borderRadius: "10px",
+                padding: "10px 14px",
+                fontSize: "0.82rem",
+                background: "#FFF8F0",
+                outline: "none",
+                boxSizing: "border-box",
+                cursor: uploadingLogo ? "not-allowed" : "pointer",
+                opacity: uploadingLogo ? 0.6 : 1,
+              }}
+            />
+            {uploadingLogo && (
+              <p style={{ fontSize: "0.75rem", color: "#8B0000", margin: "6px 0 0" }}>
+                Upload en cours...
+              </p>
+            )}
+
+            <input
+              type="text"
+              placeholder="ou colle une URL https://..."
+              value={brand.logo_url || ""}
+              onChange={(e) =>
+                setBrand((prev) => ({
+                  ...prev,
+                  logo_url: e.target.value,
+                }))
+              }
+              style={{
+                width: "100%",
+                border: "2px solid #e8ddd4",
+                borderRadius: "10px",
+                padding: "10px 14px",
+                fontSize: "0.88rem",
+                background: "#FFF8F0",
+                outline: "none",
+                boxSizing: "border-box",
+                marginTop: "8px",
+              }}
+            />
+
+            {brand.logo_url && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={brand.logo_url}
+                  alt="Logo"
+                  style={{
+                    width: "60px",
+                    height: "60px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    border: "2px solid #e8ddd4",
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
           {/* COULEURS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              marginBottom: "16px",
+            }}
+          >
             {[
-              { label: 'Couleur principale', key: 'primary_color' },
-              { label: 'Couleur accent', key: 'secondary_color' },
-            ].map(field => (
+              { label: "Couleur principale", key: "primary_color" },
+              { label: "Couleur accent", key: "secondary_color" },
+            ].map((field) => (
               <div key={field.key}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.78rem",
+                    color: "#666",
+                    marginBottom: "6px",
+                    fontWeight: "600",
+                  }}
+                >
                   {field.label}
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <input
                     type="color"
                     value={brand[field.key]}
-                    onChange={e => setBrand(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ width: '44px', height: '44px', borderRadius: '8px', border: '2px solid #e8ddd4', cursor: 'pointer', padding: '2px', flexShrink: 0 }}
+                    onChange={(e) =>
+                      setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))
+                    }
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "8px",
+                      border: "2px solid #e8ddd4",
+                      cursor: "pointer",
+                      padding: "2px",
+                      flexShrink: 0,
+                    }}
                   />
                   <input
                     type="text"
                     value={brand[field.key]}
-                    onChange={e => setBrand(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ flex: 1, border: '2px solid #e8ddd4', borderRadius: '8px', padding: '10px', fontSize: '0.82rem', background: '#FFF8F0', outline: 'none', minWidth: 0 }}
+                    onChange={(e) =>
+                      setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))
+                    }
+                    style={{
+                      flex: 1,
+                      border: "2px solid #e8ddd4",
+                      borderRadius: "8px",
+                      padding: "10px",
+                      fontSize: "0.82rem",
+                      background: "#FFF8F0",
+                      outline: "none",
+                      minWidth: 0,
+                    }}
                   />
                 </div>
               </div>
@@ -316,14 +590,21 @@ export default function Settings() {
 
           <button
             onClick={handleBrandSave}
-            disabled={brandLoading}
+            disabled={brandLoading || uploadingLogo}
             style={{
-              width: '100%', background: '#8B0000', color: '#fff', border: 'none',
-              borderRadius: '10px', padding: '12px', fontWeight: 'bold',
-              fontSize: '0.88rem', cursor: 'pointer', opacity: brandLoading ? 0.6 : 1
+              width: "100%",
+              background: "#8B0000",
+              color: "#fff",
+              border: "none",
+              borderRadius: "10px",
+              padding: "12px",
+              fontWeight: "bold",
+              fontSize: "0.88rem",
+              cursor: "pointer",
+              opacity: brandLoading || uploadingLogo ? 0.6 : 1,
             }}
           >
-            {brandLoading ? 'Sauvegarde...' : 'Sauvegarder l\'identité'}
+            {brandLoading ? "Sauvegarde..." : "Sauvegarder l'identité"}
           </button>
         </div>
 
@@ -352,11 +633,17 @@ export default function Settings() {
             type="password"
             placeholder="Mot de passe actuel"
             value={currentPassword}
-            onChange={e => setCurrentPassword(e.target.value)}
+            onChange={(e) => setCurrentPassword(e.target.value)}
             style={{
-              width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
-              padding: '11px 14px', fontSize: '0.88rem', marginBottom: '10px',
-              outline: 'none', boxSizing: 'border-box', background: '#FFF8F0'
+              width: "100%",
+              border: "2px solid #e8ddd4",
+              borderRadius: "10px",
+              padding: "11px 14px",
+              fontSize: "0.88rem",
+              marginBottom: "10px",
+              outline: "none",
+              boxSizing: "border-box",
+              background: "#FFF8F0",
             }}
           />
           <input
@@ -397,7 +684,9 @@ export default function Settings() {
             type="button"
             onClick={handlePasswordChange}
             disabled={!currentPassword || !newPassword || !confirmPassword || loading}
-            aria-disabled={!currentPassword || !newPassword || !confirmPassword || loading}
+            aria-disabled={
+              !currentPassword || !newPassword || !confirmPassword || loading
+            }
             aria-busy={loading}
             style={{
               width: "100%",
@@ -409,7 +698,10 @@ export default function Settings() {
               fontWeight: "bold",
               fontSize: "0.88rem",
               cursor: "pointer",
-              opacity: !currentPassword || !newPassword || !confirmPassword || loading ? 0.6 : 1,
+              opacity:
+                !currentPassword || !newPassword || !confirmPassword || loading
+                  ? 0.6
+                  : 1,
             }}
           >
             {loading ? "Mise à jour..." : "Mettre à jour"}

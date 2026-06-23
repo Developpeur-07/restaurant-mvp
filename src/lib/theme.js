@@ -1,4 +1,3 @@
-// Convertit hex en HSL pour manipulation
 function hexToHSL(hex) {
   let r = parseInt(hex.slice(1, 3), 16) / 255
   let g = parseInt(hex.slice(3, 5), 16) / 255
@@ -33,12 +32,13 @@ function hslToHex(h, s, l) {
 }
 
 export function generateTheme(primaryColor) {
-  const { h, s } = hexToHSL(primaryColor)
+  const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#8B0000'
+  const { h, s } = hexToHSL(safe)
 
   return {
-    primary: primaryColor,
-    pageBackground: hslToHex(h, Math.min(s, 30), 96),   // très clair, légère teinte
-    cardBackground: '#FFFFFF',                            // toujours blanc, neutre
+    primary: safe,
+    pageBackground: hslToHex(h, Math.min(s, 30), 96),
+    cardBackground: '#FFFFFF',
     textPrimary: '#1A1A1A',
     textSecondary: '#666666',
     borderLight: hslToHex(h, Math.min(s, 20), 90),
@@ -46,14 +46,19 @@ export function generateTheme(primaryColor) {
 }
 
 export function generateDarkTheme(primaryColor) {
-  const { h, s } = hexToHSL(primaryColor)
+  const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#8B0000'
+  const { h, s } = hexToHSL(safe)
 
   return {
-    primary: primaryColor,
-    pageBackground: hslToHex(h, Math.min(s, 25), 8),     // très sombre, légère teinte
+    primary: safe,
+    pageBackground: hslToHex(h, Math.min(s, 25), 8),
     cardBackground: hslToHex(h, Math.min(s, 15), 14),
     textPrimary: '#F5F5F5',
     textSecondary: '#A0A0A0',
     borderLight: hslToHex(h, Math.min(s, 20), 20),
   }
+}
+
+export function getTheme(primaryColor, darkMode) {
+  return darkMode ? generateDarkTheme(primaryColor) : generateTheme(primaryColor)
 }

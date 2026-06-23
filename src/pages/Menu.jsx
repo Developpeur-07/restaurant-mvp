@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTheme } from '../lib/useTheme'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -43,11 +44,11 @@ function getEmoji(item) {
   return CATEGORIES.find(c => c.keywords.some(k => item.name.toLowerCase().includes(k)))?.emoji || '🍽'
 }
 
-function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNumber, setTableNumber, customerName, setCustomerName, submitting, submitOrder }) {
+function OrderModal({ theme, showModal, setShowModal, orderType, setOrderType, tableNumber, setTableNumber, customerName, setCustomerName, submitting, submitOrder }) {
   if (!showModal) return null
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}>
-      <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
+      <div style={{ background: 'theme.pageBackground', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
         <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
         <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>Type de commande</h2>
         <p style={{ margin: '0 0 20px', color: '#999', fontSize: '0.8rem' }}>Comment souhaitez-vous recevoir votre commande ?</p>
@@ -59,7 +60,7 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
             <button key={opt.value} onClick={() => setOrderType(opt.value)} style={{
               flex: 1, padding: '16px 12px', borderRadius: '14px', cursor: 'pointer',
               border: `2px solid ${orderType === opt.value ? '#8B0000' : '#e8ddd4'}`,
-              background: orderType === opt.value ? '#FFF0F0' : '#fff',
+              background: orderType === opt.value ? '#FFF0F0' : 'theme.cardBackground',
               textAlign: 'center', transition: 'all 0.2s'
             }}>
               <p style={{ fontSize: '1.8rem', margin: '0 0 6px' }}>{opt.emoji}</p>
@@ -72,7 +73,7 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Numéro de table</label>
             <input type="number" placeholder="Ex: 4" value={tableNumber} onChange={e => setTableNumber(e.target.value)}
-              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.5rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.5rem', textAlign: 'center', background: theme.cardBackground, outline: 'none', boxSizing: 'border-box' }} />
           </div>
         ) : (
           <div style={{ marginBottom: '16px' }}>
@@ -86,9 +87,8 @@ function OrderModal({ showModal, setShowModal, orderType, setOrderType, tableNum
                 const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '').slice(0, 40);
                 setCustomerName(value);
               }}
-              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: theme.cardBackground, outline: 'none', boxSizing: 'border-box' }}
             />
-
           </div>
         )}
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -257,7 +257,7 @@ export default function Menu() {
 
     navigate(`/tracking/${data.id}`)
   }
-
+  const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color)
   const selectedItems = Object.values(selection)
   const total = selectedItems.reduce((sum, i) => sum + i.price * i.qty, 0)
   const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0)
@@ -265,16 +265,17 @@ export default function Menu() {
   const categorized = categorize(items)
 
   if (loading) return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ background: 'theme.pageBackground', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Chargement du menu...</p>
     </div>
   )
 
   if (!restaurant) return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ background: 'theme.pageBackground', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#8B0000' }}>Restaurant introuvable.</p>
     </div>
   )
+
 
   // PAGE CATÉGORIE
   if (category) {
@@ -286,8 +287,19 @@ export default function Menu() {
       : catItems
 
     return (
-      <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
+      <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
+        <button
+          onClick={toggleDarkMode}
+          style={{
+            background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
+            padding: '8px 10px', cursor: 'pointer', fontSize: '1rem',
+            position: 'absolute', top: '16px', right: '16px'
+          }}
+        >
+          {darkMode ? '☀️' : '🌙'}
+
+        </button>
         {/* HEADER CATÉGORIE — FIXED */}
         <div
           style={{
@@ -321,7 +333,7 @@ export default function Menu() {
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
 
           {/* RECHERCHE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', border: '1px solid rgba(139,0,0,0.1)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'theme.cardBackground', borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', border: '1px solid rgba(139,0,0,0.1)', marginBottom: '16px' }}>
             <span>🔍</span>
             <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
               style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#1a1a1a' }} />
@@ -334,7 +346,7 @@ export default function Menu() {
               const qty = selection[item.id]?.qty || 0
               return (
                 <div key={item.id} onClick={() => setDetailItem(item)} style={{
-                  background: '#fff', borderRadius: '16px',
+                  background: 'theme.cardBackground', borderRadius: '16px',
                   boxShadow: qty > 0 ? '0 4px 16px rgba(139,0,0,0.2)' : '0 2px 8px rgba(139,0,0,0.08)',
                   border: qty > 0 ? '2px solid #8B0000' : '2px solid transparent',
                   overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease'
@@ -383,7 +395,7 @@ export default function Menu() {
         {detailItem && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
             onClick={() => setDetailItem(null)}>
-            <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '0 0 28px' }}
+            <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '0 0 28px' }}
               onClick={e => e.stopPropagation()}>
               <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem', borderRadius: '20px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
                 {detailItem.image_url
@@ -439,6 +451,7 @@ export default function Menu() {
           tableNumber={tableNumber} setTableNumber={setTableNumber}
           customerName={customerName} setCustomerName={setCustomerName}
           submitting={submitting} submitOrder={submitOrder}
+          theme={theme}
         />
       </div>
     )
@@ -447,7 +460,7 @@ export default function Menu() {
   // PAGE ACCUEIL — GRILLE CATÉGORIES
   return (
     <div style={{
-      background: '#FFF8F0',
+      background: theme.pageBackground,
       minHeight: '100vh',
       paddingBottom: selectedItems.length > 0 ? '100px' : '40px'
     }}>
@@ -496,7 +509,7 @@ export default function Menu() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.entries(categorized).map(([label, data]) => (
             <button key={label} onClick={() => navigate(`/menu/${restaurantId}/${encodeURIComponent(label)}`)}
-              style={{ background: '#fff', border: 'none', borderRadius: '16px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', borderBottom: '3px solid #8B0000' }}
+              style={{ background: theme.cardBackground, border: 'none', borderRadius: '16px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', borderBottom: '3px solid #8B0000' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
               <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>{data.emoji}</p>
@@ -527,6 +540,7 @@ export default function Menu() {
         tableNumber={tableNumber} setTableNumber={setTableNumber}
         customerName={customerName} setCustomerName={setCustomerName}
         submitting={submitting} submitOrder={submitOrder}
+        theme={theme}
       />
     </div>
   )
