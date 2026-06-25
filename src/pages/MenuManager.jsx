@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from '../lib/useTheme'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -58,6 +59,9 @@ export default function MenuManager() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [form, setForm] = useState({ name: '', price: '', estimated_minutes: '', description: '', image_url: '' })
 
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
+
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -110,30 +114,36 @@ export default function MenuManager() {
   }
 
   async function handleImageUpload(file, itemId) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
-      setMessage({ type: 'error', text: 'Format invalide. JPG, PNG ou WebP uniquement.' })
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Le fichier doit être une image' })
       return null
     }
     if (file.size > 2 * 1024 * 1024) {
-      setMessage({ type: 'error', text: 'Image trop lourde. Maximum 2MB.' })
+      setMessage({ type: 'error', text: 'Image trop lourde (max 2 Mo)' })
       return null
     }
-    const ext = file.name.split('.').pop().toLowerCase()
-    const safeName = `${itemId || Date.now()}_${crypto.randomUUID()}.${ext}`
 
-    const { data, error } = await supabase.storage
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setMessage({ type: 'error', text: 'Session expirée, reconnecte-toi' })
+      return null
+    }
+
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/${itemId || Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { error: upErr } = await supabase.storage
       .from('menu-images')
-      .upload(safeName, file, { upsert: true, contentType: file.type })
+      .upload(path, file, { upsert: true, cacheControl: '3600' })
 
-    if (error) {
-      setMessage({ type: 'error', text: 'Erreur upload : ' + error.message })
+    if (upErr) {
+      setMessage({ type: 'error', text: 'Échec upload : ' + upErr.message })
       return null
     }
 
     const { data: { publicUrl } } = supabase.storage
       .from('menu-images')
-      .getPublicUrl(data.path)
+      .getPublicUrl(path)
 
     return publicUrl
   }
@@ -166,9 +176,9 @@ export default function MenuManager() {
       const { data, error } = await supabase
         .from('menu_items')
         .update({
-          name: form.name,
-          price: parseInt(form.price),
-          estimated_minutes: parseInt(form.estimated_minutes),
+          name: cleanName,
+          price,
+          estimated_minutes: minutes,
           description: form.description || null,
           image_url: form.image_url || null,
         })
@@ -185,9 +195,9 @@ export default function MenuManager() {
         .from('menu_items')
         .insert({
           restaurant_id: restaurantId,
-          name: form.name,
-          price: parseInt(form.price),
-          estimated_minutes: parseInt(form.estimated_minutes),
+          name: cleanName,
+          price,
+          estimated_minutes: minutes,
           description: form.description || null,
           image_url: form.image_url || null,
           available: true
@@ -226,8 +236,8 @@ export default function MenuManager() {
   const categorized = categorize(items)
 
   if (loading) return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Chargement...</p>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
     </div>
   )
 
@@ -240,9 +250,9 @@ export default function MenuManager() {
       : catItems
 
     return (
-      <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: '40px' }}>
+      <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
 
-        {/* HEADER — 2 lignes, identique structure au menu client */}
+        {/* HEADER — 2 lignes */}
         <div style={{
           background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
           padding: '16px 20px 20px',
@@ -258,6 +268,9 @@ export default function MenuManager() {
                 ← Retour
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  {darkMode ? '☀️' : '🌙'}
+                </button>
                 {brand.logo_url && (
                   <img src={brand.logo_url} alt="logo" style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
                 )}
@@ -296,8 +309,8 @@ export default function MenuManager() {
 
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px',
-            background: '#fff', borderRadius: '12px', padding: '10px 16px',
-            boxShadow: '0 2px 8px rgba(139,0,0,0.08)', marginBottom: '16px'
+            background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '16px'
           }}>
             <span>🔍</span>
             <input
@@ -305,19 +318,19 @@ export default function MenuManager() {
               placeholder="Rechercher..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem' }}
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textPrimary }}
             />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>}
+            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#bbb' }}>
+              <div style={{ textAlign: 'center', padding: '40px 0', color: theme.textSecondary }}>
                 <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>🍽</p>
                 <p style={{ fontFamily: 'Georgia, serif' }}>Aucun plat dans cette catégorie</p>
                 <button
                   onClick={openAdd}
-                  style={{ marginTop: '12px', background: '#8B0000', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer' }}
+                  style={{ marginTop: '12px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   + Ajouter un plat
                 </button>
@@ -325,13 +338,12 @@ export default function MenuManager() {
             ) : (
               filtered.map(item => (
                 <div key={item.id} style={{
-                  background: '#fff', borderRadius: '12px', padding: '12px 16px',
-                  boxShadow: '0 1px 4px rgba(139,0,0,0.06)',
-                  borderLeft: `4px solid ${item.available ? '#8B0000' : '#e0e0e0'}`,
+                  background: theme.cardBackground, borderRadius: '12px', padding: '12px 16px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  borderLeft: `4px solid ${item.available ? theme.primary : '#e0e0e0'}`,
                   opacity: item.available ? 1 : 0.6,
                   display: 'flex', alignItems: 'center', gap: '12px'
                 }}>
-                  {/* THUMBNAIL */}
                   <div style={{
                     width: '48px', height: '48px', borderRadius: '10px', flexShrink: 0,
                     background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)',
@@ -345,10 +357,10 @@ export default function MenuManager() {
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.name}
                     </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#999' }}>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: theme.textSecondary }}>
                       {item.price.toLocaleString()} FCFA · ~{item.estimated_minutes} min
                     </p>
                   </div>
@@ -366,7 +378,7 @@ export default function MenuManager() {
                     </button>
                     <button
                       onClick={() => openEdit(item)}
-                      style={{ background: '#FFF8F0', border: '1px solid #e8ddd4', borderRadius: '8px', padding: '6px 10px', color: '#8B0000', cursor: 'pointer', fontSize: '0.78rem' }}
+                      style={{ background: theme.pageBackground, border: `1px solid ${theme.borderLight}`, borderRadius: '8px', padding: '6px 10px', color: theme.primary, cursor: 'pointer', fontSize: '0.78rem' }}
                     >
                       ✏️
                     </button>
@@ -386,20 +398,19 @@ export default function MenuManager() {
         {/* FORMULAIRE MODALE */}
         {showForm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50, overflowY: 'auto' }}>
-            <div style={{ background: '#FFF8F0', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
-              <h2 style={{ margin: '0 0 20px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>
+            <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ width: '40px', height: '3px', background: theme.borderLight, borderRadius: '2px', margin: '0 auto 20px' }} />
+              <h2 style={{ margin: '0 0 20px', fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem' }}>
                 {editItem ? 'Modifier le plat' : `Ajouter dans ${activeCategory}`}
               </h2>
 
-              {/* UPLOAD IMAGE */}
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>
                   Image du plat (JPG, PNG, WebP · max 2MB)
                 </label>
                 {form.image_url && (
                   <div style={{ marginBottom: '8px', position: 'relative', display: 'inline-block' }}>
-                    <img src={form.image_url} alt="preview" style={{ width: '80px', height: '80px', borderRadius: '10px', objectFit: 'cover', border: '2px solid #e8ddd4' }} />
+                    <img src={form.image_url} alt="preview" style={{ width: '80px', height: '80px', borderRadius: '10px', objectFit: 'cover', border: `2px solid ${theme.borderLight}` }} />
                     <button
                       onClick={() => setForm(prev => ({ ...prev, image_url: '' }))}
                       style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -408,11 +419,11 @@ export default function MenuManager() {
                 )}
                 <label style={{
                   display: 'flex', alignItems: 'center', gap: '10px',
-                  background: '#fff', border: '2px dashed #e8ddd4', borderRadius: '10px',
+                  background: theme.cardBackground, border: `2px dashed ${theme.borderLight}`, borderRadius: '10px',
                   padding: '12px', cursor: 'pointer'
                 }}>
                   <span style={{ fontSize: '1.5rem' }}>📷</span>
-                  <span style={{ fontSize: '0.82rem', color: '#666' }}>
+                  <span style={{ fontSize: '0.82rem', color: theme.textSecondary }}>
                     {uploadingImage ? 'Upload en cours...' : 'Choisir une image'}
                   </span>
                   <input
@@ -439,7 +450,7 @@ export default function MenuManager() {
                 { label: 'Temps de préparation (min)', key: 'estimated_minutes', type: 'number', placeholder: 'Ex: 5' },
               ].map(field => (
                 <div key={field.key} style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>
                     {field.label}
                   </label>
                   <input
@@ -448,16 +459,16 @@ export default function MenuManager() {
                     value={form[field.key]}
                     onChange={e => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
                     style={{
-                      width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
-                      padding: '11px 14px', fontSize: '0.9rem', background: '#fff',
-                      outline: 'none', boxSizing: 'border-box'
+                      width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px',
+                      padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground,
+                      color: theme.textPrimary, outline: 'none', boxSizing: 'border-box'
                     }}
                   />
                 </div>
               ))}
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>
                   Description / composition (allergies)
                 </label>
                 <textarea
@@ -467,9 +478,9 @@ export default function MenuManager() {
                   onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                   rows={3}
                   style={{
-                    width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px',
-                    padding: '11px 14px', fontSize: '0.88rem', background: '#fff',
-                    outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit'
+                    width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px',
+                    padding: '11px 14px', fontSize: '0.88rem', background: theme.cardBackground,
+                    color: theme.textPrimary, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit'
                   }}
                 />
               </div>
@@ -477,14 +488,14 @@ export default function MenuManager() {
               <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                 <button
                   onClick={() => setShowForm(false)}
-                  style={{ flex: 1, border: '2px solid #ddd', background: 'transparent', borderRadius: '12px', padding: '13px', color: '#666', fontWeight: '600', cursor: 'pointer' }}
+                  style={{ flex: 1, border: `2px solid ${theme.borderLight}`, background: 'transparent', borderRadius: '12px', padding: '13px', color: theme.textSecondary, fontWeight: '600', cursor: 'pointer' }}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving || uploadingImage}
-                  style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '13px', fontWeight: 'bold', cursor: 'pointer', opacity: (saving || uploadingImage) ? 0.6 : 1 }}
+                  style={{ flex: 2, background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', padding: '13px', fontWeight: 'bold', cursor: 'pointer', opacity: (saving || uploadingImage) ? 0.6 : 1 }}
                 >
                   {saving ? 'Enregistrement...' : editItem ? 'Mettre à jour' : 'Ajouter'}
                 </button>
@@ -498,7 +509,7 @@ export default function MenuManager() {
 
   // PAGE ACCUEIL — GRILLE CATÉGORIES
   return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', paddingBottom: '40px' }}>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
 
       {/* HEADER */}
       <div style={{
@@ -526,6 +537,9 @@ export default function MenuManager() {
               </h1>
             </div>
           </div>
+          <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
         </div>
       </div>
 
@@ -545,18 +559,18 @@ export default function MenuManager() {
 
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           {[
-            { label: 'Total plats', value: items.length, color: '#8B0000' },
+            { label: 'Total plats', value: items.length, color: theme.primary },
             { label: 'Disponibles', value: items.filter(i => i.available).length, color: '#166534' },
             { label: 'Indisponibles', value: items.filter(i => !i.available).length, color: '#6B7280' },
           ].map(stat => (
-            <div key={stat.label} style={{ flex: 1, background: '#fff', borderRadius: '12px', padding: '12px', textAlign: 'center', boxShadow: '0 2px 6px rgba(139,0,0,0.06)' }}>
+            <div key={stat.label} style={{ flex: 1, background: theme.cardBackground, borderRadius: '12px', padding: '12px', textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
               <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', color: stat.color, fontFamily: 'Georgia, serif' }}>{stat.value}</p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: '#999' }}>{stat.label}</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.65rem', color: theme.textSecondary }}>{stat.label}</p>
             </div>
           ))}
         </div>
 
-        <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
+        <p style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
           Sélectionnez une catégorie à gérer
         </p>
 
@@ -566,17 +580,17 @@ export default function MenuManager() {
               key={label}
               onClick={() => setActiveCategory(label)}
               style={{
-                background: '#fff', border: 'none', borderRadius: '16px',
+                background: theme.cardBackground, border: 'none', borderRadius: '16px',
                 padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(139,0,0,0.08)',
-                borderBottom: '3px solid #8B0000',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                borderBottom: `3px solid ${theme.primary}`,
                 transition: 'transform 0.15s ease'
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
             >
               <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>{data.emoji}</p>
-              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
+              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
                 {label}
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>

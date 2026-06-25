@@ -67,9 +67,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/admin-invite" element={
-        <ProtectedRoute><AdminInvite /></ProtectedRoute>
-      } />
+      
       <Route path="/onboarding/:token" element={<Onboarding />} />
       <Route path="/admin-invite" element={
         <SuperAdminRoute><AdminInvite /></SuperAdminRoute>

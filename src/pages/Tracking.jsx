@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useTheme } from "../lib/useTheme";
 
 const STATUS_CONFIG = {
   received: {
@@ -29,8 +30,8 @@ export default function Tracking() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [restaurant, setRestaurant] = useState(null)
-  const [cancelling, setCancelling] = useState(false)
+  const [restaurant, setRestaurant] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     async function fetchOrder() {
@@ -42,16 +43,15 @@ export default function Tracking() {
       setOrder(data);
       setLoading(false);
 
-      const { data: resto } = await supabase
-        .from('restaurants')
-        .select('name, primary_color, secondary_color, slogan, address, logo_url')
-        .eq('id', data.restaurant_id)
-        .single()
-
-      setRestaurant(resto)
+      if (data) {
+        const { data: resto } = await supabase
+          .from("restaurants")
+          .select("name, primary_color, secondary_color, slogan, address, logo_url")
+          .eq("id", data.restaurant_id)
+          .single();
+        setRestaurant(resto);
+      }
     }
-
-
 
     fetchOrder();
 
@@ -72,18 +72,21 @@ export default function Tracking() {
     return () => supabase.removeChannel(channel);
   }, [orderId]);
 
+  // ── THÈME — hook appelé avant tout return conditionnel (règle des Hooks) ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color);
+
   if (loading)
     return (
       <div
         style={{
-          background: "#FFF8F0",
+          background: theme.pageBackground,
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#8B0000", fontFamily: "Georgia, serif" }}>
+        <p style={{ color: theme.primary, fontFamily: "Georgia, serif" }}>
           Chargement...
         </p>
       </div>
@@ -93,14 +96,14 @@ export default function Tracking() {
     return (
       <div
         style={{
-          background: "#FFF8F0",
+          background: theme.pageBackground,
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#8B0000" }}>Commande introuvable.</p>
+        <p style={{ color: theme.primary }}>Commande introuvable.</p>
       </div>
     );
 
@@ -113,61 +116,101 @@ export default function Tracking() {
     : null;
   const total = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const isReady = order.status === "ready";
+  const isCancelled = order.status === "cancelled";
   const now = Date.now();
 
-const orderAge = order
-  ? now - new Date(order.created_at).getTime()
-  : 0;
+  const orderAge = order ? now - new Date(order.created_at).getTime() : 0;
   const canCancel = order && order.status === "received" && orderAge < 5 * 60 * 1000;
 
-  return (
-    <div style={{ background: "#FFF8F0", minHeight: "100vh" }}>
-      {/* HEADER */}
-      <div style={{
-        background: `linear-gradient(135deg, ${restaurant?.primary_color || '#6B0000'}, ${restaurant?.primary_color || '#8B0000'}CC)`,
-        padding: '28px 20px 24px', textAlign: 'center'
-      }}>
-        {restaurant?.logo_url && (
-          <img src={restaurant.logo_url} alt="logo" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}` }} />
-        )}
-        <p style={{ color: restaurant?.secondary_color || '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '4px', fontFamily: 'Georgia, serif' }}>
-          {restaurant?.slogan || 'Patisserie · Snack · Restaurant'}
-        </p>
-        <h1 style={{ color: '#fff', fontSize: '1.6rem', fontFamily: 'Georgia, serif', margin: '0 0 4px' }}>
-          {restaurant?.name || 'Le Bourgeois'}
-        </h1>
-        <div style={{ width: '40px', height: '2px', background: restaurant?.secondary_color || '#C9A84C', margin: '8px auto' }} />
-      </div>
+  // Couleur du bandeau de statut, dérivée du thème du restaurant
+  const statusGradient = isCancelled
+    ? "linear-gradient(135deg, #444, #666)"
+    : isReady
+      ? "linear-gradient(135deg, #1a6b1a, #2d8b2d)"
+      : `linear-gradient(135deg, ${theme.primary}, ${theme.primary}DD)`;
 
+  return (
+    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+
+      {/* HEADER — fond dynamique selon couleur du restaurant + bouton dark mode */}
       <div
-        style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}
+        style={{
+          background: `linear-gradient(135deg, ${restaurant?.primary_color || theme.primary}, ${restaurant?.primary_color || theme.primary}CC)`,
+          padding: "28px 20px 24px",
+          textAlign: "center",
+          position: "relative",
+        }}
       >
-        {/* STATUT PRINCIPAL */}
+        <button
+          onClick={toggleDarkMode}
+          style={{
+            background: "rgba(255,255,255,0.2)",
+            border: "none",
+            borderRadius: "8px",
+            padding: "8px 10px",
+            cursor: "pointer",
+            fontSize: "1rem",
+            position: "absolute",
+            top: "16px",
+            right: "16px",
+          }}
+        >
+          {darkMode ? "☀️" : "🌙"}
+        </button>
+
+        {restaurant?.logo_url && (
+          <img
+            src={restaurant.logo_url}
+            alt="logo"
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              objectFit: "cover",
+              marginBottom: "8px",
+              border: `2px solid ${restaurant.secondary_color || theme.borderLight}`,
+            }}
+          />
+        )}
+        <p
+          style={{
+            color: restaurant?.secondary_color || "#C9A84C",
+            fontSize: "0.7rem",
+            letterSpacing: "0.3em",
+            textTransform: "uppercase",
+            marginBottom: "4px",
+            fontFamily: "Georgia, serif",
+          }}
+        >
+          {restaurant?.slogan || "Patisserie · Snack · Restaurant"}
+        </p>
+        <h1 style={{ color: "#fff", fontSize: "1.6rem", fontFamily: "Georgia, serif", margin: "0 0 4px" }}>
+          {restaurant?.name || "Restaurant"}
+        </h1>
         <div
           style={{
-            background: isReady
-              ? "linear-gradient(135deg, #1a6b1a, #2d8b2d)"
-              : "linear-gradient(135deg, #6B0000, #8B0000)",
+            width: "40px",
+            height: "2px",
+            background: restaurant?.secondary_color || "#C9A84C",
+            margin: "8px auto",
+          }}
+        />
+      </div>
+
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>
+
+        {/* STATUT PRINCIPAL — couleur dérivée du thème, plus de gradient fixe sur le texte */}
+        <div
+          style={{
+            background: statusGradient,
             borderRadius: "16px",
             padding: "28px 20px",
             textAlign: "center",
             marginBottom: "24px",
-            boxShadow: "0 4px 20px rgba(139,0,0,0.25)",
+            boxShadow: `0 4px 20px ${theme.primary}40`,
           }}
         >
-          <p
-            style={{
-              fontSize: "2.5rem",
-              margin: "0 0 8px",
-              background:
-                order.status === "cancelled"
-                  ? "linear-gradient(135deg, #333, #555)"
-                  : isReady
-                    ? "linear-gradient(135deg, #1a6b1a, #2d8b2d)"
-                    : "linear-gradient(135deg, #6B0000, #8B0000)",
-
-            }}
-          >
+          <p style={{ fontSize: "2.5rem", margin: "0 0 8px" }}>
             {order.status === "received"
               ? "🧾"
               : order.status === "preparing"
@@ -187,16 +230,10 @@ const orderAge = order
           >
             {config.label}
           </p>
-          <p
-            style={{
-              color: "rgba(255,255,255,0.75)",
-              fontSize: "0.8rem",
-              margin: 0,
-            }}
-          >
+          <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.8rem", margin: 0 }}>
             {config.sublabel}
           </p>
-          {estimatedTime && !isReady && (
+          {estimatedTime && !isReady && !isCancelled && (
             <div
               style={{
                 marginTop: "16px",
@@ -206,52 +243,28 @@ const orderAge = order
                 display: "inline-block",
               }}
             >
-              <p
-                style={{
-                  color: "#C9A84C",
-                  fontWeight: "bold",
-                  fontSize: "1.1rem",
-                  margin: 0,
-                }}
-              >
+              <p style={{ color: "#C9A84C", fontWeight: "bold", fontSize: "1.1rem", margin: 0 }}>
                 Prête à {estimatedTime}
               </p>
             </div>
           )}
         </div>
 
-        {/* BARRE DE PROGRESSION */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginBottom: "24px",
-            padding: "0 8px",
-          }}
-        >
+        {/* BARRE DE PROGRESSION — couleurs liées au thème, adaptées au dark mode */}
+        <div style={{ display: "flex", alignItems: "center", marginBottom: "24px", padding: "0 8px" }}>
           {["received", "preparing", "ready"].map((s, i) => {
             const done = STATUS_CONFIG[s].step <= config.step;
             const labels = ["Reçue", "Préparation", "Prête"];
             return (
-              <div
-                key={s}
-                style={{ display: "flex", alignItems: "center", flex: 1 }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
+              <div key={s} style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
                   <div
                     style={{
                       width: "32px",
                       height: "32px",
                       borderRadius: "50%",
-                      background: done ? "#8B0000" : "#e0d5c8",
-                      color: done ? "#fff" : "#999",
+                      background: done ? theme.primary : theme.borderLight,
+                      color: done ? "#fff" : theme.textSecondary,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -266,7 +279,7 @@ const orderAge = order
                     style={{
                       margin: 0,
                       fontSize: "0.65rem",
-                      color: done ? "#8B0000" : "#999",
+                      color: done ? theme.primary : theme.textSecondary,
                       fontWeight: done ? "bold" : "normal",
                       whiteSpace: "nowrap",
                     }}
@@ -280,10 +293,7 @@ const orderAge = order
                       flex: 1,
                       height: "2px",
                       margin: "0 4px 16px",
-                      background:
-                        STATUS_CONFIG[s].step < config.step
-                          ? "#8B0000"
-                          : "#e0d5c8",
+                      background: STATUS_CONFIG[s].step < config.step ? theme.primary : theme.borderLight,
                       transition: "background 0.3s ease",
                     }}
                   />
@@ -293,11 +303,7 @@ const orderAge = order
           })}
         </div>
 
-        {/* BOUTON ANNULER — visible seulement si statut received */}
-
-
-
-        
+        {/* BOUTON ANNULER — visible 5 min max après réception, guard anti double-clic */}
         {canCancel && (
           <div style={{ marginBottom: "16px" }}>
             <button
@@ -305,20 +311,20 @@ const orderAge = order
               onClick={async () => {
                 const confirm = window.confirm("Annuler cette commande ?");
                 if (!confirm) return;
-                setCancelling(true)
-                await supabase 
+                setCancelling(true);
+                await supabase
                   .from("orders")
                   .update({ status: "cancelled" })
                   .eq("id", orderId);
-                setCancelling(false)
+                setCancelling(false);
               }}
               style={{
                 width: "100%",
                 background: "transparent",
-                border: "2px solid #8B0000",
+                border: `2px solid ${theme.primary}`,
                 borderRadius: "12px",
                 padding: "12px",
-                color: "#8B0000",
+                color: theme.primary,
                 fontWeight: "bold",
                 fontSize: "0.9rem",
                 cursor: cancelling ? "not-allowed" : "pointer",
@@ -331,50 +337,31 @@ const orderAge = order
           </div>
         )}
 
-        {/* DÉTAIL COMMANDE */}
+        {/* DÉTAIL COMMANDE — card avec fond thème, opacité correcte en dark mode */}
         <div
           style={{
-            background: "#fff",
+            background: theme.cardBackground,
             borderRadius: "16px",
             padding: "20px",
-            boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "16px",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 'bold', color: '#8B0000', fontFamily: 'Georgia, serif' }}>
-                {order.order_type === 'emporter'
+              <p style={{ margin: 0, fontWeight: "bold", color: theme.primary, fontFamily: "Georgia, serif" }}>
+                {order.order_type === "emporter"
                   ? `🥡 À emporter — ${order.customer_name}`
                   : `🪑 Table ${order.table_number}`}
               </p>
-              <p
-                style={{
-                  margin: "2px 0 0",
-                  fontSize: "0.72rem",
-                  color: "#999",
-                }}
-              >
+              <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                 #{order.id.slice(0, 8).toUpperCase()}
               </p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <p style={{ margin: 0, fontSize: "0.72rem", color: "#999" }}>
+              <p style={{ margin: 0, fontSize: "0.72rem", color: theme.textSecondary }}>
                 Commandé à
               </p>
-              <p
-                style={{
-                  margin: "2px 0 0",
-                  fontSize: "0.8rem",
-                  color: "#333",
-                  fontWeight: "600",
-                }}
-              >
+              <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: theme.textPrimary, fontWeight: "600" }}>
                 {new Date(order.created_at).toLocaleTimeString("fr-FR", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -383,29 +370,13 @@ const orderAge = order
             </div>
           </div>
 
-          <div style={{ borderTop: "1px solid #f0e8de", paddingTop: "16px" }}>
+          <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "16px" }}>
             {order.items.map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "10px",
-                }}
-              >
-                <span style={{ color: "#333", fontSize: "0.88rem" }}>
-                  <span style={{ color: "#8B0000", fontWeight: "bold" }}>
-                    {item.qty}×
-                  </span>{" "}
-                  {item.name}
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+                <span style={{ color: theme.textPrimary, fontSize: "0.88rem" }}>
+                  <span style={{ color: theme.primary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                 </span>
-                <span
-                  style={{
-                    color: "#C9A84C",
-                    fontWeight: "bold",
-                    fontSize: "0.88rem",
-                  }}
-                >
+                <span style={{ color: "#C9A84C", fontWeight: "bold", fontSize: "0.88rem" }}>
                   {(item.price * item.qty).toLocaleString()} FCFA
                 </span>
               </div>
@@ -414,7 +385,7 @@ const orderAge = order
 
           <div
             style={{
-              borderTop: "2px solid #8B0000",
+              borderTop: `2px solid ${theme.primary}`,
               marginTop: "12px",
               paddingTop: "12px",
               display: "flex",
@@ -422,35 +393,16 @@ const orderAge = order
               alignItems: "center",
             }}
           >
-            <span
-              style={{
-                fontWeight: "bold",
-                color: "#1a1a1a",
-                fontFamily: "Georgia, serif",
-              }}
-            >
+            <span style={{ fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
               Total
             </span>
-            <span
-              style={{
-                fontWeight: "bold",
-                color: "#8B0000",
-                fontSize: "1.1rem",
-              }}
-            >
+            <span style={{ fontWeight: "bold", color: theme.primary, fontSize: "1.1rem" }}>
               {total.toLocaleString()} FCFA
             </span>
           </div>
         </div>
 
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: "0.72rem",
-            color: "#bbb",
-            marginTop: "20px",
-          }}
-        >
+        <p style={{ textAlign: "center", fontSize: "0.72rem", color: theme.textSecondary, marginTop: "20px" }}>
           Cette page se met à jour automatiquement
         </p>
       </div>

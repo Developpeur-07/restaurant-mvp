@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../lib/useTheme";
 
 const STATUS_LABELS = {
   received: { label: 'Reçue', bg: '#FFF9C4', color: '#7B6000' },
@@ -22,7 +23,7 @@ const VALID_TRANSITIONS = {
   received: ['preparing', 'cancelled'],
   preparing: ['ready', 'cancelled'],
   ready: ['paid'],
-}
+};
 
 const NEXT_LABEL = {
   received: "Démarrer préparation",
@@ -78,10 +79,13 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [restaurantId, setRestaurantId] = useState(null);
-  const [brand, setBrand] = useState({ name: 'Le Bourgeois', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' });
+  const [brand, setBrand] = useState({ name: 'Restaurant', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' });
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const [todayStats, setTodayStats] = useState({ count: 0, revenue: 0, topItem: null });
-  const [processingOrderId, setProcessingOrderId] = useState(null)
+  const [processingOrderId, setProcessingOrderId] = useState(null);
+
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
 
   // ─── INIT : restaurant + brand + commandes actives + channel Realtime ───
   useEffect(() => {
@@ -102,7 +106,7 @@ export default function Dashboard() {
 
       setRestaurantId(resto.id);
       setBrand({
-        name: resto.name || 'Le Bourgeois',
+        name: resto.name || 'Restaurant',
         primary_color: resto.primary_color || '#8B0000',
         secondary_color: resto.secondary_color || '#C9A84C',
         logo_url: resto.logo_url || ''
@@ -151,7 +155,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  // ─── STATS : dépend uniquement de restaurantId, pas de getUser() répété ───
+  // ─── STATS : dépend uniquement de restaurantId ───
   const fetchTodayStats = useCallback(async () => {
     if (!restaurantId) return;
 
@@ -187,41 +191,41 @@ export default function Dashboard() {
     });
   }, [restaurantId]);
 
-  // ─── POLLING : se déclenche seulement quand restaurantId devient disponible ───
+  // ─── POLLING ───
   useEffect(() => {
     if (!restaurantId) return;
 
-    let cancelled = false
+    let cancelled = false;
 
     async function runFetch() {
-      if (!cancelled) await fetchTodayStats()
+      if (!cancelled) await fetchTodayStats();
     }
 
-    runFetch()
+    runFetch();
     const interval = setInterval(fetchTodayStats, 60000);
 
     return () => {
-      cancelled = true
-      clearInterval(interval)
+      cancelled = true;
+      clearInterval(interval);
     };
   }, [restaurantId, fetchTodayStats]);
 
   async function updateStatus(orderId, currentStatus, newStatus) {
     if (!VALID_TRANSITIONS[currentStatus]?.includes(newStatus)) {
-      console.error('Transition de statut invalide')
-      return
+      console.error('Transition de statut invalide');
+      return;
     }
-    await supabase.from("orders").update({ status: newStatus }).eq("id", orderId)
+    await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
   }
 
   async function markAsPaid(order) {
-    if (processingOrderId === order.id) return
-    setProcessingOrderId(order.id)
-    await supabase.from("orders_archive").insert({ ...order, status: "paid" })
-    await supabase.from("orders").delete().eq("id", order.id)
-    setOrders((prev) => prev.filter((o) => o.id !== order.id))
-    fetchTodayStats()
-    setProcessingOrderId(null)
+    if (processingOrderId === order.id) return;
+    setProcessingOrderId(order.id);
+    await supabase.from("orders_archive").insert({ ...order, status: "paid" });
+    await supabase.from("orders").delete().eq("id", order.id);
+    setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    fetchTodayStats();
+    setProcessingOrderId(null);
   }
 
   async function deleteOrder(orderId) {
@@ -229,19 +233,18 @@ export default function Dashboard() {
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
   }
 
-  // ... reste du JSX inchangé (header, stats du jour, liste commandes, etc.) ...
   if (loading)
     return (
       <div
         style={{
-          background: "#FFF8F0",
+          background: theme.pageBackground,
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <p style={{ color: "#8B0000", fontFamily: "Georgia, serif" }}>
+        <p style={{ color: theme.primary, fontFamily: "Georgia, serif" }}>
           Chargement...
         </p>
       </div>
@@ -251,7 +254,8 @@ export default function Dashboard() {
   const cancelledOrders = orders.filter((o) => o.status === "cancelled");
 
   return (
-    <div style={{ background: "#FFF8F0", minHeight: "100vh" }}>
+    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+
       {/* HEADER */}
       <div style={{
         background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
@@ -270,30 +274,22 @@ export default function Dashboard() {
               <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
                 {brand.name}
               </h1>
-
-
               {newOrderAlert && (
-
                 <div style={{
-
                   background: '#C9A84C', borderRadius: '20px', padding: '4px 10px',
-
                   fontSize: '0.72rem', fontWeight: 'bold', color: '#fff',
-
-                  animation: 'pulse 0.5s ease infinite alternate'
-
+                  animation: 'pulse 0.5s ease infinite alternate',
+                  marginTop: '4px', display: 'inline-block'
                 }}>
-
                   🔔 Nouvelle commande !
-
                 </div>
-
               )}
-
-
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}>
+              {darkMode ? '☀️' : '🌙'}
+            </button>
             <button onClick={() => navigate('/qrcode')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
               QR Code
             </button>
@@ -307,14 +303,13 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div
-        style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}
-      >
+      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}>
+
         {/* STATS DU JOUR */}
         <div style={{
           background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
           borderRadius: '16px', padding: '18px', marginBottom: '20px',
-          boxShadow: '0 4px 16px rgba(139,0,0,0.2)'
+          boxShadow: `0 4px 16px ${theme.primary}40`
         }}>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
             Aujourd'hui
@@ -349,51 +344,28 @@ export default function Dashboard() {
           </div>
         </div>
 
-
-        {/* STATS */}
+        {/* STATS RAPIDES — fond et texte thème */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
           {[
-            { label: "En cours", value: activeOrders.length, color: "#8B0000" },
-            {
-              label: "En préparation",
-              value: orders.filter((o) => o.status === "preparing").length,
-              color: "#1E40AF",
-            },
-            {
-              label: "Annulées",
-              value: cancelledOrders.length,
-              color: "#6B7280",
-            },
+            { label: "En cours", value: activeOrders.length, color: theme.primary },
+            { label: "En préparation", value: orders.filter((o) => o.status === "preparing").length, color: "#1E40AF" },
+            { label: "Annulées", value: cancelledOrders.length, color: "#6B7280" },
           ].map((stat) => (
             <div
               key={stat.label}
               style={{
                 flex: 1,
-                background: "#fff",
+                background: theme.cardBackground,
                 borderRadius: "12px",
                 padding: "14px",
                 textAlign: "center",
-                boxShadow: "0 2px 8px rgba(139,0,0,0.06)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               }}
             >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "1.6rem",
-                  fontWeight: "bold",
-                  color: stat.color,
-                  fontFamily: "Georgia, serif",
-                }}
-              >
+              <p style={{ margin: 0, fontSize: "1.6rem", fontWeight: "bold", color: stat.color, fontFamily: "Georgia, serif" }}>
                 {stat.value}
               </p>
-              <p
-                style={{
-                  margin: "2px 0 0",
-                  fontSize: "0.68rem",
-                  color: "#999",
-                }}
-              >
+              <p style={{ margin: "2px 0 0", fontSize: "0.68rem", color: theme.textSecondary }}>
                 {stat.label}
               </p>
             </div>
@@ -402,146 +374,86 @@ export default function Dashboard() {
 
         {/* COMMANDES ACTIVES */}
         {activeOrders.length === 0 ? (
-          <div
-            style={{ textAlign: "center", padding: "48px 0", color: "#bbb" }}
-          >
+          <div style={{ textAlign: "center", padding: "48px 0", color: theme.textSecondary }}>
             <p style={{ fontSize: "3rem", margin: "0 0 12px" }}>🍽</p>
             <p style={{ fontFamily: "Georgia, serif" }}>
               Aucune commande en cours
             </p>
           </div>
         ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              marginBottom: "32px",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
             {activeOrders.map((order) => {
               const config = STATUS_LABELS[order.status];
               const nextStatus = NEXT_STATUS[order.status];
               const nextLabel = NEXT_LABEL[order.status];
-              const total = order.items.reduce(
-                (s, i) => s + i.price * i.qty,
-                0,
-              );
+              const total = order.items.reduce((s, i) => s + i.price * i.qty, 0);
               const estimatedTime = order.estimated_ready_at
-                ? new Date(order.estimated_ready_at).toLocaleTimeString(
-                  "fr-FR",
-                  { hour: "2-digit", minute: "2-digit" },
-                )
+                ? new Date(order.estimated_ready_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
                 : null;
 
               return (
                 <div
                   key={order.id}
                   style={{
-                    background: "#fff",
+                    background: theme.cardBackground,
                     borderRadius: "16px",
                     padding: "18px",
-                    boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
-                    borderLeft: "4px solid #8B0000",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    borderLeft: `4px solid ${theme.primary}`,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: "14px",
-                    }}
-                  >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: '#999', fontSize: '0.9rem' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.primary, fontSize: '0.95rem' }}>
                         {order.order_type === 'emporter'
                           ? `🥡 ${order.customer_name}`
                           : `🪑 Table ${order.table_number}`}
                       </p>
-                      <p
-                        style={{
-                          margin: "2px 0 0",
-                          fontSize: "0.72rem",
-                          color: "#999",
-                        }}
-                      >
+                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                         #{order.id.slice(0, 8).toUpperCase()} ·{" "}
-                        {new Date(order.created_at).toLocaleTimeString(
-                          "fr-FR",
-                          { hour: "2-digit", minute: "2-digit" },
-                        )}
+                        {new Date(order.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <span
-                        style={{
-                          background: config.bg,
-                          color: config.color,
-                          fontSize: "0.72rem",
-                          fontWeight: "600",
-                          padding: "4px 10px",
-                          borderRadius: "20px",
-                        }}
-                      >
+                      <span style={{
+                        background: config.bg,
+                        color: config.color,
+                        fontSize: "0.72rem",
+                        fontWeight: "600",
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                      }}>
                         {config.label}
                       </span>
                       {estimatedTime && (
-                        <p
-                          style={{
-                            margin: "4px 0 0",
-                            fontSize: "0.72rem",
-                            color: "#999",
-                          }}
-                        >
+                        <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                           Prête à {estimatedTime}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div
-                    style={{
-                      borderTop: "1px solid #f0e8de",
-                      paddingTop: "12px",
-                      marginBottom: "14px",
-                    }}
-                  >
+                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "12px", marginBottom: "14px" }}>
                     {order.items.map((item, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "0.85rem",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        <span style={{ color: "#333" }}>
-                          <span
-                            style={{ color: "#8B0000", fontWeight: "bold" }}
-                          >
-                            {item.qty}×
-                          </span>{" "}
-                          {item.name}
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                        <span style={{ color: theme.textPrimary }}>
+                          <span style={{ color: theme.primary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                         </span>
                         <span style={{ color: "#C9A84C", fontWeight: "600" }}>
                           {(item.price * item.qty).toLocaleString()} FCFA
                         </span>
                       </div>
                     ))}
-                    <div
-                      style={{
-                        borderTop: "1px solid #f0e8de",
-                        paddingTop: "10px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontWeight: "bold",
-                        fontSize: "0.88rem",
-                      }}
-                    >
-                      <span>Total</span>
-                      <span style={{ color: "#8B0000" }}>
+                    <div style={{
+                      borderTop: `1px solid ${theme.borderLight}`,
+                      paddingTop: "10px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontWeight: "bold",
+                      fontSize: "0.88rem",
+                    }}>
+                      <span style={{ color: theme.textPrimary }}>Total</span>
+                      <span style={{ color: theme.primary }}>
                         {total.toLocaleString()} FCFA
                       </span>
                     </div>
@@ -557,15 +469,15 @@ export default function Dashboard() {
                       }
                       style={{
                         width: "100%",
-                        background:
-                          order.status === "ready" ? "#C9A84C" : "#8B0000",
+                        background: order.status === "ready" ? brand.secondary_color : theme.primary,
                         color: "#fff",
                         border: "none",
                         borderRadius: "10px",
                         padding: "11px",
                         fontWeight: "bold",
                         fontSize: "0.88rem",
-                        cursor: "pointer",
+                        cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
+                        opacity: processingOrderId === order.id ? 0.6 : 1,
                       }}
                     >
                       {nextLabel}
@@ -577,50 +489,23 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* COMMANDES ANNULÉES */}
+        {/* COMMANDES ANNULÉES — label corrigé pour gérer aussi "à emporter" */}
         {cancelledOrders.length > 0 && (
           <div style={{ marginBottom: "24px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginBottom: "12px",
-              }}
-            >
-              <div
-                style={{
-                  width: "4px",
-                  height: "16px",
-                  background: "#6B7280",
-                  borderRadius: "2px",
-                }}
-              />
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "0.8rem",
-                  color: "#6B7280",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                }}
-              >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+              <div style={{ width: "4px", height: "16px", background: "#6B7280", borderRadius: "2px" }} />
+              <h2 style={{ margin: 0, fontSize: "0.8rem", color: "#6B7280", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                 Annulées
               </h2>
             </div>
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {cancelledOrders.map((order) => {
-                const total = order.items.reduce(
-                  (s, i) => s + i.price * i.qty,
-                  0,
-                );
+                const total = order.items.reduce((s, i) => s + i.price * i.qty, 0);
                 return (
                   <div
                     key={order.id}
                     style={{
-                      background: "#fff",
+                      background: theme.cardBackground,
                       borderRadius: "12px",
                       padding: "14px",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
@@ -628,33 +513,15 @@ export default function Dashboard() {
                       opacity: 0.75,
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontWeight: "bold",
-                            color: "#999",
-                            fontSize: "0.9rem",
-                          }}
-                        >
-                          Table {order.table_number}
+                        <p style={{ margin: 0, fontWeight: "bold", color: theme.textSecondary, fontSize: "0.9rem" }}>
+                          {order.order_type === 'emporter'
+                            ? `🥡 ${order.customer_name}`
+                            : `🪑 Table ${order.table_number}`}
                         </p>
-                        <p
-                          style={{
-                            margin: "2px 0 0",
-                            fontSize: "0.7rem",
-                            color: "#bbb",
-                          }}
-                        >
-                          #{order.id.slice(0, 8).toUpperCase()} ·{" "}
-                          {total.toLocaleString()} FCFA
+                        <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
+                          #{order.id.slice(0, 8).toUpperCase()} · {total.toLocaleString()} FCFA
                         </p>
                       </div>
                       <button
@@ -686,10 +553,10 @@ export default function Dashboard() {
           style={{
             width: "100%",
             background: "transparent",
-            border: "2px solid #e8ddd4",
+            border: `2px solid ${theme.borderLight}`,
             borderRadius: "12px",
             padding: "12px",
-            color: "#8B0000",
+            color: theme.primary,
             fontWeight: "600",
             fontSize: "0.85rem",
             cursor: "pointer",
