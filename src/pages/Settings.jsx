@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../lib/useTheme";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ export default function Settings() {
   });
   const [brandLoading, setBrandLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
 
   useEffect(() => {
     async function init() {
@@ -188,12 +192,12 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ background: "#FFF8F0", minHeight: "100vh" }}>
+    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+
       {/* HEADER */}
       <div
         style={{
-          background:
-            "linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)",
+          background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
           padding: "28px 20px 24px",
         }}
       >
@@ -202,52 +206,61 @@ export default function Settings() {
             maxWidth: "480px",
             margin: "0 auto",
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
-            gap: "16px",
           }}
         >
-          <button
-            onClick={() => navigate("/dashboard")}
-            style={{
-              background: "rgba(255,255,255,0.2)",
-              border: "none",
-              borderRadius: "8px",
-              padding: "8px 12px",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-            }}
-          >
-            ← Retour
-          </button>
-          <div>
-            <p
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <button
+              onClick={() => navigate("/dashboard")}
               style={{
-                color: "#C9A84C",
-                fontSize: "0.65rem",
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                margin: 0,
-                fontFamily: "Georgia, serif",
-              }}
-            >
-              Administration
-            </p>
-            <h1
-              style={{
+                background: "rgba(255,255,255,0.2)",
+                border: "none",
+                borderRadius: "8px",
+                padding: "8px 12px",
                 color: "#fff",
-                fontSize: "1.4rem",
-                fontFamily: "Georgia, serif",
-                margin: 0,
+                cursor: "pointer",
+                fontSize: "0.85rem",
               }}
             >
-              Paramètres
-            </h1>
+              ← Retour
+            </button>
+            <div>
+              <p
+                style={{
+                  color: "#C9A84C",
+                  fontSize: "0.65rem",
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  margin: 0,
+                  fontFamily: "Georgia, serif",
+                }}
+              >
+                Administration
+              </p>
+              <h1
+                style={{
+                  color: "#fff",
+                  fontSize: "1.4rem",
+                  fontFamily: "Georgia, serif",
+                  margin: 0,
+                }}
+              >
+                Paramètres
+              </h1>
+            </div>
           </div>
+          <button
+            onClick={toggleDarkMode}
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "1rem" }}
+          >
+            {darkMode ? "☀️" : "🌙"}
+          </button>
         </div>
       </div>
 
       <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>
+
         {/* MESSAGE */}
         {message && (
           <div
@@ -274,16 +287,16 @@ export default function Settings() {
         {/* COMPTE ACTUEL */}
         <div
           style={{
-            background: "#fff",
+            background: theme.cardBackground,
             borderRadius: "16px",
             padding: "20px",
             marginBottom: "16px",
-            boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}
         >
           <h2
             style={{
-              color: "#8B0000",
+              color: theme.primary,
               fontFamily: "Georgia, serif",
               fontSize: "1rem",
               margin: "0 0 12px",
@@ -291,7 +304,7 @@ export default function Settings() {
           >
             Compte actuel
           </h2>
-          <p style={{ color: "#666", fontSize: "0.85rem", margin: 0 }}>
+          <p style={{ color: theme.textSecondary, fontSize: "0.85rem", margin: 0 }}>
             📧 {user?.email}
           </p>
         </div>
@@ -299,16 +312,16 @@ export default function Settings() {
         {/* IDENTITÉ VISUELLE */}
         <div
           style={{
-            background: "#fff",
+            background: theme.cardBackground,
             borderRadius: "16px",
             padding: "20px",
             marginBottom: "16px",
-            boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}
         >
           <h2
             style={{
-              color: "#8B0000",
+              color: theme.primary,
               fontFamily: "Georgia, serif",
               fontSize: "1rem",
               margin: "0 0 16px",
@@ -384,38 +397,22 @@ export default function Settings() {
 
           {/* CHAMPS TEXTE */}
           {[
-            {
-              label: "Nom du restaurant",
-              key: "name",
-              type: "text",
-              placeholder: "Ex: Le Bourgeois",
-            },
-            {
-              label: "Slogan",
-              key: "slogan",
-              type: "text",
-              placeholder: "Ex: Le Goût Du Bon Gâteau",
-            },
-            {
-              label: "Adresse",
-              key: "address",
-              type: "text",
-              placeholder: "Ex: Marché Moungali, Brazzaville",
-            },
+            { label: "Nom du restaurant", key: "name", type: "text", placeholder: "Ex: Le Bourgeois" },
+            { label: "Slogan", key: "slogan", type: "text", placeholder: "Ex: Le Goût Du Bon Gâteau" },
+            { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
           ].map((field) => (
             <div key={field.key} style={{ marginBottom: "12px" }}>
               <label
                 style={{
                   display: "block",
                   fontSize: "0.78rem",
-                  color: "#666",
+                  color: theme.textSecondary,
                   marginBottom: "6px",
                   fontWeight: "600",
                 }}
               >
                 {field.label}
               </label>
-
               <input
                 type={field.type}
                 placeholder={field.placeholder}
@@ -428,11 +425,12 @@ export default function Settings() {
                 }
                 style={{
                   width: "100%",
-                  border: "2px solid #e8ddd4",
+                  border: `2px solid ${theme.borderLight}`,
                   borderRadius: "10px",
                   padding: "10px 14px",
                   fontSize: "0.88rem",
-                  background: "#FFF8F0",
+                  background: theme.pageBackground,
+                  color: theme.textPrimary,
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -446,7 +444,7 @@ export default function Settings() {
               style={{
                 display: "block",
                 fontSize: "0.78rem",
-                color: "#666",
+                color: theme.textSecondary,
                 marginBottom: "6px",
                 fontWeight: "600",
               }}
@@ -461,11 +459,12 @@ export default function Settings() {
               disabled={uploadingLogo}
               style={{
                 width: "100%",
-                border: "2px solid #e8ddd4",
+                border: `2px solid ${theme.borderLight}`,
                 borderRadius: "10px",
                 padding: "10px 14px",
                 fontSize: "0.82rem",
-                background: "#FFF8F0",
+                background: theme.pageBackground,
+                color: theme.textPrimary,
                 outline: "none",
                 boxSizing: "border-box",
                 cursor: uploadingLogo ? "not-allowed" : "pointer",
@@ -473,7 +472,7 @@ export default function Settings() {
               }}
             />
             {uploadingLogo && (
-              <p style={{ fontSize: "0.75rem", color: "#8B0000", margin: "6px 0 0" }}>
+              <p style={{ fontSize: "0.75rem", color: theme.primary, margin: "6px 0 0" }}>
                 Upload en cours...
               </p>
             )}
@@ -490,11 +489,12 @@ export default function Settings() {
               }
               style={{
                 width: "100%",
-                border: "2px solid #e8ddd4",
+                border: `2px solid ${theme.borderLight}`,
                 borderRadius: "10px",
                 padding: "10px 14px",
                 fontSize: "0.88rem",
-                background: "#FFF8F0",
+                background: theme.pageBackground,
+                color: theme.textPrimary,
                 outline: "none",
                 boxSizing: "border-box",
                 marginTop: "8px",
@@ -517,7 +517,7 @@ export default function Settings() {
                     height: "60px",
                     borderRadius: "50%",
                     objectFit: "cover",
-                    border: "2px solid #e8ddd4",
+                    border: `2px solid ${theme.borderLight}`,
                   }}
                 />
               </div>
@@ -542,7 +542,7 @@ export default function Settings() {
                   style={{
                     display: "block",
                     fontSize: "0.78rem",
-                    color: "#666",
+                    color: theme.textSecondary,
                     marginBottom: "6px",
                     fontWeight: "600",
                   }}
@@ -560,7 +560,7 @@ export default function Settings() {
                       width: "44px",
                       height: "44px",
                       borderRadius: "8px",
-                      border: "2px solid #e8ddd4",
+                      border: `2px solid ${theme.borderLight}`,
                       cursor: "pointer",
                       padding: "2px",
                       flexShrink: 0,
@@ -574,11 +574,12 @@ export default function Settings() {
                     }
                     style={{
                       flex: 1,
-                      border: "2px solid #e8ddd4",
+                      border: `2px solid ${theme.borderLight}`,
                       borderRadius: "8px",
                       padding: "10px",
                       fontSize: "0.82rem",
-                      background: "#FFF8F0",
+                      background: theme.pageBackground,
+                      color: theme.textPrimary,
                       outline: "none",
                       minWidth: 0,
                     }}
@@ -593,7 +594,7 @@ export default function Settings() {
             disabled={brandLoading || uploadingLogo}
             style={{
               width: "100%",
-              background: "#8B0000",
+              background: theme.primary,
               color: "#fff",
               border: "none",
               borderRadius: "10px",
@@ -611,16 +612,16 @@ export default function Settings() {
         {/* CHANGER MOT DE PASSE */}
         <div
           style={{
-            background: "#fff",
+            background: theme.cardBackground,
             borderRadius: "16px",
             padding: "20px",
             marginBottom: "16px",
-            boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}
         >
           <h2
             style={{
-              color: "#8B0000",
+              color: theme.primary,
               fontFamily: "Georgia, serif",
               fontSize: "1rem",
               margin: "0 0 16px",
@@ -636,14 +637,15 @@ export default function Settings() {
             onChange={(e) => setCurrentPassword(e.target.value)}
             style={{
               width: "100%",
-              border: "2px solid #e8ddd4",
+              border: `2px solid ${theme.borderLight}`,
               borderRadius: "10px",
               padding: "11px 14px",
               fontSize: "0.88rem",
               marginBottom: "10px",
               outline: "none",
               boxSizing: "border-box",
-              background: "#FFF8F0",
+              background: theme.pageBackground,
+              color: theme.textPrimary,
             }}
           />
           <input
@@ -653,14 +655,15 @@ export default function Settings() {
             onChange={(e) => setNewPassword(e.target.value)}
             style={{
               width: "100%",
-              border: "2px solid #e8ddd4",
+              border: `2px solid ${theme.borderLight}`,
               borderRadius: "10px",
               padding: "11px 14px",
               fontSize: "0.88rem",
               marginBottom: "10px",
               outline: "none",
               boxSizing: "border-box",
-              background: "#FFF8F0",
+              background: theme.pageBackground,
+              color: theme.textPrimary,
             }}
           />
           <input
@@ -670,14 +673,15 @@ export default function Settings() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             style={{
               width: "100%",
-              border: "2px solid #e8ddd4",
+              border: `2px solid ${theme.borderLight}`,
               borderRadius: "10px",
               padding: "11px 14px",
               fontSize: "0.88rem",
               marginBottom: "14px",
               outline: "none",
               boxSizing: "border-box",
-              background: "#FFF8F0",
+              background: theme.pageBackground,
+              color: theme.textPrimary,
             }}
           />
           <button
@@ -690,7 +694,7 @@ export default function Settings() {
             aria-busy={loading}
             style={{
               width: "100%",
-              background: "#8B0000",
+              background: theme.primary,
               color: "#fff",
               border: "none",
               borderRadius: "10px",
@@ -711,16 +715,16 @@ export default function Settings() {
         {/* AJOUTER UN ADMIN */}
         <div
           style={{
-            background: "#fff",
+            background: theme.cardBackground,
             borderRadius: "16px",
             padding: "20px",
             marginBottom: "16px",
-            boxShadow: "0 2px 8px rgba(139,0,0,0.08)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}
         >
           <h2
             style={{
-              color: "#8B0000",
+              color: theme.primary,
               fontFamily: "Georgia, serif",
               fontSize: "1rem",
               margin: "0 0 6px",
@@ -728,7 +732,7 @@ export default function Settings() {
           >
             Ajouter un administrateur
           </h2>
-          <p style={{ color: "#999", fontSize: "0.75rem", margin: "0 0 14px" }}>
+          <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
             Un email d'invitation sera envoyé automatiquement
           </p>
           <input
@@ -738,14 +742,15 @@ export default function Settings() {
             onChange={(e) => setNewAdminEmail(e.target.value)}
             style={{
               width: "100%",
-              border: "2px solid #e8ddd4",
+              border: `2px solid ${theme.borderLight}`,
               borderRadius: "10px",
               padding: "11px 14px",
               fontSize: "0.88rem",
               marginBottom: "12px",
               outline: "none",
               boxSizing: "border-box",
-              background: "#FFF8F0",
+              background: theme.pageBackground,
+              color: theme.textPrimary,
             }}
           />
           <button
@@ -753,7 +758,7 @@ export default function Settings() {
             disabled={!newAdminEmail}
             style={{
               width: "100%",
-              background: "#C9A84C",
+              background: brand.secondary_color,
               color: "#fff",
               border: "none",
               borderRadius: "10px",
@@ -774,10 +779,10 @@ export default function Settings() {
           style={{
             width: "100%",
             background: "transparent",
-            border: "2px solid #ddd",
+            border: `2px solid ${theme.borderLight}`,
             borderRadius: "12px",
             padding: "13px",
-            color: "#999",
+            color: theme.textSecondary,
             fontWeight: "600",
             fontSize: "0.88rem",
             cursor: "pointer",
