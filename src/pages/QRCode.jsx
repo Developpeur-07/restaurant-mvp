@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "../lib/useTheme";
 
 export default function QRCodePage() {
+  const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color);
 
   useEffect(() => {
     async function init() {
@@ -28,39 +34,89 @@ export default function QRCodePage() {
 
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Chargement...</p>
+      <div style={{ background: theme.pageBackground, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: theme.primary, fontFamily: "Georgia, serif" }}>Chargement...</p>
       </div>
     );
 
   if (!restaurant)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-red-500">Restaurant introuvable.</p>
+      <div style={{ background: theme.pageBackground, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: theme.primary }}>Restaurant introuvable.</p>
       </div>
     );
 
   const menuUrl = `${window.location.origin}/menu/${restaurant.id}`;
 
   return (
-    <div className="max-w-sm mx-auto px-4 py-12 text-center">
-      <h1 className="text-2xl font-bold mb-2">{restaurant.name}</h1>
-      <p className="text-gray-500 text-sm mb-8">
-        Affichez ce QR code sur vos tables
-      </p>
+    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
 
-      <div className="bg-white border rounded-2xl p-8 shadow-sm inline-block mb-8">
-        <QRCodeSVG value={menuUrl} size={220} level="H" includeMargin={false} />
+      {/* HEADER */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}CC, ${restaurant.primary_color || theme.primary})`,
+          padding: "20px 20px",
+        }}
+      >
+        <div style={{ maxWidth: "420px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <button
+            onClick={() => navigate("/dashboard")}
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px", padding: "8px 12px", color: "#fff", cursor: "pointer", fontSize: "0.85rem" }}
+          >
+            ← Retour
+          </button>
+          <button
+            onClick={toggleDarkMode}
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "1rem" }}
+          >
+            {darkMode ? "☀️" : "🌙"}
+          </button>
+        </div>
       </div>
 
-      <p className="text-xs text-gray-400 mb-8 break-all">{menuUrl}</p>
+      <div style={{ maxWidth: "380px", margin: "0 auto", padding: "48px 20px", textAlign: "center" }}>
+        <h1 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1.5rem", margin: "0 0 8px" }}>
+          {restaurant.name}
+        </h1>
+        <p style={{ color: theme.textSecondary, fontSize: "0.85rem", marginBottom: "32px" }}>
+          Affichez ce QR code sur vos tables
+        </p>
 
-      <button
-        onClick={() => window.print()}
-        className="w-full bg-green-600 hover:bg-green-700 transition-colors text-white rounded-xl py-3 font-bold"
-      >
-        Imprimer le QR code
-      </button>
+        <div
+          style={{
+            background: theme.cardBackground,
+            border: `1px solid ${theme.borderLight}`,
+            borderRadius: "16px",
+            padding: "32px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            display: "inline-block",
+            marginBottom: "32px",
+          }}
+        >
+          <QRCodeSVG value={menuUrl} size={220} level="H" includeMargin={false} />
+        </div>
+
+        <p style={{ fontSize: "0.72rem", color: theme.textSecondary, marginBottom: "32px", wordBreak: "break-all" }}>
+          {menuUrl}
+        </p>
+
+        <button
+          onClick={() => window.print()}
+          style={{
+            width: "100%",
+            background: theme.primary,
+            color: "#fff",
+            border: "none",
+            borderRadius: "12px",
+            padding: "13px",
+            fontWeight: "bold",
+            fontSize: "0.9rem",
+            cursor: "pointer",
+          }}
+        >
+          Imprimer le QR code
+        </button>
+      </div>
     </div>
   );
 }

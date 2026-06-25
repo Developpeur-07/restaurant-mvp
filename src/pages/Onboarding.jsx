@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useTheme } from '../lib/useTheme'
 
 export default function Onboarding() {
   const { token } = useParams()
@@ -26,6 +27,9 @@ export default function Onboarding() {
   // Étape 3 — premier plat
   const [firstItem, setFirstItem] = useState({ name: '', price: '', estimated_minutes: '' })
   const [savingItem, setSavingItem] = useState(false)
+
+  // ── THÈME — suit en live la couleur choisie par le restaurateur à l'étape 2 ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
 
   useEffect(() => {
     async function verifyToken() {
@@ -87,7 +91,6 @@ export default function Onboarding() {
       return
     }
 
-    // Créer le restaurant lié à ce nouvel utilisateur
     const { data: resto, error: restoError } = await supabase
       .from('restaurants')
       .insert({
@@ -103,7 +106,6 @@ export default function Onboarding() {
       return
     }
 
-    // Marquer le token comme utilisé
     const { data: tokenUsed } = await supabase.rpc('use_invitation_token', { p_token: token })
 
     if (!tokenUsed) {
@@ -150,17 +152,17 @@ export default function Onboarding() {
   }
 
   if (checking) return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Vérification du lien...</p>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Vérification du lien...</p>
     </div>
   )
 
   if (error && !tokenData) return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ textAlign: 'center' }}>
         <p style={{ fontSize: '3rem', margin: '0 0 16px' }}>🔒</p>
-        <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '1.1rem', fontWeight: 'bold' }}>{error}</p>
-        <p style={{ color: '#999', fontSize: '0.85rem', marginTop: '8px' }}>
+        <p style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '1.1rem', fontWeight: 'bold' }}>{error}</p>
+        <p style={{ color: theme.textSecondary, fontSize: '0.85rem', marginTop: '8px' }}>
           Contactez votre administrateur pour obtenir un nouveau lien.
         </p>
       </div>
@@ -168,14 +170,25 @@ export default function Onboarding() {
   )
 
   return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh' }}>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh' }}>
 
       {/* HEADER */}
       <div style={{
-        background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
-        padding: '32px 20px 24px', textAlign: 'center'
+        background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`,
+        padding: '32px 20px 24px', textAlign: 'center', position: 'relative'
       }}>
-        <p style={{ color: '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
+        <button
+          onClick={toggleDarkMode}
+          style={{
+            background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
+            padding: '8px 10px', cursor: 'pointer', fontSize: '1rem',
+            position: 'absolute', top: '16px', right: '16px'
+          }}
+        >
+          {darkMode ? '☀️' : '🌙'}
+        </button>
+
+        <p style={{ color: brand.secondary_color, fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
           Bienvenue
         </p>
         <h1 style={{ color: '#fff', fontSize: '1.6rem', fontFamily: 'Georgia, serif', margin: '0 0 12px' }}>
@@ -187,7 +200,7 @@ export default function Onboarding() {
           {[1, 2, 3].map(s => (
             <div key={s} style={{
               width: '32px', height: '4px', borderRadius: '4px',
-              background: s <= step ? '#C9A84C' : 'rgba(255,255,255,0.3)'
+              background: s <= step ? brand.secondary_color : 'rgba(255,255,255,0.3)'
             }} />
           ))}
         </div>
@@ -204,35 +217,35 @@ export default function Onboarding() {
         {/* ÉTAPE 1 — COMPTE */}
         {step === 1 && (
           <>
-            <h2 style={{ fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem', marginBottom: '6px' }}>
+            <h2 style={{ fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', marginBottom: '6px' }}>
               Créez votre compte
             </h2>
-            <p style={{ color: '#999', fontSize: '0.82rem', marginBottom: '24px' }}>
+            <p style={{ color: theme.textSecondary, fontSize: '0.82rem', marginBottom: '24px' }}>
               Vous gérerez {tokenData?.restaurant_name} depuis ce compte.
             </p>
 
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Email</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Email</label>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="votre@email.com"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Mot de passe</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Mot de passe</label>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Confirmer le mot de passe</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Confirmer le mot de passe</label>
               <input
                 type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '12px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -240,7 +253,7 @@ export default function Onboarding() {
               onClick={handleCreateAccount}
               disabled={!email || !password || !confirmPassword || creating}
               style={{
-                width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+                width: '100%', background: theme.primary, color: '#fff', border: 'none',
                 borderRadius: '12px', padding: '14px', fontWeight: 'bold', fontSize: '0.95rem',
                 cursor: 'pointer', opacity: (!email || !password || !confirmPassword || creating) ? 0.6 : 1
               }}
@@ -253,14 +266,14 @@ export default function Onboarding() {
         {/* ÉTAPE 2 — IDENTITÉ */}
         {step === 2 && (
           <>
-            <h2 style={{ fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem', marginBottom: '6px' }}>
+            <h2 style={{ fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', marginBottom: '6px' }}>
               Votre identité visuelle
             </h2>
-            <p style={{ color: '#999', fontSize: '0.82rem', marginBottom: '24px' }}>
+            <p style={{ color: theme.textSecondary, fontSize: '0.82rem', marginBottom: '24px' }}>
               Personnalisez les couleurs de votre menu. Modifiable à tout moment.
             </p>
 
-            {/* PREVIEW */}
+            {/* PREVIEW — live selon les couleurs choisies */}
             <div style={{ background: brand.primary_color, borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '20px' }}>
               <p style={{ color: brand.secondary_color, fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>
                 {brand.slogan || 'Votre slogan'}
@@ -271,26 +284,26 @@ export default function Onboarding() {
             </div>
 
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Nom du restaurant</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Nom du restaurant</label>
               <input
                 type="text" value={brand.name} onChange={e => setBrand(prev => ({ ...prev, name: e.target.value }))}
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Slogan</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Slogan</label>
               <input
                 type="text" value={brand.slogan} onChange={e => setBrand(prev => ({ ...prev, slogan: e.target.value }))}
                 placeholder="Ex: Le goût de l'authentique"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Adresse</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Adresse</label>
               <input
                 type="text" value={brand.address} onChange={e => setBrand(prev => ({ ...prev, address: e.target.value }))}
                 placeholder="Ex: Marché Moungali, Brazzaville"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -300,11 +313,11 @@ export default function Onboarding() {
                 { label: 'Couleur accent', key: 'secondary_color' },
               ].map(f => (
                 <div key={f.key} style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.72rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>{f.label}</label>
+                  <label style={{ display: 'block', fontSize: '0.72rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>{f.label}</label>
                   <input
                     type="color" value={brand[f.key]}
                     onChange={e => setBrand(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    style={{ width: '100%', height: '42px', borderRadius: '8px', border: '2px solid #e8ddd4', cursor: 'pointer', padding: '2px' }}
+                    style={{ width: '100%', height: '42px', borderRadius: '8px', border: `2px solid ${theme.borderLight}`, cursor: 'pointer', padding: '2px' }}
                   />
                 </div>
               ))}
@@ -314,7 +327,7 @@ export default function Onboarding() {
               onClick={handleSaveBrand}
               disabled={!brand.name || savingBrand}
               style={{
-                width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+                width: '100%', background: theme.primary, color: '#fff', border: 'none',
                 borderRadius: '12px', padding: '14px', fontWeight: 'bold', fontSize: '0.95rem',
                 cursor: 'pointer', opacity: (!brand.name || savingBrand) ? 0.6 : 1
               }}
@@ -327,38 +340,38 @@ export default function Onboarding() {
         {/* ÉTAPE 3 — PREMIER PLAT */}
         {step === 3 && (
           <>
-            <h2 style={{ fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem', marginBottom: '6px' }}>
+            <h2 style={{ fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', marginBottom: '6px' }}>
               Ajoutez votre premier plat
             </h2>
-            <p style={{ color: '#999', fontSize: '0.82rem', marginBottom: '24px' }}>
+            <p style={{ color: theme.textSecondary, fontSize: '0.82rem', marginBottom: '24px' }}>
               Vous pourrez ajouter tout le reste de votre menu depuis votre tableau de bord.
             </p>
 
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Nom du plat</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Nom du plat</label>
               <input
                 type="text" value={firstItem.name}
                 onChange={e => setFirstItem(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Ex: Poulet braisé"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Prix (FCFA)</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Prix (FCFA)</label>
               <input
                 type="number" value={firstItem.price}
                 onChange={e => setFirstItem(prev => ({ ...prev, price: e.target.value }))}
                 placeholder="Ex: 2500"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Temps de préparation (min)</label>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Temps de préparation (min)</label>
               <input
                 type="number" value={firstItem.estimated_minutes}
                 onChange={e => setFirstItem(prev => ({ ...prev, estimated_minutes: e.target.value }))}
                 placeholder="Ex: 15"
-                style={{ width: '100%', border: '2px solid #e8ddd4', borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px', padding: '11px 14px', fontSize: '0.9rem', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
 
@@ -366,7 +379,7 @@ export default function Onboarding() {
               onClick={handleSaveFirstItem}
               disabled={!firstItem.name || !firstItem.price || !firstItem.estimated_minutes || savingItem}
               style={{
-                width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+                width: '100%', background: theme.primary, color: '#fff', border: 'none',
                 borderRadius: '12px', padding: '14px', fontWeight: 'bold', fontSize: '0.95rem',
                 cursor: 'pointer', marginBottom: '12px',
                 opacity: (!firstItem.name || !firstItem.price || !firstItem.estimated_minutes || savingItem) ? 0.6 : 1
@@ -377,7 +390,7 @@ export default function Onboarding() {
 
             <button
               onClick={() => navigate('/dashboard')}
-              style={{ width: '100%', background: 'none', border: 'none', color: '#999', fontSize: '0.82rem', cursor: 'pointer' }}
+              style={{ width: '100%', background: 'none', border: 'none', color: theme.textSecondary, fontSize: '0.82rem', cursor: 'pointer' }}
             >
               Passer cette étape
             </button>
