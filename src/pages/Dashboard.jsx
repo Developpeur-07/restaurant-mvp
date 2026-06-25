@@ -287,7 +287,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}>
+            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem', flexShrink: 0 }}>
               {darkMode ? '☀️' : '🌙'}
             </button>
             <button onClick={() => navigate('/qrcode')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>

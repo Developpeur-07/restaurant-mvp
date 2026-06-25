@@ -90,7 +90,7 @@ export default function AdminInvite() {
           </div>
           <button
             onClick={toggleDarkMode}
-            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontSize: '1rem' }}
+            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontSize: '1rem', flexShrink: 0 }}
           >
             {darkMode ? '☀️' : '🌙'}
           </button>
