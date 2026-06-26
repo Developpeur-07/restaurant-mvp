@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
+import HeaderActions from '../components/HeaderActions'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -44,14 +45,15 @@ function getEmoji(item) {
   return CATEGORIES.find(c => c.keywords.some(k => item.name.toLowerCase().includes(k)))?.emoji || '🍽'
 }
 
+// ─── MODALE TYPE DE COMMANDE ───
 function OrderModal({ theme, showModal, setShowModal, orderType, setOrderType, tableNumber, setTableNumber, customerName, setCustomerName, submitting, submitOrder }) {
   if (!showModal) return null
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}>
-      <div style={{ background: 'theme.pageBackground', width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
-        <div style={{ width: '40px', height: '3px', background: '#ddd', borderRadius: '2px', margin: '0 auto 20px' }} />
-        <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem' }}>Type de commande</h2>
-        <p style={{ margin: '0 0 20px', color: '#999', fontSize: '0.8rem' }}>Comment souhaitez-vous recevoir votre commande ?</p>
+      <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px' }}>
+        <div style={{ width: '40px', height: '3px', background: theme.borderLight, borderRadius: '2px', margin: '0 auto 20px' }} />
+        <h2 style={{ margin: '0 0 6px', fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem' }}>Type de commande</h2>
+        <p style={{ margin: '0 0 20px', color: theme.textSecondary, fontSize: '0.8rem' }}>Comment souhaitez-vous recevoir votre commande ?</p>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           {[
             { value: 'sur_place', label: 'Sur place', emoji: '🪑', desc: 'Numéro de table' },
@@ -59,25 +61,25 @@ function OrderModal({ theme, showModal, setShowModal, orderType, setOrderType, t
           ].map(opt => (
             <button key={opt.value} onClick={() => setOrderType(opt.value)} style={{
               flex: 1, padding: '16px 12px', borderRadius: '14px', cursor: 'pointer',
-              border: `2px solid ${orderType === opt.value ? '#8B0000' : '#e8ddd4'}`,
-              background: orderType === opt.value ? '#FFF0F0' : 'theme.cardBackground',
+              border: `2px solid ${orderType === opt.value ? theme.primary : theme.borderLight}`,
+              background: orderType === opt.value ? `${theme.primary}1A` : theme.cardBackground,
               textAlign: 'center', transition: 'all 0.2s'
             }}>
               <p style={{ fontSize: '1.8rem', margin: '0 0 6px' }}>{opt.emoji}</p>
-              <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem' }}>{opt.label}</p>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: '#999' }}>{opt.desc}</p>
+              <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem' }}>{opt.label}</p>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: theme.textSecondary }}>{opt.desc}</p>
             </button>
           ))}
         </div>
         {orderType === 'sur_place' ? (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Numéro de table</label>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Numéro de table</label>
             <input type="number" placeholder="Ex: 4" value={tableNumber} onChange={e => setTableNumber(e.target.value)}
-              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.5rem', textAlign: 'center', background: theme.cardBackground, outline: 'none', boxSizing: 'border-box' }} />
+              style={{ width: '100%', border: `2px solid ${theme.primary}`, borderRadius: '12px', padding: '14px', fontSize: '1.5rem', textAlign: 'center', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
           </div>
         ) : (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: '#666', marginBottom: '6px', fontWeight: '600' }}>Votre nom complet</label>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Votre nom complet</label>
             <input
               type="text"
               placeholder="Ex: Jean"
@@ -87,17 +89,81 @@ function OrderModal({ theme, showModal, setShowModal, orderType, setOrderType, t
                 const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '').slice(0, 40);
                 setCustomerName(value);
               }}
-              style={{ width: '100%', border: '2px solid #8B0000', borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: theme.cardBackground, outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', border: `2px solid ${theme.primary}`, borderRadius: '12px', padding: '14px', fontSize: '1.2rem', textAlign: 'center', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
         )}
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => setShowModal(false)} style={{ flex: 1, border: '2px solid #ddd', background: 'transparent', borderRadius: '12px', padding: '14px', color: '#666', fontWeight: '600', cursor: 'pointer' }}>
+          <button onClick={() => setShowModal(false)} style={{ flex: 1, border: `2px solid ${theme.borderLight}`, background: 'transparent', borderRadius: '12px', padding: '14px', color: theme.textSecondary, fontWeight: '600', cursor: 'pointer' }}>
             Annuler
           </button>
           <button onClick={submitOrder} disabled={orderType === 'sur_place' ? !tableNumber || submitting : !customerName || submitting}
-            style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer', opacity: (orderType === 'sur_place' ? !tableNumber : !customerName) || submitting ? 0.5 : 1 }}>
+            style={{ flex: 2, background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer', opacity: (orderType === 'sur_place' ? !tableNumber : !customerName) || submitting ? 0.5 : 1 }}>
             {submitting ? 'Envoi...' : 'Confirmer la commande'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── MODALE REVIEW PANIER — voir/modifier/supprimer avant de commander ───
+function CartReviewModal({ theme, show, onClose, selectedItems, addItem, removeItem, deleteItemFromCart, total, totalQty, maxMinutes, onConfirm }) {
+  if (!show) return null
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
+      onClick={onClose}>
+      <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px', maxHeight: '85vh', overflowY: 'auto' }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ width: '40px', height: '3px', background: theme.borderLight, borderRadius: '2px', margin: '0 auto 20px' }} />
+        <h2 style={{ margin: '0 0 4px', fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem' }}>
+          Votre commande
+        </h2>
+        <p style={{ margin: '0 0 20px', color: theme.textSecondary, fontSize: '0.8rem' }}>
+          Vérifiez avant de confirmer — vous pouvez ajuster les quantités
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+          {selectedItems.map(item => (
+            <div key={item.id} style={{
+              background: theme.cardBackground, borderRadius: '12px', padding: '12px 14px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.name}
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: theme.textSecondary }}>
+                  {item.price.toLocaleString()} FCFA · {(item.price * item.qty).toLocaleString()} FCFA
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <button onClick={() => removeItem(item.id)} style={{ width: '28px', height: '28px', borderRadius: '50%', background: theme.pageBackground, border: `1px solid ${theme.borderLight}`, color: theme.textPrimary, fontSize: '1rem', cursor: 'pointer' }}>−</button>
+                <span style={{ fontWeight: 'bold', color: theme.primary, minWidth: '18px', textAlign: 'center', fontSize: '0.88rem' }}>{item.qty}</span>
+                <button onClick={() => addItem(item)} style={{ width: '28px', height: '28px', borderRadius: '50%', background: theme.primary, border: 'none', color: '#fff', fontSize: '1rem', cursor: 'pointer' }}>+</button>
+                <button onClick={() => deleteItemFromCart(item.id)} style={{ background: '#fee2e2', border: 'none', borderRadius: '8px', padding: '6px 8px', color: '#dc2626', cursor: 'pointer', fontSize: '0.78rem', marginLeft: '4px' }}>🗑</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ borderTop: `2px solid ${theme.primary}`, paddingTop: '14px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span style={{ color: theme.textSecondary, fontSize: '0.85rem' }}>{totalQty} article(s) · ~{maxMinutes} min</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>Total</span>
+            <span style={{ fontWeight: 'bold', color: theme.primary, fontSize: '1.2rem' }}>{total.toLocaleString()} FCFA</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={onClose} style={{ flex: 1, border: `2px solid ${theme.borderLight}`, background: 'transparent', borderRadius: '12px', padding: '14px', color: theme.textSecondary, fontWeight: '600', cursor: 'pointer' }}>
+            Continuer mes achats
+          </button>
+          <button onClick={onConfirm} disabled={selectedItems.length === 0} style={{ flex: 2, background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer', opacity: selectedItems.length === 0 ? 0.5 : 1 }}>
+            Confirmer →
           </button>
         </div>
       </div>
@@ -112,6 +178,7 @@ export default function Menu() {
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selection, setSelection] = useState({})
+  const [showCartReview, setShowCartReview] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [tableNumber, setTableNumber] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -120,16 +187,16 @@ export default function Menu() {
   const [search, setSearch] = useState('')
   const [detailItem, setDetailItem] = useState(null)
 
-
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color)
 
   useEffect(() => {
-    const UUID_REGEX =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     let isMounted = true;
 
     async function fetchMenu() {
-      setLoading(true); // 🔥 UNE SEULE FOIS ICI
+      setLoading(true);
 
       if (!UUID_REGEX.test(restaurantId)) {
         if (isMounted) {
@@ -170,7 +237,7 @@ export default function Menu() {
         }
       } finally {
         if (isMounted) {
-          setLoading(false); // 🔥 UNIQUE POINT FINAL
+          setLoading(false);
         }
       }
     }
@@ -191,11 +258,10 @@ export default function Menu() {
     }
   }, [selection, restaurantId])
 
-
   function addItem(item) {
     setSelection(prev => {
       const currentQty = prev[item.id]?.qty || 0
-      if (currentQty >= 20) return prev // plafond raisonnable
+      if (currentQty >= 20) return prev
       return {
         ...prev,
         [item.id]: { ...item, qty: currentQty + 1 }
@@ -215,6 +281,13 @@ export default function Menu() {
     })
   }
 
+  function deleteItemFromCart(itemId) {
+    setSelection(prev => {
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
+  }
 
   function validateTableNumber(value) {
     const num = parseInt(value, 10)
@@ -255,9 +328,10 @@ export default function Menu() {
       return
     }
 
+    localStorage.removeItem(`selection_${restaurantId}`)
     navigate(`/tracking/${data.id}`)
   }
-  const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color)
+
   const selectedItems = Object.values(selection)
   const total = selectedItems.reduce((sum, i) => sum + i.price * i.qty, 0)
   const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0)
@@ -265,19 +339,22 @@ export default function Menu() {
   const categorized = categorize(items)
 
   if (loading) return (
-    <div style={{ background: 'theme.pageBackground', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Chargement du menu...</p>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Chargement du menu...</p>
     </div>
   )
 
   if (!restaurant) return (
-    <div style={{ background: 'theme.pageBackground', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000' }}>Restaurant introuvable.</p>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: theme.primary }}>Restaurant introuvable.</p>
     </div>
   )
 
+  const headerActions = [
+    { label: darkMode ? '☀️ Mode clair' : '🌙 Mode sombre', onClick: toggleDarkMode },
+  ]
 
-  // PAGE CATÉGORIE
+  // ─── PAGE CATÉGORIE ───
   if (category) {
     const decoded = decodeURIComponent(category)
     const catData = categorized[decoded]
@@ -289,43 +366,38 @@ export default function Menu() {
     return (
       <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
-        <button
-          onClick={toggleDarkMode}
-          style={{
-            background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
-            padding: '8px 10px', cursor: 'pointer', fontSize: '1rem',
-            position: 'absolute', top: '16px', right: '16px'
-          }}
-        >
-          {darkMode ? '☀️' : '🌙'}
-
-        </button>
         {/* HEADER CATÉGORIE — FIXED */}
         <div
           style={{
-            background: `linear-gradient(135deg, ${restaurant.primary_color || '#6B0000'}, ${restaurant.primary_color || '#8B0000'}CC)`,
-            padding: '28px 20px 24px',
+            background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}, ${restaurant.primary_color || theme.primary}CC)`,
+            padding: '16px 20px 20px',
             position: 'sticky', top: 0, zIndex: 40,
             boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
-
           }}>
-          <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button onClick={() => navigate(`/menu/${restaurantId}`)}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
-              ← Retour
-            </button>
+          <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-            {restaurant.logo_url && (
-              <img src={restaurant.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}`, flexShrink: 0 }} />
-            )}
+            {/* LIGNE 1 — retour + burger */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <button onClick={() => navigate(`/menu/${restaurantId}`)}
+                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
+                ← Retour
+              </button>
+              <HeaderActions theme={theme} actions={headerActions} />
+            </div>
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {restaurant.slogan || restaurant.name}
-              </p>
-              <h1 style={{ color: '#fff', fontSize: '1.1rem', fontFamily: 'Georgia, serif', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {catData?.emoji} {decoded}
-              </h1>
+            {/* LIGNE 2 — logo + identité + catégorie */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {restaurant.logo_url && (
+                <img src={restaurant.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || theme.borderLight}`, flexShrink: 0 }} />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {restaurant.slogan || restaurant.name}
+                </p>
+                <h1 style={{ color: '#fff', fontSize: '1.1rem', fontFamily: 'Georgia, serif', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {catData?.emoji} {decoded}
+                </h1>
+              </div>
             </div>
           </div>
         </div>
@@ -333,11 +405,11 @@ export default function Menu() {
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
 
           {/* RECHERCHE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'theme.cardBackground', borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', border: '1px solid rgba(139,0,0,0.1)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.borderLight}`, marginBottom: '16px' }}>
             <span>🔍</span>
             <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#1a1a1a' }} />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}>✕</button>}
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textPrimary }} />
+            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
           </div>
 
           {/* GRILLE CARRÉE */}
@@ -346,9 +418,9 @@ export default function Menu() {
               const qty = selection[item.id]?.qty || 0
               return (
                 <div key={item.id} onClick={() => setDetailItem(item)} style={{
-                  background: 'theme.cardBackground', borderRadius: '16px',
-                  boxShadow: qty > 0 ? '0 4px 16px rgba(139,0,0,0.2)' : '0 2px 8px rgba(139,0,0,0.08)',
-                  border: qty > 0 ? '2px solid #8B0000' : '2px solid transparent',
+                  background: theme.cardBackground, borderRadius: '16px',
+                  boxShadow: qty > 0 ? `0 4px 16px ${theme.primary}33` : '0 2px 8px rgba(0,0,0,0.08)',
+                  border: qty > 0 ? `2px solid ${theme.primary}` : '2px solid transparent',
                   overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease'
                 }}>
                   <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', position: 'relative' }}>
@@ -357,13 +429,13 @@ export default function Menu() {
                       : <span>{getEmoji(item)}</span>
                     }
                     {qty > 0 && (
-                      <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#8B0000', color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      <div style={{ position: 'absolute', top: '8px', right: '8px', background: theme.primary, color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
                         {qty}
                       </div>
                     )}
                   </div>
                   <div style={{ padding: '10px 12px' }}>
-                    <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.82rem', fontFamily: 'Georgia, serif', lineHeight: 1.3 }}>
+                    <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.82rem', fontFamily: 'Georgia, serif', lineHeight: 1.3 }}>
                       {item.name}
                     </p>
                     <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '0.8rem' }}>
@@ -376,16 +448,16 @@ export default function Menu() {
           </div>
         </div>
 
-        {/* BARRE COMMANDER */}
+        {/* BARRE COMMANDER — ouvre maintenant la review panier */}
         {selectedItems.length > 0 && (
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#8B0000', padding: '14px 20px', boxShadow: '0 -4px 20px rgba(139,0,0,0.3)' }}>
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: theme.primary, padding: '14px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)' }}>
             <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>{totalQty} article(s) · ~{maxMinutes} min</p>
                 <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>{total.toLocaleString()} FCFA</p>
               </div>
-              <button onClick={() => setShowModal(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
-                Commander →
+              <button onClick={() => setShowCartReview(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
+                Voir ma commande →
               </button>
             </div>
           </div>
@@ -405,37 +477,37 @@ export default function Menu() {
               </div>
               <div style={{ padding: '20px 24px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', color: '#8B0000', fontSize: '1.2rem', flex: 1 }}>
+                  <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', flex: 1 }}>
                     {detailItem.name}
                   </h2>
                   <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '1.1rem', marginLeft: '12px' }}>
                     {detailItem.price.toLocaleString()} FCFA
                   </p>
                 </div>
-                <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: '#999' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: theme.textSecondary }}>
                   ⏱ ~{detailItem.estimated_minutes} min de préparation
                 </p>
                 {detailItem.description ? (
-                  <p style={{ margin: '12px 0 0', fontSize: '0.85rem', color: '#555', lineHeight: 1.6, background: '#fff', borderRadius: '10px', padding: '12px' }}>
+                  <p style={{ margin: '12px 0 0', fontSize: '0.85rem', color: theme.textSecondary, lineHeight: 1.6, background: theme.cardBackground, borderRadius: '10px', padding: '12px' }}>
                     {detailItem.description}
                   </p>
                 ) : (
-                  <p style={{ margin: '12px 0 0', fontSize: '0.82rem', color: '#bbb', fontStyle: 'italic' }}>
+                  <p style={{ margin: '12px 0 0', fontSize: '0.82rem', color: theme.textSecondary, fontStyle: 'italic' }}>
                     Aucune description disponible
                   </p>
                 )}
                 <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                  <button onClick={() => setDetailItem(null)} style={{ flex: 1, border: '2px solid #ddd', background: 'transparent', borderRadius: '12px', padding: '12px', color: '#666', fontWeight: '600', cursor: 'pointer' }}>
+                  <button onClick={() => setDetailItem(null)} style={{ flex: 1, border: `2px solid ${theme.borderLight}`, background: 'transparent', borderRadius: '12px', padding: '12px', color: theme.textSecondary, fontWeight: '600', cursor: 'pointer' }}>
                     Fermer
                   </button>
                   {selection[detailItem.id]?.qty > 0 ? (
                     <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button onClick={() => removeItem(detailItem.id)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: '#f0f0f0', border: 'none', color: '#333', fontSize: '1.2rem', cursor: 'pointer' }}>−</button>
-                      <span style={{ fontWeight: 'bold', color: '#8B0000', minWidth: '20px', textAlign: 'center' }}>{selection[detailItem.id].qty}</span>
-                      <button onClick={() => addItem(detailItem)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: '#8B0000', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>+</button>
+                      <button onClick={() => removeItem(detailItem.id)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: theme.pageBackground, border: 'none', color: theme.textPrimary, fontSize: '1.2rem', cursor: 'pointer' }}>−</button>
+                      <span style={{ fontWeight: 'bold', color: theme.primary, minWidth: '20px', textAlign: 'center' }}>{selection[detailItem.id].qty}</span>
+                      <button onClick={() => addItem(detailItem)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: theme.primary, border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>+</button>
                     </div>
                   ) : (
-                    <button onClick={() => { addItem(detailItem); setDetailItem(null) }} style={{ flex: 2, background: '#8B0000', color: '#fff', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    <button onClick={() => { addItem(detailItem); setDetailItem(null) }} style={{ flex: 2, background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
                       Ajouter au panier
                     </button>
                   )}
@@ -444,6 +516,20 @@ export default function Menu() {
             </div>
           </div>
         )}
+
+        <CartReviewModal
+          theme={theme}
+          show={showCartReview}
+          onClose={() => setShowCartReview(false)}
+          selectedItems={selectedItems}
+          addItem={addItem}
+          removeItem={removeItem}
+          deleteItemFromCart={deleteItemFromCart}
+          total={total}
+          totalQty={totalQty}
+          maxMinutes={maxMinutes}
+          onConfirm={() => { setShowCartReview(false); setShowModal(true) }}
+        />
 
         <OrderModal
           showModal={showModal} setShowModal={setShowModal}
@@ -457,7 +543,7 @@ export default function Menu() {
     )
   }
 
-  // PAGE ACCUEIL — GRILLE CATÉGORIES
+  // ─── PAGE ACCUEIL — GRILLE CATÉGORIES ───
   return (
     <div style={{
       background: theme.pageBackground,
@@ -467,30 +553,22 @@ export default function Menu() {
 
       {/* HEADER */}
       <div style={{
-        background: `linear-gradient(135deg, ${restaurant.primary_color || '#6B0000'}CC, ${restaurant.primary_color || '#8B0000'})`,
+        background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}CC, ${restaurant.primary_color || theme.primary})`,
         padding: '16px 20px 20px',
         position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div style={{
-          maxWidth: '480px',
-          margin: '0 auto'
-        }}>
+        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
-          {/* LIGNE 1 — navigation + logo */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '12px'
-          }}>
-
-            {restaurant.logo_url && (
-              <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || '#C9A84C'}` }} />
-            )}
+          {/* LIGNE 1 — logo + burger */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            {restaurant.logo_url ? (
+              <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || theme.borderLight}` }} />
+            ) : <div />}
+            <HeaderActions theme={theme} actions={headerActions} />
           </div>
 
-          {/* LIGNE 2 — identité + catégorie */}
+          {/* LIGNE 2 — identité */}
           <div style={{ textAlign: 'center' }}>
             <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
               {restaurant.slogan || restaurant.name}
@@ -503,36 +581,50 @@ export default function Menu() {
       </div>
 
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px' }}>
-        <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
+        <p style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
           Choisissez une catégorie
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.entries(categorized).map(([label, data]) => (
             <button key={label} onClick={() => navigate(`/menu/${restaurantId}/${encodeURIComponent(label)}`)}
-              style={{ background: theme.cardBackground, border: 'none', borderRadius: '16px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(139,0,0,0.08)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', borderBottom: '3px solid #8B0000' }}
+              style={{ background: theme.cardBackground, border: 'none', borderRadius: '16px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', borderBottom: `3px solid ${theme.primary}` }}
               onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
               <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>{data.emoji}</p>
-              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: '#1a1a1a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>{label}</p>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: '#999' }}>{data.items.length} article(s)</p>
+              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>{label}</p>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: theme.textSecondary }}>{data.items.length} article(s)</p>
             </button>
           ))}
         </div>
       </div>
 
       {selectedItems.length > 0 && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#8B0000', padding: '14px 20px', boxShadow: '0 -4px 20px rgba(139,0,0,0.3)' }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: theme.primary, padding: '14px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)' }}>
           <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>{totalQty} article(s) · ~{maxMinutes} min</p>
               <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>{total.toLocaleString()} FCFA</p>
             </div>
-            <button onClick={() => setShowModal(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
-              Commander →
+            <button onClick={() => setShowCartReview(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
+              Voir ma commande →
             </button>
           </div>
         </div>
       )}
+
+      <CartReviewModal
+        theme={theme}
+        show={showCartReview}
+        onClose={() => setShowCartReview(false)}
+        selectedItems={selectedItems}
+        addItem={addItem}
+        removeItem={removeItem}
+        deleteItemFromCart={deleteItemFromCart}
+        total={total}
+        totalQty={totalQty}
+        maxMinutes={maxMinutes}
+        onConfirm={() => { setShowCartReview(false); setShowModal(true) }}
+      />
 
       <OrderModal
         showModal={showModal} setShowModal={setShowModal}
