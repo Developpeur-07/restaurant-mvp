@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from '../lib/useTheme'
+import HeaderActions from '../components/HeaderActions'
 
 export default function History() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
+  const [brand, setBrand] = useState({ name: '', primary_color: '#8B0000' })
+
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
 
   useEffect(() => {
     async function fetch() {
@@ -15,12 +21,13 @@ export default function History() {
 
       const { data: resto } = await supabase
         .from('restaurants')
-        .select('id')
+        .select('id, name, primary_color')
         .eq('owner_id', user.id)
         .limit(1)
         .single()
 
       if (!resto) return
+      setBrand({ name: resto.name || '', primary_color: resto.primary_color || '#8B0000' })
 
       const { data } = await supabase
         .from('orders_archive')
@@ -39,40 +46,49 @@ export default function History() {
   }, [])
 
   if (loading) return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Chargement...</p>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
     </div>
   )
 
   return (
-    <div style={{ background: '#FFF8F0', minHeight: '100vh' }}>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh' }}>
 
+      {/* HEADER */}
       <div style={{
-        background: 'linear-gradient(135deg, #6B0000 0%, #8B0000 60%, #A50000 100%)',
-        padding: '28px 20px 24px'
+        background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
+        padding: '20px 20px'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
-          >
-            ← Retour
-          </button>
-          <div>
-            <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-              Historique
-            </p>
-            <h1 style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-              Ventes soldées
-            </h1>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button
+              onClick={() => navigate('/dashboard')}
+              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              ← Retour
+            </button>
+            <div>
+              <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
+                Historique
+              </p>
+              <h1 style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+                Ventes soldées
+              </h1>
+            </div>
           </div>
+          <HeaderActions
+            theme={theme}
+            actions={[
+              { label: darkMode ? '☀️ Mode clair' : '🌙 Mode sombre', onClick: toggleDarkMode },
+            ]}
+          />
         </div>
       </div>
 
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px' }}>
 
         {/* TOTAL */}
-        <div style={{ background: '#8B0000', borderRadius: '16px', padding: '20px', textAlign: 'center', marginBottom: '24px' }}>
+        <div style={{ background: theme.primary, borderRadius: '16px', padding: '20px', textAlign: 'center', marginBottom: '24px' }}>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', margin: '0 0 4px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Total encaissé
           </p>
@@ -85,7 +101,7 @@ export default function History() {
         </div>
 
         {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#bbb' }}>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: theme.textSecondary }}>
             <p style={{ fontSize: '3rem', margin: '0 0 12px' }}>📊</p>
             <p style={{ fontFamily: 'Georgia, serif' }}>Aucune vente enregistrée</p>
           </div>
@@ -94,13 +110,15 @@ export default function History() {
             {orders.map(order => {
               const orderTotal = order.items.reduce((s, i) => s + i.price * i.qty, 0)
               return (
-                <div key={order.id} style={{ background: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(139,0,0,0.06)', borderLeft: '4px solid #C9A84C' }}>
+                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '4px solid #C9A84C' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: '#8B0000', fontFamily: 'Georgia, serif' }}>
-                        Table {order.table_number}
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.primary, fontFamily: 'Georgia, serif' }}>
+                        {order.order_type === 'emporter'
+                          ? `🥡 ${order.customer_name}`
+                          : `🪑 Table ${order.table_number}`}
                       </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: '#999' }}>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
                         {new Date(order.created_at).toLocaleDateString('fr-FR')} · {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -108,11 +126,11 @@ export default function History() {
                       {orderTotal.toLocaleString()} FCFA
                     </p>
                   </div>
-                  <div style={{ borderTop: '1px solid #f0e8de', paddingTop: '10px' }}>
+                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: '10px' }}>
                     {order.items.map((item, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                        <span style={{ color: '#555' }}><span style={{ color: '#8B0000', fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
-                        <span style={{ color: '#999' }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
+                        <span style={{ color: theme.textPrimary }}><span style={{ color: theme.primary, fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
+                        <span style={{ color: theme.textSecondary }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
                       </div>
                     ))}
                   </div>
