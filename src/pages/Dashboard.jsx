@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
+import HeaderActions from '../components/HeaderActions'
 
 const STATUS_LABELS = {
   received: { label: 'Reçue', bg: '#FFF9C4', color: '#7B6000' },
@@ -286,20 +287,15 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem', flexShrink: 0 }}>
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            <button onClick={() => navigate('/qrcode')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
-              QR Code
-            </button>
-            <button onClick={() => navigate('/menu-manager')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
-              📋 Menu
-            </button>
-            <button onClick={() => navigate('/settings')} style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '600' }}>
-              ⚙️
-            </button>
-          </div>
+          <HeaderActions
+            theme={theme}
+            actions={[
+              { label: darkMode ? '☀️ Mode clair' : '🌙 Mode sombre', onClick: toggleDarkMode },
+              { label: 'QR Code', onClick: () => navigate('/qrcode') },
+              { label: '📋 Menu', onClick: () => navigate('/menu-manager') },
+              { label: '⚙️ Paramètres', onClick: () => navigate('/settings'), bg: brand.secondary_color },
+            ]}
+          />
         </div>
       </div>
 
