@@ -36,26 +36,35 @@ export function generateTheme(primaryColor) {
   const { h, s } = hexToHSL(safe)
 
   return {
+    mode: 'light',
     primary: safe,
     pageBackground: hslToHex(h, Math.min(s, 30), 96),
     cardBackground: '#FFFFFF',
-    textPrimary: '#1A1A1A',
-    textSecondary: '#666666',
+    textPrimary: '#1A1A1A',       // texte important — quasi noir
+    textSecondary: '#666666',      // texte secondaire — gris moyen
+    textMuted: '#999999',          // texte tertiaire (timestamps, hints)
     borderLight: hslToHex(h, Math.min(s, 20), 90),
   }
 }
 
 export function generateDarkTheme(primaryColor) {
   const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#8B0000'
-  const { h, s } = hexToHSL(safe)
+  const { h } = hexToHSL(safe)
+
+  // Teinte bleu-marine fixe, légèrement influencée par la couleur du restaurant
+  // mais jamais neutre/noire — c'est la clé de la lisibilité
+  const baseHue = 230 // bleu-marine de référence (type VSCode/Discord)
+  const blendedHue = (baseHue + h * 0.15) % 360 // légère touche de la couleur de marque
 
   return {
+    mode: 'dark',
     primary: safe,
-    pageBackground: hslToHex(h, Math.min(s, 25), 8),
-    cardBackground: hslToHex(h, Math.min(s, 15), 14),
-    textPrimary: '#F5F5F5',
-    textSecondary: '#A0A0A0',
-    borderLight: hslToHex(h, Math.min(s, 20), 20),
+    pageBackground: hslToHex(blendedHue, 35, 25),    // bleu-marine profond, pas noir
+    cardBackground: hslToHex(blendedHue, 18, 25),     // un ton au-dessus, même famille
+    textPrimary: '#FFFFFF',
+    textSecondary: '#C8CCDA',     // gris-bleu clair, plus lisible qu'un gris neutre
+    textMuted: '#8B92A8',          // gris-bleu discret mais toujours lisible
+    borderLight: hslToHex(blendedHue, 25, 26),
   }
 }
 

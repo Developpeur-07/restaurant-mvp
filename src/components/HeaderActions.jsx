@@ -6,7 +6,7 @@ export default function HeaderActions({ actions, theme }) {
   return (
     <div style={{ position: 'relative' }}>
 
-      {/* Bouton burger — visible seulement sous 1098px */}
+      {/* Bouton burger — visible seulement sous 700px */}
       <button
         onClick={() => setOpen(prev => !prev)}
         className="header-burger"
