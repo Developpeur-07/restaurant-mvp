@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
-import HeaderActions from '../components/HeaderActions'
+
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -73,13 +73,13 @@ function OrderModal({ theme, showModal, setShowModal, orderType, setOrderType, t
         </div>
         {orderType === 'sur_place' ? (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Numéro de table</label>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.primary, marginBottom: '6px', fontWeight: '600' }}>Numéro de table</label>
             <input type="number" placeholder="Ex: 4" value={tableNumber} onChange={e => setTableNumber(e.target.value)}
               style={{ width: '100%', border: `2px solid ${theme.primary}`, borderRadius: '12px', padding: '14px', fontSize: '1.5rem', textAlign: 'center', background: theme.cardBackground, color: theme.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
           </div>
         ) : (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>Votre nom complet</label>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.primary, marginBottom: '6px', fontWeight: '600' }}>Votre nom complet</label>
             <input
               type="text"
               placeholder="Ex: Jean"
@@ -404,12 +404,7 @@ export default function Menu() {
 
         <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
 
-          {/* RECHERCHE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.borderLight}`, marginBottom: '16px' }}>
-            <span>🔍</span>
-            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textPrimary }} />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
-          </div>
+         
 
           {/* GRILLE CARRÉE */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -583,9 +578,9 @@ export default function Menu() {
             
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px' }}>
         {/* RECHERCHE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.borderLight}`, marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.textSecondary}`, marginBottom: '16px' }}>
             <span>🔍</span>
-            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textMuted }} />
+            <input type="text" placeholder="Rechercher..."  value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textMuted }} />
             {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
           </div>
         <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
