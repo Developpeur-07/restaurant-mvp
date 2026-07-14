@@ -350,9 +350,7 @@ export default function Menu() {
     </div>
   )
 
-  const headerActions = [
-    { label: darkMode ? '☀️ Mode clair' : '🌙 Mode sombre', onClick: toggleDarkMode },
-  ]
+ 
 
   // ─── PAGE CATÉGORIE ───
   if (category) {
@@ -382,7 +380,9 @@ export default function Menu() {
                 style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
                 ← Retour
               </button>
-              <HeaderActions theme={theme} actions={headerActions} />
+              <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+              {darkMode ? '☀️' : '🌙'}
+            </button>
             </div>
 
             {/* LIGNE 2 — logo + identité + catégorie */}
@@ -407,8 +407,7 @@ export default function Menu() {
           {/* RECHERCHE */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.borderLight}`, marginBottom: '16px' }}>
             <span>🔍</span>
-            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textPrimary }} />
+            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textPrimary }} />
             {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
           </div>
 
@@ -565,7 +564,9 @@ export default function Menu() {
             {restaurant.logo_url ? (
               <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || theme.borderLight}` }} />
             ) : <div />}
-            <HeaderActions theme={theme} actions={headerActions} />
+            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+              {darkMode ? '☀️' : '🌙'}
+            </button>
           </div>
 
           {/* LIGNE 2 — identité */}
@@ -579,9 +580,15 @@ export default function Menu() {
           </div>
         </div>
       </div>
-
+            
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px' }}>
-        <p style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
+        {/* RECHERCHE */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.borderLight}`, marginBottom: '16px' }}>
+            <span>🔍</span>
+            <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textMuted }} />
+            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
+          </div>
+        <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
           Choisissez une catégorie
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

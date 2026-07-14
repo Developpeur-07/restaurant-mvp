@@ -245,7 +245,7 @@ export default function Dashboard() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: theme.primary, fontFamily: "Georgia, serif" }}>
+        <p style={{ color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
           Chargement...
         </p>
       </div>
@@ -305,7 +305,7 @@ export default function Dashboard() {
         <div style={{
           background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
           borderRadius: '16px', padding: '18px', marginBottom: '20px',
-          boxShadow: `0 4px 16px ${theme.primary}40`
+          boxShadow: `0 4px 16px ${theme.textSecondary}40`
         }}>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
             Aujourd'hui
@@ -315,7 +315,7 @@ export default function Dashboard() {
               <p style={{ margin: 0, color: '#fff', fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
                 {todayStats.count}
               </p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
                 commande(s) vendue(s)
               </p>
             </div>
@@ -323,7 +323,7 @@ export default function Dashboard() {
               <p style={{ margin: 0, color: brand.secondary_color, fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
                 {todayStats.revenue.toLocaleString()}
               </p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
                 FCFA encaissés
               </p>
             </div>
@@ -433,7 +433,7 @@ export default function Dashboard() {
                     {order.items.map((item, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
                         <span style={{ color: theme.textPrimary }}>
-                          <span style={{ color: theme.primary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
+                          <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                         </span>
                         <span style={{ color: "#C9A84C", fontWeight: "600" }}>
                           {(item.price * item.qty).toLocaleString()} FCFA
