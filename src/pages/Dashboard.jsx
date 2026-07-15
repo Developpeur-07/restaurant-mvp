@@ -305,7 +305,8 @@ export default function Dashboard() {
         <div style={{
           background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
           borderRadius: '16px', padding: '18px', marginBottom: '20px',
-          boxShadow: `0 4px 16px ${theme.textSecondary}40`
+          boxShadow: `0 4px 16px ${theme.textSecondary}40`,
+          textAlign: "center",
         }}>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
             Aujourd'hui
@@ -343,7 +344,7 @@ export default function Dashboard() {
         {/* STATS RAPIDES — fond et texte thème */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
           {[
-            { label: "En cours", value: activeOrders.length, color: theme.primary },
+            { label: "En cours", value: activeOrders.length, color: theme.textPrimary },
             { label: "En préparation", value: orders.filter((o) => o.status === "preparing").length, color: "#1E40AF" },
             { label: "Annulées", value: cancelledOrders.length, color: "#6B7280" },
           ].map((stat) => (
@@ -552,11 +553,12 @@ export default function Dashboard() {
             border: `2px solid ${theme.borderLight}`,
             borderRadius: "12px",
             padding: "12px",
-            color: theme.primary,
+            color: theme.textPrimary,
             fontWeight: "600",
             fontSize: "0.85rem",
             cursor: "pointer",
             fontFamily: "Georgia, serif",
+            
           }}
         >
           📊 Voir l'historique des ventes

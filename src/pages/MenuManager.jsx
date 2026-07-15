@@ -559,9 +559,9 @@ export default function MenuManager() {
 
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
           {[
-            { label: 'Total plats', value: items.length, color: theme.primary },
-            { label: 'Disponibles', value: items.filter(i => i.available).length, color: '#166534' },
-            { label: 'Indisponibles', value: items.filter(i => !i.available).length, color: '#6B7280' },
+            { label: 'Total plats', value: items.length, color: theme.textPrimary },
+            { label: 'Disponibles', value: items.filter(i => i.available).length, color: 'green' },
+            { label: 'Indisponibles', value: items.filter(i => !i.available).length, color: 'red' },
           ].map(stat => (
             <div key={stat.label} style={{ flex: 1, background: theme.cardBackground, borderRadius: '12px', padding: '12px', textAlign: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
               <p style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', color: stat.color, fontFamily: 'Georgia, serif' }}>{stat.value}</p>
@@ -570,9 +570,9 @@ export default function MenuManager() {
           ))}
         </div>
 
-        <p style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
+        <h2 style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '1rem', marginBottom: '16px', textAlign: 'center' }}>
           Sélectionnez une catégorie à gérer
-        </p>
+        </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           {Object.entries(categorized).map(([label, data]) => (

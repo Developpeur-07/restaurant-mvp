@@ -47,7 +47,7 @@ export default function History() {
 
   if (loading) return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
+      <p style={{ color: theme.textSecondary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
     </div>
   )
 
@@ -113,7 +113,7 @@ export default function History() {
                 <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '4px solid #C9A84C' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.primary, fontFamily: 'Georgia, serif' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>
                         {order.order_type === 'emporter'
                           ? `🥡 ${order.customer_name}`
                           : `🪑 Table ${order.table_number}`}
@@ -129,7 +129,7 @@ export default function History() {
                   <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: '10px' }}>
                     {order.items.map((item, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                        <span style={{ color: theme.textPrimary }}><span style={{ color: theme.primary, fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
+                        <span style={{ color: theme.textPrimary }}><span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
                         <span style={{ color: theme.textSecondary }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
                       </div>
                     ))}

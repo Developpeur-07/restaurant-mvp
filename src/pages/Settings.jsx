@@ -221,7 +221,7 @@ export default function Settings() {
 
         {/* COMPTE ACTUEL */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.primary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 12px" }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 12px" }}>
             Compte actuel
           </h2>
           <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0 }}>
@@ -231,7 +231,7 @@ export default function Settings() {
 
         {/* IDENTITÉ VISUELLE */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.primary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
             Identité visuelle
           </h2>
 
@@ -358,7 +358,7 @@ export default function Settings() {
 
         {/* CHANGER MOT DE PASSE */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.primary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
             Changer le mot de passe
           </h2>
 
@@ -393,7 +393,7 @@ export default function Settings() {
 
         {/* AJOUTER UN ADMIN */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.primary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px" }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px" }}>
             Ajouter un administrateur
           </h2>
           <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
