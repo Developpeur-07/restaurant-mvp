@@ -14,8 +14,8 @@ export default function Settings() {
   const [message, setMessage] = useState(null);
   const [brand, setBrand] = useState({
     name: "",
-    primary_color: "#8B0000",
-    secondary_color: "#C9A84C",
+    primary_color: "",
+    secondary_color: "",
     slogan: "",
     address: "",
     logo_url: "",

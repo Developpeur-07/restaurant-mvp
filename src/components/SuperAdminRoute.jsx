@@ -13,7 +13,7 @@ export default function SuperAdminRoute({ children }) {
 
   if (isAuthorized === undefined) return (
     <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Vérification...</p>
+      <p style={{ color: 'black', fontFamily: 'Georgia, serif' }}>Vérification...</p>
     </div>
   )
   if (!isAuthorized) return <Navigate to="/dashboard" replace />

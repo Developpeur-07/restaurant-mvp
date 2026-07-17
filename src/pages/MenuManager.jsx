@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
+import { Camera, Pencil, Loader2 } from 'lucide-react'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -44,6 +45,15 @@ function getEmoji(item) {
   return CATEGORIES.find(c => c.keywords.some(k => item.name.toLowerCase().includes(k)))?.emoji || '🍽'
 }
 
+// Génère un slug simple pour le path de storage (évite accents/espaces dans le nom de fichier)
+function slugify(label) {
+  return label
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // enlève les accents
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
 export default function MenuManager() {
   const navigate = useNavigate()
   const [items, setItems] = useState([])
@@ -58,6 +68,14 @@ export default function MenuManager() {
   const [search, setSearch] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
   const [form, setForm] = useState({ name: '', price: '', estimated_minutes: '', description: '', image_url: '' })
+
+  // ── IMAGES DE CATÉGORIE ──
+  // Map { [label]: { id, image_url } } chargée depuis la table menu_categories
+  const [categoryImages, setCategoryImages] = useState({})
+  // Label de la catégorie en cours d'upload (pour afficher le spinner sur la bonne card uniquement)
+  const [uploadingCategory, setUploadingCategory] = useState(null)
+  // Label de la catégorie survolée (pour révéler le crayon d'édition en douceur sur desktop)
+  const [hoveredCategory, setHoveredCategory] = useState(null)
 
   // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
@@ -90,6 +108,19 @@ export default function MenuManager() {
         .order('name', { ascending: true })
 
       setItems(data || [])
+
+      // Charger les images de catégorie déjà uploadées pour ce restaurant
+      const { data: catRows } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .eq('restaurant_id', resto.id)
+
+      const catMap = {}
+      ;(catRows || []).forEach(row => {
+        catMap[row.label] = { id: row.id, image_url: row.image_url }
+      })
+      setCategoryImages(catMap)
+
       setLoading(false)
     }
     init()
@@ -133,7 +164,7 @@ export default function MenuManager() {
     const path = `${user.id}/${itemId || Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
     const { error: upErr } = await supabase.storage
-      .from('menu-images')
+      .from('menu-photos')
       .upload(path, file, { upsert: true, cacheControl: '3600' })
 
     if (upErr) {
@@ -142,10 +173,68 @@ export default function MenuManager() {
     }
 
     const { data: { publicUrl } } = supabase.storage
-      .from('menu-images')
+      .from('menu-photos')
       .getPublicUrl(path)
 
     return publicUrl
+  }
+
+  // ── Upload de l'image d'une catégorie (bucket séparé + table menu_categories) ──
+  async function handleCategoryImageUpload(label, file) {
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Le fichier doit être une image' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image trop lourde (max 2 Mo)' })
+      return
+    }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setMessage({ type: 'error', text: 'Session expirée, reconnecte-toi' })
+      return
+    }
+
+    setUploadingCategory(label)
+
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/${slugify(label)}-${Date.now()}.${ext}`
+
+    const { error: upErr } = await supabase.storage
+      .from('category-images')
+      .upload(path, file, { upsert: true, cacheControl: '3600' })
+
+    if (upErr) {
+      setMessage({ type: 'error', text: 'Échec upload catégorie : ' + upErr.message })
+      setUploadingCategory(null)
+      return
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('category-images')
+      .getPublicUrl(path)
+
+    // upsert : crée la ligne si elle n'existe pas encore pour ce (restaurant_id, label), sinon la met à jour
+    const { data, error } = await supabase
+      .from('menu_categories')
+      .upsert(
+        { restaurant_id: restaurantId, label, image_url: publicUrl },
+        { onConflict: 'restaurant_id,label' }
+      )
+      .select()
+      .single()
+
+    if (error) {
+      setMessage({ type: 'error', text: 'Échec sauvegarde catégorie : ' + error.message })
+      setUploadingCategory(null)
+      return
+    }
+
+    setCategoryImages(prev => ({ ...prev, [label]: { id: data.id, image_url: data.image_url } }))
+    setMessage({ type: 'success', text: `Image de "${label}" mise à jour ✓` })
+    setUploadingCategory(null)
+    setTimeout(() => setMessage(null), 3000)
   }
 
   async function handleSave() {
@@ -237,7 +326,7 @@ export default function MenuManager() {
 
   if (loading) return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
+      <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
     </div>
   )
 
@@ -259,7 +348,7 @@ export default function MenuManager() {
           position: 'sticky', top: 0, zIndex: 40,
           boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
         }}>
-          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <button
                 onClick={() => { setActiveCategory(null); setSearch('') }}
@@ -286,14 +375,25 @@ export default function MenuManager() {
               <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
                 Gestion menu · {brand.name}
               </p>
-              <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                {catData?.emoji} {activeCategory}
-              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {categoryImages[activeCategory]?.image_url ? (
+                  <img
+                    src={categoryImages[activeCategory].image_url}
+                    alt={activeCategory}
+                    style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '1.1rem' }}>{catData?.emoji}</span>
+                )}
+                <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
+                  {activeCategory}
+                </h1>
+              </div>
             </div>
           </div>
         </div>
 
-        <div style={{ maxWidth: '640px', margin: '0 auto', padding: '20px 16px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 16px' }}>
 
           {message && (
             <div style={{
@@ -517,7 +617,7 @@ export default function MenuManager() {
         padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               onClick={() => navigate('/dashboard')}
@@ -543,7 +643,7 @@ export default function MenuManager() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px' }}>
 
         {message && (
           <div style={{
@@ -573,38 +673,156 @@ export default function MenuManager() {
         <h2 style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '1rem', marginBottom: '16px', textAlign: 'center' }}>
           Sélectionnez une catégorie à gérer
         </h2>
+        <p style={{ color: theme.textSecondary, fontSize: '0.75rem', marginBottom: '16px', textAlign: 'center' }}>
+          Ajoute une photo de présentation à chaque catégorie pour un rendu plus pro
+        </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          {Object.entries(categorized).map(([label, data]) => (
-            <button
-              key={label}
-              onClick={() => setActiveCategory(label)}
-              style={{
-                background: theme.cardBackground, border: 'none', borderRadius: '16px',
-                padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                borderBottom: `3px solid ${theme.primary}`,
-                transition: 'transform 0.15s ease'
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>{data.emoji}</p>
-              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
-                {label}
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
-                <span style={{ fontSize: '0.65rem', color: '#166534', background: '#DCFCE7', padding: '2px 6px', borderRadius: '10px' }}>
-                  {data.items.filter(i => i.available).length} dispo
-                </span>
-                {data.items.filter(i => !i.available).length > 0 && (
-                  <span style={{ fontSize: '0.65rem', color: '#6B7280', background: '#F3F4F6', padding: '2px 6px', borderRadius: '10px' }}>
-                    {data.items.filter(i => !i.available).length} indispo
-                  </span>
-                )}
-              </div>
-            </button>
-          ))}
+        {/* Spinner propre pour l'état upload (remplace l'ancien ⏳) */}
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+
+        {/*
+          Grille responsive "anti-abdos" :
+          - auto-fill + minmax laisse le navigateur décider du nombre de colonnes
+            selon la largeur dispo, au lieu d'un nombre de colonnes fixe qui s'étire
+            en cases identiques sur grand écran.
+          - minmax(180px, 1fr) : jamais plus petit que 180px, jamais plus grand
+            que sa part équitable de l'espace restant.
+        */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '16px'
+        }}>
+          {Object.entries(categorized).map(([label, data]) => {
+            const catImage = categoryImages[label]?.image_url
+            const isUploadingThis = uploadingCategory === label
+            const isHovered = hoveredCategory === label
+
+            // ── ÉTAT 1 : pas encore de photo — toute la card devient le CTA d'ajout ──
+            if (!catImage) {
+              return (
+                <div
+                  key={label}
+                  style={{
+                    background: theme.cardBackground, borderRadius: '16px',
+                    border: `2px dashed ${theme.borderLight}`,
+                    overflow: 'hidden', display: 'flex', flexDirection: 'column'
+                  }}
+                >
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: '6px', padding: '24px 12px 16px', cursor: isUploadingThis ? 'default' : 'pointer'
+                  }}>
+                    {isUploadingThis
+                      ? <Loader2 size={26} color={theme.textSecondary} style={{ animation: 'spin 1s linear infinite' }} />
+                      : <Camera size={26} color={theme.textSecondary} strokeWidth={1.75} />
+                    }
+                    <span style={{ fontSize: '0.72rem', color: theme.textSecondary, fontWeight: '600' }}>
+                      {isUploadingThis ? 'Upload en cours...' : 'Ajouter une photo'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      disabled={isUploadingThis}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        await handleCategoryImageUpload(label, file)
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+
+                  <div style={{ padding: '0 12px 14px', textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
+                      {data.emoji} {label}
+                    </p>
+                    <button
+                      onClick={() => setActiveCategory(label)}
+                      style={{ background: 'none', border: 'none', color: theme.primary, fontSize: '0.7rem', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                    >
+                      Voir les {data.items.length} plat(s) →
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+
+            // ── ÉTAT 2 : photo déjà présente — card normale, crayon discret au survol ──
+            return (
+              <button
+                key={label}
+                onClick={() => setActiveCategory(label)}
+                onMouseEnter={() => setHoveredCategory(label)}
+                onMouseLeave={() => setHoveredCategory(null)}
+                style={{
+                  background: theme.cardBackground, border: 'none', borderRadius: '16px',
+                  textAlign: 'center', cursor: 'pointer', overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderBottom: `3px solid ${theme.primary}`,
+                  transition: 'transform 0.15s ease',
+                  display: 'flex', flexDirection: 'column', padding: 0
+                }}
+              >
+                {/* Zone image — ratio rectangulaire 4:3, pas carré, pour casser l'effet "tuiles identiques" */}
+                <div style={{
+                  position: 'relative', width: '100%', aspectRatio: '4 / 3',
+                  overflow: 'hidden'
+                }}>
+                  <img src={catImage} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+
+                  {/* Crayon d'édition — discret par défaut, plus visible au survol (desktop) / toujours cliquable (mobile) */}
+                  <label
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      position: 'absolute', top: '8px', right: '8px',
+                      background: 'rgba(0,0,0,0.55)', borderRadius: '50%',
+                      width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: isUploadingThis ? 'default' : 'pointer',
+                      opacity: isHovered ? 1 : 0.75,
+                      transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                      transition: 'opacity 0.15s ease, transform 0.15s ease'
+                    }}
+                  >
+                    {isUploadingThis
+                      ? <Loader2 size={14} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+                      : <Pencil size={13} color="#fff" strokeWidth={2} />
+                    }
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style={{ display: 'none' }}
+                      disabled={isUploadingThis}
+                      onClick={e => e.stopPropagation()}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        await handleCategoryImageUpload(label, file)
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ padding: '12px' }}>
+                  <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
+                    {label}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#166534', background: '#DCFCE7', padding: '2px 6px', borderRadius: '10px' }}>
+                      {data.items.filter(i => i.available).length} dispo
+                    </span>
+                    {data.items.filter(i => !i.available).length > 0 && (
+                      <span style={{ fontSize: '0.65rem', color: '#6B7280', background: '#F3F4F6', padding: '2px 6px', borderRadius: '10px' }}>
+                        {data.items.filter(i => !i.available).length} indispo
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

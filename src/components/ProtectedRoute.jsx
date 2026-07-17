@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }) {
 
   if (user === undefined) return (
     <div style={{ background: '#FFF8F0', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: '#8B0000', fontFamily: 'Georgia, serif' }}>Vérification...</p>
+      <p style={{ color: 'black', fontFamily: 'Georgia, serif' }}>Vérification...</p>
     </div>
   )
 

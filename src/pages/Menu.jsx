@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
 
-
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
   { label: 'Gâteaux', emoji: '🎂', keywords: ['moka', 'lunette', 'boutonnier', 'cake', 'tarte', 'maria'] },
@@ -107,7 +106,7 @@ function OrderModal({ theme, showModal, setShowModal, orderType, setOrderType, t
   )
 }
 
-// ─── MODALE REVIEW PANIER — voir/modifier/supprimer avant de commander ───
+// ─── MODALE REVIEW PANIER ───
 function CartReviewModal({ theme, show, onClose, selectedItems, addItem, removeItem, deleteItemFromCart, total, totalQty, maxMinutes, onConfirm }) {
   if (!show) return null
   return (
@@ -176,6 +175,7 @@ export default function Menu() {
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [restaurant, setRestaurant] = useState(null)
+  const [categoryImages, setCategoryImages] = useState({}) // { [label]: image_url }
   const [loading, setLoading] = useState(true)
   const [selection, setSelection] = useState({})
   const [showCartReview, setShowCartReview] = useState(false)
@@ -186,24 +186,19 @@ export default function Menu() {
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState('')
   const [detailItem, setDetailItem] = useState(null)
+  const [activeTab, setActiveTab] = useState(category ? decodeURIComponent(category) : null)
 
-  // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color)
 
   useEffect(() => {
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
     let isMounted = true;
 
     async function fetchMenu() {
       setLoading(true);
 
       if (!UUID_REGEX.test(restaurantId)) {
-        if (isMounted) {
-          setRestaurant(null);
-          setItems([]);
-          setLoading(false);
-        }
+        if (isMounted) { setRestaurant(null); setItems([]); setLoading(false); }
         return;
       }
 
@@ -213,7 +208,6 @@ export default function Menu() {
           .select('name, primary_color, secondary_color, slogan, address, logo_url')
           .eq('id', restaurantId)
           .single();
-
         if (restoError) throw restoError;
 
         const { data: menuItems, error: menuError } = await supabase
@@ -221,35 +215,34 @@ export default function Menu() {
           .select('*')
           .eq('restaurant_id', restaurantId)
           .eq('available', true);
-
         if (menuError) throw menuError;
+
+        const { data: catRows } = await supabase
+          .from('menu_categories')
+          .select('label, image_url')
+          .eq('restaurant_id', restaurantId);
 
         if (!isMounted) return;
 
         setRestaurant(resto || null);
         setItems(menuItems || []);
 
+        const catMap = {}
+        ;(catRows || []).forEach(row => { catMap[row.label] = row.image_url })
+        setCategoryImages(catMap)
+
       } catch (error) {
         console.error(error);
-        if (isMounted) {
-          setRestaurant(null);
-          setItems([]);
-        }
+        if (isMounted) { setRestaurant(null); setItems([]); }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     }
 
     fetchMenu();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [restaurantId]);
 
-  // Sauvegarder à chaque changement de sélection
   useEffect(() => {
     if (Object.keys(selection).length > 0) {
       localStorage.setItem(`selection_${restaurantId}`, JSON.stringify(selection))
@@ -262,31 +255,20 @@ export default function Menu() {
     setSelection(prev => {
       const currentQty = prev[item.id]?.qty || 0
       if (currentQty >= 20) return prev
-      return {
-        ...prev,
-        [item.id]: { ...item, qty: currentQty + 1 }
-      }
+      return { ...prev, [item.id]: { ...item, qty: currentQty + 1 } }
     })
   }
 
   function removeItem(itemId) {
     setSelection(prev => {
       const qty = (prev[itemId]?.qty || 0) - 1
-      if (qty <= 0) {
-        const next = { ...prev }
-        delete next[itemId]
-        return next
-      }
+      if (qty <= 0) { const next = { ...prev }; delete next[itemId]; return next }
       return { ...prev, [itemId]: { ...prev[itemId], qty } }
     })
   }
 
   function deleteItemFromCart(itemId) {
-    setSelection(prev => {
-      const next = { ...prev }
-      delete next[itemId]
-      return next
-    })
+    setSelection(prev => { const next = { ...prev }; delete next[itemId]; return next })
   }
 
   function validateTableNumber(value) {
@@ -298,10 +280,7 @@ export default function Menu() {
   async function submitOrder() {
     if (submitting) return
     const validTable = validateTableNumber(tableNumber)
-    if (orderType === 'sur_place' && !validTable) {
-      alert('Numéro de table invalide')
-      return
-    }
+    if (orderType === 'sur_place' && !validTable) { alert('Numéro de table invalide'); return }
     setSubmitting(true)
 
     const selectedItems = Object.values(selection)
@@ -319,14 +298,9 @@ export default function Menu() {
         status: 'received',
         estimated_ready_at: estimatedReadyAt.toISOString()
       })
-      .select()
-      .single()
+      .select().single()
 
-    if (error) {
-      alert('Erreur lors de la commande. Réessaie.')
-      setSubmitting(false)
-      return
-    }
+    if (error) { alert('Erreur lors de la commande. Réessaie.'); setSubmitting(false); return }
 
     localStorage.removeItem(`selection_${restaurantId}`)
     navigate(`/tracking/${data.id}`)
@@ -337,77 +311,142 @@ export default function Menu() {
   const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0)
   const maxMinutes = selectedItems.length ? Math.max(...selectedItems.map(i => i.estimated_minutes)) : 0
   const categorized = categorize(items)
+  const categoryLabels = Object.keys(categorized)
+
+  // Onglet actif par défaut = premier disponible (ou celui de l'URL s'il existe encore)
+  const currentTab = (activeTab && categorized[activeTab]) ? activeTab : categoryLabels[0]
+  const catData = categorized[currentTab]
+  const catItems = catData?.items || []
+  const filteredItems = search.trim()
+    ? catItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+    : catItems
 
   if (loading) return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.primary, fontFamily: 'Georgia, serif' }}>Chargement du menu...</p>
+      <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>Chargement du menu...</p>
     </div>
   )
 
   if (!restaurant) return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.primary }}>Restaurant introuvable.</p>
+      <p style={{ color: theme.textPrimary }}>Restaurant introuvable.</p>
     </div>
   )
 
- 
+  return (
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
-  // ─── PAGE CATÉGORIE ───
-  if (category) {
-    const decoded = decodeURIComponent(category)
-    const catData = categorized[decoded]
-    const catItems = catData?.items || []
-    const filteredItems = search.trim()
-      ? catItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
-      : catItems
+      {/* Masque la scrollbar des onglets horizontaux, tous navigateurs */}
+      <style>{`
+        .category-tabs-scroll::-webkit-scrollbar { display: none }
+        .category-tabs-scroll { scrollbar-width: none; -ms-overflow-style: none }
+      `}</style>
 
-    return (
-      <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
+      {/* HEADER — logo grand + nom du restaurant en avant */}
+      <div style={{
+        background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}, ${restaurant.primary_color || theme.primary}CC)`,
+        padding: '20px 20px 16px',
+        position: 'sticky', top: 0, zIndex: 40,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
+      }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {restaurant.logo_url ? (
+              <img src={restaurant.logo_url} alt="logo" style={{
+                width: '58px', height: '58px', borderRadius: '50%', objectFit: 'cover',
+                border: `3px solid ${restaurant.secondary_color || '#fff'}`, flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
+              }} />
+            ) : <div style={{ width: '58px' }} />}
 
-        {/* HEADER CATÉGORIE — FIXED */}
-        <div
-          style={{
-            background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}, ${restaurant.primary_color || theme.primary}CC)`,
-            padding: '16px 20px 20px',
-            position: 'sticky', top: 0, zIndex: 40,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
-          }}>
-          <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {restaurant.slogan && (
+                <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.18em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
+                  {restaurant.slogan}
+                </p>
+              )}
+              <h1 style={{ color: '#fff', fontSize: '1.55rem', fontFamily: 'Georgia, serif', margin: 0, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {restaurant.name}
+              </h1>
+            </div>
 
-            {/* LIGNE 1 — retour + burger */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <button onClick={() => navigate(`/menu/${restaurantId}`)}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', flexShrink: 0 }}>
-                ← Retour
-              </button>
-              <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer', fontSize: '0.95rem', flexShrink: 0 }}>
               {darkMode ? '☀️' : '🌙'}
             </button>
-            </div>
+          </div>
 
-            {/* LIGNE 2 — logo + identité + catégorie */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {restaurant.logo_url && (
-                <img src={restaurant.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || theme.borderLight}`, flexShrink: 0 }} />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {restaurant.slogan || restaurant.name}
-                </p>
-                <h1 style={{ color: '#fff', fontSize: '1.1rem', fontFamily: 'Georgia, serif', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {catData?.emoji} {decoded}
-                </h1>
-              </div>
-            </div>
+          {/* RECHERCHE */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px',
+            background: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '10px 16px'
+          }}>
+            <span style={{ opacity: 0.85 }}>🔍</span>
+            <input
+              type="text" placeholder="Rechercher un plat..." value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#fff' }}
+            />
+            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', opacity: 0.8 }}>✕</button>}
           </div>
         </div>
 
-        <div style={{ maxWidth: '480px', margin: '0 auto', padding: '16px' }}>
+        {/* ONGLETS CATÉGORIES — horizontaux scrollables, sticky sous le header */}
+        <div
+          className="category-tabs-scroll"
+          style={{
+            display: 'flex', gap: '10px', overflowX: 'auto', marginTop: '16px',
+            paddingBottom: '2px', maxWidth: '1100px', marginLeft: 'auto', marginRight: 'auto'
+          }}
+        >
+          {categoryLabels.map(label => {
+            const isActive = label === currentTab
+            const img = categoryImages[label]
+            return (
+              <button
+                key={label}
+                onClick={() => { setActiveTab(label); setSearch('') }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0,
+                  background: isActive ? '#fff' : 'rgba(255,255,255,0.16)',
+                  color: isActive ? (restaurant.primary_color || theme.primary) : '#fff',
+                  border: 'none', borderRadius: '999px', padding: '7px 14px 7px 7px',
+                  cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600',
+                  transition: 'all 0.15s ease', whiteSpace: 'nowrap'
+                }}
+              >
+                <span style={{
+                  width: '22px', height: '22px', borderRadius: '50%', overflow: 'hidden',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  background: img ? 'transparent' : 'rgba(0,0,0,0.08)', fontSize: '0.85rem'
+                }}>
+                  {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : categorized[label].emoji}
+                </span>
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-         
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px' }}>
 
-          {/* GRILLE CARRÉE */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        {/*
+          Grille produits responsive "anti-abdos" :
+          auto-fill + minmax évite le mur de cases carrées identiques sur grand écran —
+          2 colonnes sur mobile, jusqu'à 5-6 sur desktop selon la largeur, sans jamais
+          devenir minuscule.
+        */}
+        {filteredItems.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: theme.textSecondary }}>
+            <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>🍽</p>
+            <p style={{ fontFamily: 'Georgia, serif' }}>Aucun plat trouvé</p>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+            gap: '16px'
+          }}>
             {filteredItems.map(item => {
               const qty = selection[item.id]?.qty || 0
               return (
@@ -415,194 +454,50 @@ export default function Menu() {
                   background: theme.cardBackground, borderRadius: '16px',
                   boxShadow: qty > 0 ? `0 4px 16px ${theme.primary}33` : '0 2px 8px rgba(0,0,0,0.08)',
                   border: qty > 0 ? `2px solid ${theme.primary}` : '2px solid transparent',
-                  overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease'
+                  overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease',
+                  display: 'flex', flexDirection: 'column'
                 }}>
-                  <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', position: 'relative' }}>
+                  {/* Image pleine largeur en haut — ratio 4:3 fixe, cohérent avec les cards catégories */}
+                  <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', overflow: 'hidden' }}>
                     {item.image_url
                       ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
-                      : <span>{getEmoji(item)}</span>
+                      : <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.6rem' }}>{getEmoji(item)}</span>
                     }
                     {qty > 0 && (
-                      <div style={{ position: 'absolute', top: '8px', right: '8px', background: theme.primary, color: '#fff', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      <div style={{ position: 'absolute', top: '8px', right: '8px', background: theme.primary, color: '#fff', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem', fontWeight: 'bold', boxShadow: '0 2px 6px rgba(0,0,0,0.25)' }}>
                         {qty}
                       </div>
                     )}
+                    {/* Prix — badge flottant, bien visible sur la photo */}
+                    <div style={{
+                      position: 'absolute', bottom: '8px', left: '8px',
+                      background: 'rgba(255,255,255,0.95)', color: '#C9A84C',
+                      fontWeight: 'bold', fontSize: '0.78rem', padding: '4px 10px', borderRadius: '999px',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                    }}>
+                      {item.price.toLocaleString()} FCFA
+                    </div>
                   </div>
-                  <div style={{ padding: '10px 12px' }}>
-                    <p style={{ margin: '0 0 2px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.82rem', fontFamily: 'Georgia, serif', lineHeight: 1.3 }}>
+
+                  <div style={{ padding: '10px 12px 12px' }}>
+                    <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.name}
                     </p>
-                    <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '0.8rem' }}>
-                      {item.price.toLocaleString()} FCFA
+                    <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
+                      ⏱ ~{item.estimated_minutes} min
                     </p>
                   </div>
                 </div>
               )
             })}
           </div>
-        </div>
-
-        {/* BARRE COMMANDER — ouvre maintenant la review panier */}
-        {selectedItems.length > 0 && (
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: theme.primary, padding: '14px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)' }}>
-            <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>{totalQty} article(s) · ~{maxMinutes} min</p>
-                <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>{total.toLocaleString()} FCFA</p>
-              </div>
-              <button onClick={() => setShowCartReview(true)} style={{ background: '#C9A84C', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '25px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer' }}>
-                Voir ma commande →
-              </button>
-            </div>
-          </div>
         )}
-
-        {/* MODALE DÉTAIL PLAT */}
-        {detailItem && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
-            onClick={() => setDetailItem(null)}>
-            <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '0 0 28px' }}
-              onClick={e => e.stopPropagation()}>
-              <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem', borderRadius: '20px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
-                {detailItem.image_url
-                  ? <img src={detailItem.image_url} alt={detailItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span>{getEmoji(detailItem)}</span>
-                }
-              </div>
-              <div style={{ padding: '20px 24px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                  <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', flex: 1 }}>
-                    {detailItem.name}
-                  </h2>
-                  <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '1.1rem', marginLeft: '12px' }}>
-                    {detailItem.price.toLocaleString()} FCFA
-                  </p>
-                </div>
-                <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: theme.textSecondary }}>
-                  ⏱ ~{detailItem.estimated_minutes} min de préparation
-                </p>
-                {detailItem.description ? (
-                  <p style={{ margin: '12px 0 0', fontSize: '0.85rem', color: theme.textSecondary, lineHeight: 1.6, background: theme.cardBackground, borderRadius: '10px', padding: '12px' }}>
-                    {detailItem.description}
-                  </p>
-                ) : (
-                  <p style={{ margin: '12px 0 0', fontSize: '0.82rem', color: theme.textSecondary, fontStyle: 'italic' }}>
-                    Aucune description disponible
-                  </p>
-                )}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                  <button onClick={() => setDetailItem(null)} style={{ flex: 1, border: `2px solid ${theme.borderLight}`, background: 'transparent', borderRadius: '12px', padding: '12px', color: theme.textSecondary, fontWeight: '600', cursor: 'pointer' }}>
-                    Fermer
-                  </button>
-                  {selection[detailItem.id]?.qty > 0 ? (
-                    <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button onClick={() => removeItem(detailItem.id)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: theme.pageBackground, border: 'none', color: theme.textPrimary, fontSize: '1.2rem', cursor: 'pointer' }}>−</button>
-                      <span style={{ fontWeight: 'bold', color: theme.primary, minWidth: '20px', textAlign: 'center' }}>{selection[detailItem.id].qty}</span>
-                      <button onClick={() => addItem(detailItem)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: theme.primary, border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>+</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => { addItem(detailItem); setDetailItem(null) }} style={{ flex: 2, background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-                      Ajouter au panier
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <CartReviewModal
-          theme={theme}
-          show={showCartReview}
-          onClose={() => setShowCartReview(false)}
-          selectedItems={selectedItems}
-          addItem={addItem}
-          removeItem={removeItem}
-          deleteItemFromCart={deleteItemFromCart}
-          total={total}
-          totalQty={totalQty}
-          maxMinutes={maxMinutes}
-          onConfirm={() => { setShowCartReview(false); setShowModal(true) }}
-        />
-
-        <OrderModal
-          showModal={showModal} setShowModal={setShowModal}
-          orderType={orderType} setOrderType={setOrderType}
-          tableNumber={tableNumber} setTableNumber={setTableNumber}
-          customerName={customerName} setCustomerName={setCustomerName}
-          submitting={submitting} submitOrder={submitOrder}
-          theme={theme}
-        />
-      </div>
-    )
-  }
-
-  // ─── PAGE ACCUEIL — GRILLE CATÉGORIES ───
-  return (
-    <div style={{
-      background: theme.pageBackground,
-      minHeight: '100vh',
-      paddingBottom: selectedItems.length > 0 ? '100px' : '40px'
-    }}>
-
-      {/* HEADER */}
-      <div style={{
-        background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}CC, ${restaurant.primary_color || theme.primary})`,
-        padding: '16px 20px 20px',
-        position: 'sticky', top: 0, zIndex: 40,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-
-          {/* LIGNE 1 — logo + burger */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            {restaurant.logo_url ? (
-              <img src={restaurant.logo_url} alt="logo" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${restaurant.secondary_color || theme.borderLight}` }} />
-            ) : <div />}
-            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-          </div>
-
-          {/* LIGNE 2 — identité */}
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ color: restaurant.secondary_color || '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 2px', fontFamily: 'Georgia, serif' }}>
-              {restaurant.slogan || restaurant.name}
-            </p>
-            <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-              Découvrez Notre Menu
-            </h1>
-          </div>
-        </div>
-      </div>
-            
-      <div style={{ maxWidth: '480px', margin: '0 auto', padding: '24px 16px' }}>
-        {/* RECHERCHE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: `1px solid ${theme.textSecondary}`, marginBottom: '16px' }}>
-            <span>🔍</span>
-            <input type="text" placeholder="Rechercher..."  value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textMuted }} />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary }}>✕</button>}
-          </div>
-        <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '0.85rem', marginBottom: '16px', textAlign: 'center' }}>
-          Choisissez une catégorie
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          {Object.entries(categorized).map(([label, data]) => (
-            <button key={label} onClick={() => navigate(`/menu/${restaurantId}/${encodeURIComponent(label)}`)}
-              style={{ background: theme.cardBackground, border: 'none', borderRadius: '16px', padding: '20px 16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', transition: 'transform 0.15s ease, box-shadow 0.15s ease', borderBottom: `3px solid ${theme.primary}` }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-              <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>{data.emoji}</p>
-              <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>{label}</p>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: theme.textSecondary }}>{data.items.length} article(s)</p>
-            </button>
-          ))}
-        </div>
       </div>
 
+      {/* BARRE COMMANDER */}
       {selectedItems.length > 0 && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: theme.primary, padding: '14px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)' }}>
-          <div style={{ maxWidth: '480px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem' }}>{totalQty} article(s) · ~{maxMinutes} min</p>
               <p style={{ margin: '2px 0 0', color: '#C9A84C', fontWeight: 'bold', fontSize: '1.1rem' }}>{total.toLocaleString()} FCFA</p>
@@ -614,17 +509,64 @@ export default function Menu() {
         </div>
       )}
 
+      {/* MODALE DÉTAIL PLAT */}
+      {detailItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
+          onClick={() => setDetailItem(null)}>
+          <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '0 0 28px' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '5rem', borderRadius: '20px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
+              {detailItem.image_url
+                ? <img src={detailItem.image_url} alt={detailItem.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span>{getEmoji(detailItem)}</span>
+              }
+            </div>
+            <div style={{ padding: '20px 24px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <h2 style={{ margin: 0, fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', flex: 1 }}>
+                  {detailItem.name}
+                </h2>
+                <p style={{ margin: 0, fontWeight: 'bold', color: '#C9A84C', fontSize: '1.1rem', marginLeft: '12px' }}>
+                  {detailItem.price.toLocaleString()} FCFA
+                </p>
+              </div>
+              <p style={{ margin: '0 0 4px', fontSize: '0.75rem', color: theme.textSecondary }}>
+                ⏱ ~{detailItem.estimated_minutes} min de préparation
+              </p>
+              {detailItem.description ? (
+                <p style={{ margin: '12px 0 0', fontSize: '0.85rem', color: theme.textSecondary, lineHeight: 1.6, background: theme.cardBackground, borderRadius: '10px', padding: '12px' }}>
+                  {detailItem.description}
+                </p>
+              ) : (
+                <p style={{ margin: '12px 0 0', fontSize: '0.82rem', color: theme.textSecondary, fontStyle: 'italic' }}>
+                  Aucune description disponible
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button onClick={() => setDetailItem(null)} style={{ flex: 1, border: `2px solid ${theme.borderLight}`, background: 'transparent', borderRadius: '12px', padding: '12px', color: theme.textSecondary, fontWeight: '600', cursor: 'pointer' }}>
+                  Fermer
+                </button>
+                {selection[detailItem.id]?.qty > 0 ? (
+                  <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={() => removeItem(detailItem.id)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: theme.pageBackground, border: 'none', color: theme.textPrimary, fontSize: '1.2rem', cursor: 'pointer' }}>−</button>
+                    <span style={{ fontWeight: 'bold', color: theme.primary, minWidth: '20px', textAlign: 'center' }}>{selection[detailItem.id].qty}</span>
+                    <button onClick={() => addItem(detailItem)} style={{ flex: 1, height: '44px', borderRadius: '10px', background: theme.primary, border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>+</button>
+                  </div>
+                ) : (
+                  <button onClick={() => { addItem(detailItem); setDetailItem(null) }} style={{ flex: 2, background: theme.primary, color: '#fff', border: 'none', borderRadius: '12px', padding: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Ajouter au panier
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CartReviewModal
-        theme={theme}
-        show={showCartReview}
-        onClose={() => setShowCartReview(false)}
-        selectedItems={selectedItems}
-        addItem={addItem}
-        removeItem={removeItem}
-        deleteItemFromCart={deleteItemFromCart}
-        total={total}
-        totalQty={totalQty}
-        maxMinutes={maxMinutes}
+        theme={theme} show={showCartReview} onClose={() => setShowCartReview(false)}
+        selectedItems={selectedItems} addItem={addItem} removeItem={removeItem}
+        deleteItemFromCart={deleteItemFromCart} total={total} totalQty={totalQty} maxMinutes={maxMinutes}
         onConfirm={() => { setShowCartReview(false); setShowModal(true) }}
       />
 
