@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
+import { Search as SearchIcon, X as XIcon, Menu as BurgerIcon } from 'lucide-react'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -187,6 +188,7 @@ export default function Menu() {
   const [search, setSearch] = useState('')
   const [detailItem, setDetailItem] = useState(null)
   const [activeTab, setActiveTab] = useState(category ? decodeURIComponent(category) : null)
+  const [burgerOpen, setBurgerOpen] = useState(false)
 
   const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color)
 
@@ -336,10 +338,14 @@ export default function Menu() {
   return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: selectedItems.length > 0 ? '100px' : '40px' }}>
 
-      {/* Masque la scrollbar des onglets horizontaux, tous navigateurs */}
+      {/* Masque la scrollbar des onglets horizontaux + media queries responsive */}
       <style>{`
         .category-tabs-scroll::-webkit-scrollbar { display: none }
         .category-tabs-scroll { scrollbar-width: none; -ms-overflow-style: none }
+        @media (max-width: 429px) {
+          .menu-desktop-controls { display: none !important; }
+          .menu-burger-btn { display: flex !important; }
+        }
       `}</style>
 
       {/* HEADER — logo grand + nom du restaurant en avant */}
@@ -370,29 +376,72 @@ export default function Menu() {
               </h1>
             </div>
 
-            <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer', fontSize: '0.95rem', flexShrink: 0 }}>
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-          </div>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <button className="menu-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer', fontSize: '0.95rem' }}>
+                {darkMode ? '☀️' : '🌙'}
+              </button>
 
-          {/* RECHERCHE */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px',
-            background: 'rgba(255,255,255,0.15)', borderRadius: '12px', padding: '10px 16px'
-          }}>
-            <span style={{ opacity: 0.85 }}>🔍</span>
-            <input
-              type="text" placeholder="Rechercher un plat..." value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: '#fff' }}
-            />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', opacity: 0.8 }}>✕</button>}
+              {/* Burger — n'apparaît que sous 429px, regroupe dark mode + onglets catégories */}
+              <button
+                className="menu-burger-btn"
+                onClick={() => setBurgerOpen(o => !o)}
+                style={{ display: 'none', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 10px', cursor: 'pointer', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <BurgerIcon size={19} color="#fff" />
+              </button>
+
+              {burgerOpen && (
+                <>
+                  <div onClick={() => setBurgerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 59 }} />
+                  <div style={{
+                    position: 'absolute', top: '110%', right: 0, zIndex: 60,
+                    background: theme.cardBackground, borderRadius: '12px', boxShadow: '0 6px 20px rgba(0,0,0,0.3)',
+                    padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '210px',
+                    maxHeight: '70vh', overflowY: 'auto'
+                  }}>
+                    <button
+                      onClick={() => { toggleDarkMode(); setBurgerOpen(false) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '8px', padding: '9px 10px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
+                    >
+                      {darkMode ? '☀️ Mode clair' : '🌙 Mode sombre'}
+                    </button>
+                    <div style={{ height: '1px', background: theme.borderLight, margin: '4px 2px' }} />
+                    {categoryLabels.map(label => {
+                      const isActive = label === currentTab
+                      const img = categoryImages[label]
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => { setActiveTab(label); setSearch(''); setBurgerOpen(false) }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            background: isActive ? `${theme.primary}1A` : 'transparent',
+                            border: 'none', borderRadius: '8px', padding: '8px 10px',
+                            color: isActive ? theme.primary : theme.textPrimary,
+                            cursor: 'pointer', fontSize: '0.85rem', fontWeight: isActive ? '700' : '500', textAlign: 'left'
+                          }}
+                        >
+                          <span style={{
+                            width: '20px', height: '20px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem',
+                            background: img ? 'transparent' : theme.pageBackground
+                          }}>
+                            {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : categorized[label].emoji}
+                          </span>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ONGLETS CATÉGORIES — horizontaux scrollables, sticky sous le header */}
+        {/* ONGLETS CATÉGORIES — horizontaux scrollables, masqués sous 429px (déplacés dans le burger) */}
         <div
-          className="category-tabs-scroll"
+          className="menu-desktop-controls category-tabs-scroll"
           style={{
             display: 'flex', gap: '10px', overflowX: 'auto', marginTop: '16px',
             paddingBottom: '2px', maxWidth: '1100px', marginLeft: 'auto', marginRight: 'auto'
@@ -425,6 +474,27 @@ export default function Menu() {
               </button>
             )
           })}
+        </div>
+      </div>
+
+      {/* RECHERCHE — sortie du header, propre icône lucide */}
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 16px 0' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          <SearchIcon size={18} color={theme.textSecondary} strokeWidth={2} />
+          <input
+            type="text" placeholder="Rechercher un plat..." value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.9rem', color: theme.textPrimary }}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.textSecondary, display: 'flex', alignItems: 'center' }}>
+              <XIcon size={16} />
+            </button>
+          )}
         </div>
       </div>
 
