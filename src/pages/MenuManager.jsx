@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom';
+
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
-import { Camera, Pencil, Loader2 } from 'lucide-react'
+import { Camera, Pencil, Loader2, Menu as BurgerIcon } from 'lucide-react'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -76,6 +78,8 @@ export default function MenuManager() {
   const [uploadingCategory, setUploadingCategory] = useState(null)
   // Label de la catégorie survolée (pour révéler le crayon d'édition en douceur sur desktop)
   const [hoveredCategory, setHoveredCategory] = useState(null)
+  // Menu burger ouvert/fermé — pour la consolidation des contrôles sous 429px
+  const [burgerOpen, setBurgerOpen] = useState(false)
 
   // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
@@ -116,9 +120,9 @@ export default function MenuManager() {
         .eq('restaurant_id', resto.id)
 
       const catMap = {}
-      ;(catRows || []).forEach(row => {
-        catMap[row.label] = { id: row.id, image_url: row.image_url }
-      })
+        ; (catRows || []).forEach(row => {
+          catMap[row.label] = { id: row.id, image_url: row.image_url }
+        })
       setCategoryImages(catMap)
 
       setLoading(false)
@@ -342,6 +346,12 @@ export default function MenuManager() {
       <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
 
         {/* HEADER — 2 lignes */}
+        <style>{`
+          @media (max-width: 429px) {
+            .mm-desktop-controls { display: none !important; }
+            .mm-burger-btn { display: flex !important; }
+          }
+        `}</style>
         <div style={{
           background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
           padding: '16px 20px 20px',
@@ -351,24 +361,96 @@ export default function MenuManager() {
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <button
-                onClick={() => { setActiveCategory(null); setSearch('') }}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}
+
+                onClick={() => { setActiveCategory(null); setSearch(''); setBurgerOpen(false) }}
+                style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}
               >
                 ← Retour
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+                <button className="mm-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 10px', cursor: 'pointer', fontSize: '0.9rem' }}>
                   {darkMode ? '☀️' : '🌙'}
                 </button>
                 {brand.logo_url && (
-                  <img src={brand.logo_url} alt="logo" style={{ width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
+                  <img className="mm-desktop-controls" src={brand.logo_url} alt="logo" style={{ display: 'flex', width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
                 )}
                 <button
+                  class="mm-desktop-controls"
                   onClick={openAdd}
                   style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
                 >
                   + Ajouter
                 </button>
+
+                {/* Burger — n'apparaît que sous 429px, regroupe Retour + dark mode + logo */}
+                <button
+                  className="mm-burger-btn"
+                  onClick={() => setBurgerOpen(o => !o)}
+                  style={{ display: 'none', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 9px', color: '#fff', cursor: 'pointer', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <BurgerIcon size={18} />
+                </button>
+
+                {burgerOpen && (
+                  <>
+                    <div onClick={() => setBurgerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 59 }} />
+                    <div style={{
+                      position: 'absolute', top: '110%', right: 0, zIndex: 60,
+                      background: theme.cardBackground, borderRadius: '12px', boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+                      padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px'
+                    }}>
+
+                      <button
+                        onClick={openAdd}
+                        style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
+                      >
+                        + Ajouter
+                      </button>
+
+                      <button
+                        onClick={() => { toggleDarkMode(); setBurgerOpen(false) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '8px', padding: '9px 10px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
+                      >
+                        {darkMode ? '☀️ Mode clair' : '🌙 Mode sombre'}
+                      </button>
+                      {brand.logo_url && (
+                        <Link
+                          to={`/`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "8px 12px",
+                            borderRadius: "999px",
+                            textDecoration: "none",
+                            transition: "background .2s",
+                          }}
+                        >
+                          <img
+                            src={brand.logo_url}
+                            alt={`${brand.name} logo`}
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: "50%",
+                              objectFit: "cover",
+                            }}
+                          />
+
+                          <span
+                            style={{
+                              color: theme.textPrimary,
+                              fontWeight: 600,
+                              fontSize: ".85rem",
+                            }}
+                          >
+                            {brand.name}
+                          </span>
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <div>
@@ -612,6 +694,12 @@ export default function MenuManager() {
     <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
 
       {/* HEADER */}
+      <style>{`
+        @media (max-width: 429px) {
+          .mm-desktop-controls { display: none !important; }
+          .mm-burger-btn { display: flex !important; }
+        }
+      `}</style>
       <div style={{
         background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
         padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
@@ -619,12 +707,6 @@ export default function MenuManager() {
       }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button
-              onClick={() => navigate('/dashboard')}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              ← Retour
-            </button>
             {brand.logo_url && (
               <img src={brand.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
             )}
@@ -637,9 +719,52 @@ export default function MenuManager() {
               </h1>
             </div>
           </div>
-          <button onClick={toggleDarkMode} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}>
-            {darkMode ? '☀️' : '🌙'}
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+            <button
+              className="mm-desktop-controls"
+              onClick={() => navigate('/dashboard')}
+              style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
+            >
+              ← Retour
+            </button>
+            <button className="mm-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}>
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+
+            {/* Burger — n'apparaît que sous 429px */}
+            <button
+              className="mm-burger-btn"
+              onClick={() => setBurgerOpen(o => !o)}
+              style={{ display: 'none', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 9px', color: '#fff', cursor: 'pointer', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <BurgerIcon size={18} />
+            </button>
+
+            {burgerOpen && (
+              <>
+                <div onClick={() => setBurgerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 59 }} />
+                <div style={{
+                  position: 'absolute', top: '110%', right: 0, zIndex: 60,
+                  background: theme.cardBackground, borderRadius: '12px', boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+                  padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px'
+                }}>
+                  <button
+                    onClick={() => { navigate('/dashboard'); setBurgerOpen(false) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '8px', padding: '9px 10px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
+                  >
+                    ← Retour
+                  </button>
+                  <button
+                    onClick={() => { toggleDarkMode(); setBurgerOpen(false) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '8px', padding: '9px 10px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
+                  >
+                    {darkMode ? '☀️ Mode clair' : '🌙 Mode sombre'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -690,8 +815,8 @@ export default function MenuManager() {
         */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '16px'
+          gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
+          gap: '12px'
         }}>
           {Object.entries(categorized).map(([label, data]) => {
             const catImage = categoryImages[label]?.image_url
@@ -711,7 +836,7 @@ export default function MenuManager() {
                 >
                   <label style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    gap: '6px', padding: '24px 12px 16px', cursor: isUploadingThis ? 'default' : 'pointer'
+                    gap: '5px', padding: '16px 10px 10px', cursor: isUploadingThis ? 'default' : 'pointer'
                   }}>
                     {isUploadingThis
                       ? <Loader2 size={26} color={theme.textSecondary} style={{ animation: 'spin 1s linear infinite' }} />
@@ -734,7 +859,7 @@ export default function MenuManager() {
                     />
                   </label>
 
-                  <div style={{ padding: '0 12px 14px', textAlign: 'center' }}>
+                  <div style={{ padding: '0 10px 10px', textAlign: 'center' }}>
                     <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
                       {data.emoji} {label}
                     </p>
@@ -805,7 +930,7 @@ export default function MenuManager() {
                   </label>
                 </div>
 
-                <div style={{ padding: '12px' }}>
+                <div style={{ padding: '9px 10px' }}>
                   <p style={{ margin: '0 0 4px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
                     {label}
                   </p>
