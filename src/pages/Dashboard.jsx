@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import HeaderActions from '../components/HeaderActions'
+import { useSubscription } from '../hooks/useSubscription'
 
 const STATUS_LABELS = {
   received: { label: 'Reçue', bg: '#FFF9C4', color: '#7B6000' },
@@ -87,6 +88,13 @@ export default function Dashboard() {
 
   // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
+
+  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
+  const { subscriptionStatus, features, trialEndAt } = useSubscription();
+
+  const trialDaysLeft = trialEndAt
+    ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
 
   // ─── INIT : restaurant + brand + commandes actives + channel Realtime ───
   useEffect(() => {
@@ -301,45 +309,109 @@ export default function Dashboard() {
 
       <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}>
 
+        {/* BANNIÈRE ABONNEMENT — visible seulement si accès dégradé */}
+        {subscriptionStatus === 'suspended' && (
+          <div style={{
+            background: '#FEF3C7',
+            border: '1px solid #F59E0B',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap',
+          }}>
+            <div>
+              <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.88rem' }}>
+                ⚠️ Abonnement suspendu — mode limité
+              </p>
+              <p style={{ margin: '2px 0 0', color: '#92400E', fontSize: '0.78rem' }}>
+                Vos commandes en cours continuent normalement. Certaines fonctionnalités (stats, branding) sont désactivées.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/settings')}
+              style={{
+                background: '#F59E0B', color: '#fff', border: 'none',
+                borderRadius: '8px', padding: '8px 14px', fontWeight: '600',
+                fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              Réactiver
+            </button>
+          </div>
+        )}
+
+        {/* Rappel discret pendant l'essai — permanent, avec urgence accrue à J-3 */}
+        {subscriptionStatus === 'trial' && trialDaysLeft !== null && (
+          <div style={{
+            background: trialDaysLeft <= 3 ? '#FFF9C4' : theme.cardBackground,
+            border: `1px dashed ${trialDaysLeft <= 3 ? '#F59E0B' : theme.borderLight}`,
+            borderRadius: '12px',
+            padding: '10px 14px',
+            marginBottom: '20px',
+            fontSize: '0.78rem',
+            color: trialDaysLeft <= 3 ? '#7B6000' : theme.textSecondary,
+          }}>
+            {trialDaysLeft <= 3
+              ? `⏳ Votre essai se termine dans ${trialDaysLeft} jour${trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.`
+              : `🎁 Vous êtes en période d'essai — toutes les fonctionnalités sont actives (${trialDaysLeft} jours restants).`}
+          </div>
+        )}
+
         {/* STATS DU JOUR */}
-        <div style={{
-          background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
-          borderRadius: '16px', padding: '18px', marginBottom: '20px',
-          boxShadow: `0 4px 16px ${theme.textSecondary}40`,
-          textAlign: "center",
-        }}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
-            Aujourd'hui
-          </p>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
-              <p style={{ margin: 0, color: '#fff', fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
-                {todayStats.count}
-              </p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
-                commande(s) vendue(s)
-              </p>
-            </div>
-            <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
-              <p style={{ margin: 0, color: brand.secondary_color, fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
-                {todayStats.revenue.toLocaleString()}
-              </p>
-              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
-                FCFA encaissés
-              </p>
-            </div>
-            {todayStats.topItem && (
-              <div style={{ flex: '1 1 auto', minWidth: '120px' }}>
-                <p style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  🔥 {todayStats.topItem.name}
+        {features.stats ? (
+          <div style={{
+            background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
+            borderRadius: '16px', padding: '18px', marginBottom: '20px',
+            boxShadow: `0 4px 16px ${theme.textSecondary}40`,
+            textAlign: "center",
+          }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
+              Aujourd'hui
+            </p>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
+                <p style={{ margin: 0, color: '#fff', fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+                  {todayStats.count}
                 </p>
-                <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
-                  {todayStats.topItem.qty} vendus aujourd'hui
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
+                  commande(s) vendue(s)
                 </p>
               </div>
-            )}
+              <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
+                <p style={{ margin: 0, color: brand.secondary_color, fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+                  {todayStats.revenue.toLocaleString()}
+                </p>
+                <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
+                  FCFA encaissés
+                </p>
+              </div>
+              {todayStats.topItem && (
+                <div style={{ flex: '1 1 auto', minWidth: '120px' }}>
+                  <p style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    🔥 {todayStats.topItem.name}
+                  </p>
+                  <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
+                    {todayStats.topItem.qty} vendus aujourd'hui
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{
+            background: theme.cardBackground,
+            borderRadius: '16px', padding: '18px', marginBottom: '20px',
+            textAlign: "center", border: `1px dashed ${theme.borderLight}`,
+          }}>
+            <p style={{ margin: 0, color: theme.textSecondary, fontSize: '0.85rem' }}>
+              🔒 Statistiques du jour (revenus, best-seller) disponibles avec un abonnement actif
+            </p>
+          </div>
+        )}
 
         {/* STATS RAPIDES — fond et texte thème */}
         <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
