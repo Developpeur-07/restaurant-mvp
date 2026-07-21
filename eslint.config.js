@@ -18,4 +18,15 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Override pour le dossier api/ — fonctions serverless Vercel (Node.js),
+    // pas du code navigateur. Évite que `process`, `Buffer`, etc. soient
+    // signalés comme non définis / auto-importés à tort par erreur.
+    files: ['api/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+      sourceType: 'module',
+    },
+  },
 ])

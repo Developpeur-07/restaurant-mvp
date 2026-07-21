@@ -15,7 +15,7 @@
 //     (stub pour l'instant, branché réellement en Phase 2).
 
 import { createClient } from '@supabase/supabase-js';
-import {process} from 'process';
+
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
