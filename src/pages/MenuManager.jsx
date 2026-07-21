@@ -375,7 +375,7 @@ export default function MenuManager() {
                   <img className="mm-desktop-controls" src={brand.logo_url} alt="logo" style={{ display: 'flex', width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
                 )}
                 <button
-                  class="mm-desktop-controls"
+                  className="mm-desktop-controls"
                   onClick={openAdd}
                   style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
                 >
@@ -414,8 +414,8 @@ export default function MenuManager() {
                         {darkMode ? '☀️ Mode clair' : '🌙 Mode sombre'}
                       </button>
                       {brand.logo_url && (
-                        <Link
-                          to={`/`}
+                        <Link 
+                          to={`/dashboard`}
                           style={{
                             display: "flex",
                             alignItems: "center",

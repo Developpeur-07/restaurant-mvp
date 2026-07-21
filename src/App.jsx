@@ -5,7 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import QRCodePage from "./pages/QRCode";
 import UpdatePassword from "./pages/UpdatePassword";
-import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import Settings from "./pages/Settings";
 import History from "./pages/History";
 import MenuManager from "./pages/MenuManager";
@@ -30,41 +30,41 @@ export default function App() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <Dashboard />
-          </ProtectedRoute>
+          </AdminRoute>
         }
       />
       <Route
         path="/qrcode"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <QRCodePage />
-          </ProtectedRoute>
+          </AdminRoute>
         }
       />
       <Route
         path="/settings"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <Settings />
-          </ProtectedRoute>
+          </AdminRoute>
         }
       />
       <Route
         path="/history"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <History />
-          </ProtectedRoute>
+          </AdminRoute>
         }
       />
       <Route
         path="/menu-manager"
         element={
-          <ProtectedRoute>
+          <AdminRoute>
             <MenuManager />
-          </ProtectedRoute>
+          </AdminRoute>
         }
       />
       
