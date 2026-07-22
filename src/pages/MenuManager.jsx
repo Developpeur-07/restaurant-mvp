@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
+import { useSubscription } from '../hooks/useSubscription'
 import { Camera, Pencil, Loader2, Menu as BurgerIcon } from 'lucide-react'
 
 const CATEGORIES = [
@@ -84,6 +85,10 @@ export default function MenuManager() {
   // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
 
+  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
+  const { features } = useSubscription()
+  const atMenuLimit = items.length >= features.maxMenuItems
+
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -131,6 +136,11 @@ export default function MenuManager() {
   }, [])
 
   function openAdd() {
+    if (atMenuLimit) {
+      setMessage({ type: 'error', text: `Limite de ${features.maxMenuItems} plats atteinte (mode gratuit) — réactivez l'abonnement pour un menu illimité` })
+      setTimeout(() => setMessage(null), 4000)
+      return
+    }
     setEditItem(null)
     setForm({ name: '', price: '', estimated_minutes: '', description: '', image_url: '' })
     setShowForm(true)
@@ -377,9 +387,11 @@ export default function MenuManager() {
                 <button
                   className="mm-desktop-controls"
                   onClick={openAdd}
-                  style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
+                  disabled={atMenuLimit}
+                  title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+                  style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
                 >
-                  + Ajouter
+                  {atMenuLimit ? '🔒 Ajouter' : '+ Ajouter'}
                 </button>
 
                 {/* Burger — n'apparaît que sous 429px, regroupe Retour + dark mode + logo */}
@@ -402,9 +414,11 @@ export default function MenuManager() {
 
                       <button
                         onClick={openAdd}
-                        style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem' }}
+                        disabled={atMenuLimit}
+                        title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+                        style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
                       >
-                        + Ajouter
+                        {atMenuLimit ? '🔒 Ajouter' : '+ Ajouter'}
                       </button>
 
                       <button
@@ -512,9 +526,11 @@ export default function MenuManager() {
                 <p style={{ fontFamily: 'Georgia, serif' }}>Aucun plat dans cette catégorie</p>
                 <button
                   onClick={openAdd}
-                  style={{ marginTop: '12px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer' }}
+                  disabled={atMenuLimit}
+                  title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+                  style={{ marginTop: '12px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', opacity: atMenuLimit ? 0.5 : 1 }}
                 >
-                  + Ajouter un plat
+                  {atMenuLimit ? `🔒 Limite de ${features.maxMenuItems} plats atteinte` : '+ Ajouter un plat'}
                 </button>
               </div>
             ) : (
@@ -779,6 +795,18 @@ export default function MenuManager() {
             <p style={{ margin: 0, fontSize: '0.85rem', color: message.type === 'success' ? '#2d6b2d' : '#cc0000' }}>
               {message.text}
             </p>
+          </div>
+        )}
+
+        {isFinite(features.maxMenuItems) && (
+          <div style={{
+            background: atMenuLimit ? '#FEF3C7' : theme.cardBackground,
+            border: `1px solid ${atMenuLimit ? '#F59E0B' : theme.borderLight}`,
+            borderRadius: '10px', padding: '10px 16px', marginBottom: '16px',
+            fontSize: '0.8rem', color: atMenuLimit ? '#92400E' : theme.textSecondary,
+            textAlign: 'center'
+          }}>
+            {atMenuLimit ? '🔒' : '📋'} {items.length}/{features.maxMenuItems} plats (mode gratuit) — réactivez pour un menu illimité
           </div>
         )}
 
