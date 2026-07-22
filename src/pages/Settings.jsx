@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
+import { useSubscription } from "../hooks/useSubscription";
+
+const STATUS_DISPLAY = {
+  trial: { label: "Essai en cours", bg: "#DBEAFE", color: "#1E40AF" },
+  active: { label: "Actif", bg: "#DCFCE7", color: "#166534" },
+  grace_period: { label: "Grâce", bg: "#FFF9C4", color: "#7B6000" },
+  suspended: { label: "Suspendu", bg: "#FEE2E2", color: "#991B1B" },
+};
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -24,6 +32,15 @@ export default function Settings() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
+
+  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
+  const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features } = useSubscription();
+
+  const trialDaysLeft = trialEndAt
+    ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  const statusDisplay = STATUS_DISPLAY[subscriptionStatus];
 
   useEffect(() => {
     async function init() {
@@ -229,6 +246,60 @@ export default function Settings() {
           </p>
         </div>
 
+        {/* ABONNEMENT */}
+        <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0 }}>
+              Abonnement
+            </h2>
+            {statusDisplay && (
+              <span style={{
+                background: statusDisplay.bg, color: statusDisplay.color,
+                fontSize: "0.72rem", fontWeight: "600", padding: "4px 10px", borderRadius: "20px",
+              }}>
+                {statusDisplay.label}
+              </span>
+            )}
+          </div>
+
+          <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 4px" }}>
+            Plan : <strong style={{ color: theme.textPrimary }}>{plan === "pro" ? "Pro" : "Free"}</strong>
+          </p>
+
+          {subscriptionStatus === "trial" && trialDaysLeft !== null && (
+            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 4px" }}>
+              Essai : <strong style={{ color: theme.textPrimary }}>{trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}</strong>
+            </p>
+          )}
+
+          {subscriptionStatus === "active" && nextBillingDate && (
+            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 4px" }}>
+              Prochaine échéance : <strong style={{ color: theme.textPrimary }}>
+                {new Date(nextBillingDate).toLocaleDateString("fr-FR")}
+              </strong>
+            </p>
+          )}
+
+          {subscriptionStatus === "suspended" && (
+            <>
+              <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 12px" }}>
+                Vos commandes en cours continuent normalement. Réactivez pour retrouver stats, branding et Realtime.
+              </p>
+              <button
+                disabled
+                title="Le paiement en ligne arrive bientôt"
+                style={{
+                  width: "100%", background: theme.borderLight, color: theme.textSecondary,
+                  border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold",
+                  fontSize: "0.88rem", cursor: "not-allowed",
+                }}
+              >
+                Réactiver — bientôt disponible
+              </button>
+            </>
+          )}
+        </div>
+
         {/* IDENTITÉ VISUELLE */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
@@ -391,26 +462,35 @@ export default function Settings() {
           </button>
         </div>
 
-        {/* AJOUTER UN ADMIN */}
+        {/* AJOUTER UN ADMIN — gated par features.multiStaffAccounts */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px" }}>
             Ajouter un administrateur
           </h2>
-          <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
-            Un email d'invitation sera envoyé automatiquement
-          </p>
-          <input
-            type="email" placeholder="email@restaurant.com" value={newAdminEmail}
-            onChange={(e) => setNewAdminEmail(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-          />
-          <button
-            onClick={handleAddAdmin}
-            disabled={!newAdminEmail}
-            style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
-          >
-            Ouvrir le panneau d'invitation →
-          </button>
+
+          {features.multiStaffAccounts ? (
+            <>
+              <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
+                Un email d'invitation sera envoyé automatiquement
+              </p>
+              <input
+                type="email" placeholder="email@restaurant.com" value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+              />
+              <button
+                onClick={handleAddAdmin}
+                disabled={!newAdminEmail}
+                style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
+              >
+                Ouvrir le panneau d'invitation →
+              </button>
+            </>
+          ) : (
+            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: 0 }}>
+              🔒 Les comptes staff multiples sont disponibles avec un abonnement actif
+            </p>
+          )}
         </div>
 
         <button
