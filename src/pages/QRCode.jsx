@@ -3,6 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
+import { useSubscription } from "../hooks/useSubscription";
 
 export default function QRCodePage() {
   const navigate = useNavigate();
@@ -11,6 +12,10 @@ export default function QRCodePage() {
 
   // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(restaurant?.primary_color);
+
+  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
+  const { features } = useSubscription();
+  const hasCustomBranding = features.customBranding;
 
   useEffect(() => {
     async function init() {
@@ -48,13 +53,17 @@ export default function QRCodePage() {
 
   const menuUrl = `${window.location.origin}/menu/${restaurant.id}`;
 
+  // Sans le plan payant, l'en-tête retombe sur la couleur neutre du thème
+  // plutôt que sur la couleur personnalisée du restaurant.
+  const headerColor = hasCustomBranding ? (restaurant.primary_color || theme.primary) : theme.primary;
+
   return (
     <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
 
       {/* HEADER */}
       <div
         style={{
-          background: `linear-gradient(135deg, ${restaurant.primary_color || theme.primary}CC, ${restaurant.primary_color || theme.primary})`,
+          background: `linear-gradient(135deg, ${headerColor}CC, ${headerColor})`,
           padding: "20px 20px",
         }}
       >
@@ -78,9 +87,24 @@ export default function QRCodePage() {
         <h1 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1.5rem", margin: "0 0 8px" }}>
           {restaurant.name}
         </h1>
-        <p style={{ color: theme.textSecondary, fontSize: "0.85rem", marginBottom: "32px" }}>
+        <p style={{ color: theme.textSecondary, fontSize: "0.85rem", marginBottom: hasCustomBranding ? "32px" : "12px" }}>
           Affichez ce QR code sur vos tables
         </p>
+
+        {!hasCustomBranding && (
+          <div style={{
+            background: "#FEF3C7",
+            border: "1px solid #F59E0B",
+            borderRadius: "10px",
+            padding: "10px 16px",
+            marginBottom: "24px",
+            fontSize: "0.78rem",
+            color: "#92400E",
+            textAlign: "center"
+          }}>
+            🔒 Couleur personnalisée désactivée (mode gratuit) — réactivez l'abonnement pour appliquer les couleurs de votre restaurant au QR code
+          </div>
+        )}
 
         <div
           style={{
