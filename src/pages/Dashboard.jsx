@@ -420,7 +420,7 @@ export default function Dashboard() {
           }}>
             <div>
               <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.88rem' }}>
-                ⚠️ Abonnement suspendu — mode limité
+                 Abonnement suspendu — mode limité
               </p>
               <p style={{ margin: '2px 0 0', color: '#92400E', fontSize: '0.78rem' }}>
                 Vos commandes en cours continuent normalement. Certaines fonctionnalités (stats, branding) sont désactivées.
@@ -451,8 +451,8 @@ export default function Dashboard() {
             color: trialDaysLeft <= 3 ? '#7B6000' : theme.textSecondary,
           }}>
             {trialDaysLeft <= 3
-              ? `⏳ Votre essai se termine dans ${trialDaysLeft} jour${trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.`
-              : `🎁 Vous êtes en période d'essai — toutes les fonctionnalités sont actives (${trialDaysLeft} jours restants).`}
+              ? ` Votre essai se termine dans ${trialDaysLeft} jour${trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.`
+              : ` Vous êtes en période d'essai — toutes les fonctionnalités sont actives (${trialDaysLeft} jours restants).`}
           </div>
         )}
 
@@ -487,7 +487,7 @@ export default function Dashboard() {
               {todayStats.topItem && (
                 <div style={{ flex: '1 1 auto', minWidth: '120px' }}>
                   <p style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    🔥 {todayStats.topItem.name}
+                     {todayStats.topItem.name}
                   </p>
                   <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
                     {todayStats.topItem.qty} vendus aujourd'hui
