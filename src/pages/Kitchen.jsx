@@ -131,13 +131,13 @@ export default function Kitchen() {
 
       {/* HEADER */}
       <div style={{
-        background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor})`,
+        background: `linear-gradient(135deg, ${theme.textSecondary}CC, ${theme.textSecondary})`,
         padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <p style={{ color: '#C9A84C', fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
+            <p style={{ color: theme.textPrimary,textBold: 'bold', fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
               Dashboard cuisine
             </p>
             <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
