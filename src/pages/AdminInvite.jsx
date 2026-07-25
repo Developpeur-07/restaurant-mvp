@@ -12,7 +12,7 @@ export default function AdminInvite() {
   const [copiedId, setCopiedId] = useState(null)
 
   // ── THÈME — couleur système par défaut, dark mode fonctionnel ──
-  const { theme, darkMode, toggleDarkMode } = useTheme('#8B0000')
+  const { theme, darkMode, toggleDarkMode } = useTheme('#1F2A44')
 
   useEffect(() => {
     fetchTokens()
@@ -101,7 +101,7 @@ export default function AdminInvite() {
 
         {/* GÉNÉRATEUR */}
         <div style={{ background: theme.cardBackground, borderRadius: '16px', padding: '20px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '1rem', margin: '0 0 14px' }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '1rem', margin: '0 0 14px' }}>
             Nouveau lien d'invitation
           </h2>
           <input
@@ -141,7 +141,7 @@ export default function AdminInvite() {
             return (
               <div key={t.id} style={{
                 background: theme.cardBackground, borderRadius: '12px', padding: '14px 16px',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.10)',
                 
                 opacity: (t.used || isExpired) ? 0.7 : 1
               }}>
