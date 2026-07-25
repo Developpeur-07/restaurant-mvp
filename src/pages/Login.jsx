@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
+import { Sun, Moon, Mail } from 'lucide-react'
+
 
 export default function Login() {
   const navigate = useNavigate()
@@ -13,7 +15,7 @@ export default function Login() {
   const [resetSent, setResetSent] = useState(false)
 
   // ── THÈME — couleur système par défaut, dark mode fonctionnel ──
-  const { theme, darkMode, toggleDarkMode } = useTheme('#8B0000')
+  const { theme, darkMode, toggleDarkMode } = useTheme('#1F2A44')
 
   async function handleLogin() {
     setLoading(true)
@@ -39,7 +41,7 @@ export default function Login() {
   if (resetSent) return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ textAlign: 'center' }}>
-        <p style={{ fontSize: '3rem', marginBottom: '16px' }}>📧</p>
+        <Mail size={48} color={theme.primary} style={{ marginBottom: '16px' }} />
         <p style={{ fontFamily: 'Georgia, serif', color: theme.textPrimary, fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
           Email envoyé
         </p>
@@ -59,9 +61,9 @@ export default function Login() {
   return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-      {/* HEADER */}
+      {/* HEADER — theme.primary, cohérent avec QRCode/MenuManager/Dashboard/Kitchen */}
       <div style={{
-        background: `linear-gradient(170deg, ${theme.textSecondary}CC, ${theme.textSecondary})`,
+        background: `linear-gradient(135deg, ${theme.primary}CC, ${theme.primary})`,
         padding: '40px 20px 32px',
         textAlign: 'center',
         position: 'relative',
@@ -74,12 +76,12 @@ export default function Login() {
           onClick={toggleDarkMode}
           style={{
             background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
-            padding: '8px 10px', cursor: 'pointer', fontSize: '1rem', flexShrink: 0,
-            position: 'absolute', top: '16px', right: '16px'
-            
+            padding: '8px 10px', cursor: 'pointer', flexShrink: 0,
+            position: 'absolute', top: '16px', right: '16px',
+            display: 'flex', alignItems: 'center'
           }}
         >
-          {darkMode ? '☀️' : '🌙'}
+          {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
         </button>
 
         <p style={{ color: '#fff', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
@@ -88,7 +90,7 @@ export default function Login() {
         <h1 style={{ color: '#fff', fontSize: '1.8rem', fontFamily: 'Georgia, serif', margin: '0 0 8px' }}>
           Restaurant
         </h1>
-        
+
       </div>
 
       {/* FORMULAIRE */}
@@ -98,7 +100,7 @@ export default function Login() {
           <h2 style={{ fontFamily: 'Georgia, serif', color: theme.textPrimary, fontSize: '1.3rem', marginBottom: '6px' }}>
             {mode === 'login' ? 'Connexion' : 'Mot de passe oublié'}
           </h2>
-          <p style={{ color: theme.textPrimary, fontSize: '0.8rem', marginBottom: '24px' }}>
+          <p style={{ color: theme.textSecondary, fontSize: '0.8rem', marginBottom: '24px' }}>
             {mode === 'login' ? 'Accédez à votre tableau de bord' : 'Entrez votre email pour réinitialiser'}
           </p>
 
@@ -123,7 +125,7 @@ export default function Login() {
                 color: theme.textPrimary, outline: 'none', boxSizing: 'border-box',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={e => e.target.style.borderColor = theme.textPrimary}
+              onFocus={e => e.target.style.borderColor = theme.primary}
               onBlur={e => e.target.style.borderColor = theme.borderLight}
             />
           </div>
@@ -144,7 +146,7 @@ export default function Login() {
                   padding: '12px 14px', fontSize: '0.9rem', background: theme.cardBackground,
                   color: theme.textPrimary, outline: 'none', boxSizing: 'border-box'
                 }}
-                onFocus={e => e.target.style.borderColor = theme.textPrimary}
+                onFocus={e => e.target.style.borderColor = theme.primary}
                 onBlur={e => e.target.style.borderColor = theme.borderLight}
               />
             </div>
@@ -156,7 +158,7 @@ export default function Login() {
                 onClick={handleLogin}
                 disabled={!email || !password || loading}
                 style={{
-                  width: '100%', background: theme.textMuted, color: theme.textPrimary, border: 'none',
+                  width: '100%', background: theme.primary, color: '#fff', border: 'none',
                   borderRadius: '12px', padding: '14px', fontWeight: 'bold',
                   fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
                   opacity: (!email || !password || loading) ? 0.6 : 1,
@@ -167,7 +169,7 @@ export default function Login() {
               </button>
               <button
                 onClick={() => setMode('reset')}
-                style={{ width: '100%', background: 'none', border: 'none', color: theme.textPrimary, fontSize: '0.82rem', cursor: 'pointer' }}
+                style={{ width: '100%', background: 'none', border: 'none', color: theme.textSecondary, fontSize: '0.82rem', cursor: 'pointer' }}
               >
                 Mot de passe oublié ?
               </button>
@@ -178,7 +180,7 @@ export default function Login() {
                 onClick={handleReset}
                 disabled={!email || loading}
                 style={{
-                  width: '100%', background: theme.textPrimary, color: '#fff', border: 'none',
+                  width: '100%', background: theme.primary, color: '#fff', border: 'none',
                   borderRadius: '12px', padding: '14px', fontWeight: 'bold',
                   fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
                   opacity: (!email || loading) ? 0.6 : 1
@@ -188,7 +190,7 @@ export default function Login() {
               </button>
               <button
                 onClick={() => setMode('login')}
-                style={{ width: '100%', background: 'none', border: 'none', color: theme.textPrimary, fontSize: '0.82rem', cursor: 'pointer' }}
+                style={{ width: '100%', background: 'none', border: 'none', color: theme.textSecondary, fontSize: '0.82rem', cursor: 'pointer' }}
               >
                 ← Retour à la connexion
               </button>

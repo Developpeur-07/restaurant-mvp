@@ -32,7 +32,7 @@ function hslToHex(h, s, l) {
 }
 
 export function generateTheme(primaryColor) {
-  const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#8B0000'
+  const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#1F2A44'
   const { h, s } = hexToHSL(safe)
 
   return {
@@ -48,23 +48,23 @@ export function generateTheme(primaryColor) {
 }
 
 export function generateDarkTheme(primaryColor) {
-  const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#8B0000'
+  const safe = /^#[0-9A-Fa-f]{6}$/.test(primaryColor) ? primaryColor : '#1F2A44'
   const { h } = hexToHSL(safe)
 
   // Teinte bleu-marine fixe, légèrement influencée par la couleur du restaurant
   // mais jamais neutre/noire — c'est la clé de la lisibilité
   const baseHue = 230 // bleu-marine de référence (type VSCode/Discord)
-  const blendedHue = (baseHue + h * 0.15) % 360 // légère touche de la couleur de marque
+  const blendedHue = (baseHue + h * 13.01) % 360 // légère touche de la couleur de marque
 
   return {
     mode: 'dark',
     primary: safe,
-    pageBackground: hslToHex(blendedHue, 35, 25),    // bleu-marine profond, pas noir
-    cardBackground: hslToHex(blendedHue, 18, 25),     // un ton au-dessus, même famille
+    pageBackground: hslToHex(blendedHue, 35, 20),    // bleu-marine profond, pas noir
+    cardBackground: hslToHex(blendedHue, 22, 31),     // nettement plus clair que le fond — carte bien distincte
     textPrimary: '#FFFFFF',
     textSecondary: '#C8CCDA',     // gris-bleu clair, plus lisible qu'un gris neutre
     textMuted: '#8B92A8',          // gris-bleu discret mais toujours lisible
-    borderLight: hslToHex(blendedHue, 25, 26),
+    borderLight: hslToHex(blendedHue, 24, 40),        // bordure nettement visible, plus claire que la carte
   }
 }
 
