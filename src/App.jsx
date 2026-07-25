@@ -11,6 +11,8 @@ import History from "./pages/History";
 import MenuManager from "./pages/MenuManager";
 import AdminInvite from "./pages/AdminInvite";
 import Onboarding from "./pages/Onboarding";
+import StaffRoute from "./components/StaffRoute";
+import Kitchen from "./pages/Kitchen";
 
 import SuperAdminRoute from './components/SuperAdminRoute'
 
@@ -67,11 +69,21 @@ export default function App() {
           </AdminRoute>
         }
       />
+
+      <Route
+        path="/kitchen"
+        element={
+          <StaffRoute>
+            <Kitchen />
+          </StaffRoute>
+        }
+      />
       
       <Route path="/onboarding/:token" element={<Onboarding />} />
       <Route path="/admin-invite" element={
         <SuperAdminRoute><AdminInvite /></SuperAdminRoute>
       } />
+
     </Routes>
   );
 }

@@ -6,12 +6,12 @@ import { useTheme } from "../lib/useTheme";
 const STATUS_CONFIG = {
   received: {
     label: "Commande reçue",
-    sublabel: "Votre commande a été transmise en cuisine",
+    sublabel: " Nos équipes préparent votre commande",
     step: 1,
   },
   preparing: {
     label: "En préparation",
-    sublabel: "Nos équipes préparent votre commande",
+    sublabel: "Votre commande a été transmise en cuisine",
     step: 2,
   },
   ready: {
@@ -19,6 +19,17 @@ const STATUS_CONFIG = {
     sublabel: "Rendez-vous en caisse pour récupérer votre commande",
     step: 3,
   },
+  
+    served:{
+        label:"Servie",
+        sublabel:"Votre commande a été servie.",
+        step:4
+    },
+    paid:{
+        label:"Commande payée",
+        sublabel:"Merci de votre visite.",
+        step:5
+    },
   cancelled: {
     label: "Commande annulée",
     sublabel: "Votre commande a été annulée",
@@ -86,7 +97,7 @@ export default function Tracking() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: theme.primary, fontFamily: "Georgia, serif" }}>
+        <p style={{ color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
           Chargement...
         </p>
       </div>
@@ -103,7 +114,7 @@ export default function Tracking() {
           justifyContent: "center",
         }}
       >
-        <p style={{ color: theme.primary }}>Commande introuvable.</p>
+        <p style={{ color: theme.textPrimary }}>Commande introuvable.</p>
       </div>
     );
 
@@ -264,7 +275,7 @@ export default function Tracking() {
                       height: "32px",
                       borderRadius: "50%",
                       background: done ? theme.primary : theme.borderLight,
-                      color: done ? "#fff" : theme.textSecondary,
+                      color: done ? "#fff" : theme.textPrimary,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -279,7 +290,7 @@ export default function Tracking() {
                     style={{
                       margin: 0,
                       fontSize: "0.65rem",
-                      color: done ? theme.primary : theme.textSecondary,
+                      color: done ? theme.textPrimary : theme.textMuted,
                       fontWeight: done ? "bold" : "normal",
                       whiteSpace: "nowrap",
                     }}
@@ -348,7 +359,7 @@ export default function Tracking() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
             <div>
-              <p style={{ margin: 0, fontWeight: "bold", color: theme.primary, fontFamily: "Georgia, serif" }}>
+              <p style={{ margin: 0, fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
                 {order.order_type === "emporter"
                   ? `🥡 À emporter — ${order.customer_name}`
                   : `🪑 Table ${order.table_number}`}
@@ -374,7 +385,7 @@ export default function Tracking() {
             {order.items.map((item, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
                 <span style={{ color: theme.textPrimary, fontSize: "0.88rem" }}>
-                  <span style={{ color: theme.primary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
+                  <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                 </span>
                 <span style={{ color: "#C9A84C", fontWeight: "bold", fontSize: "0.88rem" }}>
                   {(item.price * item.qty).toLocaleString()} FCFA
@@ -385,7 +396,7 @@ export default function Tracking() {
 
           <div
             style={{
-              borderTop: `2px solid ${theme.primary}`,
+              borderTop: `2px solid ${theme.textPrimary}20`,
               marginTop: "12px",
               paddingTop: "12px",
               display: "flex",
@@ -396,7 +407,7 @@ export default function Tracking() {
             <span style={{ fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
               Total
             </span>
-            <span style={{ fontWeight: "bold", color: theme.primary, fontSize: "1.1rem" }}>
+            <span style={{ fontWeight: "bold", color: theme.textPrimary, fontSize: "1.1rem" }}>
               {total.toLocaleString()} FCFA
             </span>
           </div>

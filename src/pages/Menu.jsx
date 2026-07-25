@@ -285,6 +285,34 @@ export default function Menu() {
     if (orderType === 'sur_place' && !validTable) { alert('Numéro de table invalide'); return }
     setSubmitting(true)
 
+    // ── Session de table (uniquement pour "sur place") ──
+    // Récupère la session déjà ouverte pour cette table, ou en crée une.
+    // Permet de regrouper plusieurs commandes successives sous un même
+    // numéro de reçu (session_number), au lieu d'un reçu par commande.
+    let sessionId = null
+    if (orderType === 'sur_place') {
+      const { data: existingSession } = await supabase
+        .from('order_sessions')
+        .select('id')
+        .eq('restaurant_id', restaurantId)
+        .eq('table_number', validTable)
+        .eq('status', 'open')
+        .maybeSingle()
+
+      if (existingSession) {
+        sessionId = existingSession.id
+      } else {
+        const { data: newSession, error: sessionError } = await supabase
+          .from('order_sessions')
+          .insert({ restaurant_id: restaurantId, table_number: validTable })
+          .select('id')
+          .single()
+
+        if (sessionError) { alert('Erreur lors de la commande. Réessaie.'); setSubmitting(false); return }
+        sessionId = newSession.id
+      }
+    }
+
     const selectedItems = Object.values(selection)
     const maxMinutes = Math.max(...selectedItems.map(i => i.estimated_minutes))
     const estimatedReadyAt = new Date(Date.now() + maxMinutes * 60 * 1000)
@@ -294,6 +322,7 @@ export default function Menu() {
       .insert({
         restaurant_id: restaurantId,
         table_number: orderType === 'sur_place' ? validTable : null,
+        session_id: sessionId,
         customer_name: orderType === 'emporter' ? customerName : null,
         order_type: orderType,
         items: selectedItems.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
@@ -500,12 +529,6 @@ export default function Menu() {
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '20px 16px' }}>
 
-        {/*
-          Grille produits responsive "anti-abdos" :
-          auto-fill + minmax évite le mur de cases carrées identiques sur grand écran —
-          2 colonnes sur mobile, jusqu'à 5-6 sur desktop selon la largeur, sans jamais
-          devenir minuscule.
-        */}
         {filteredItems.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: theme.textSecondary }}>
             <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>🍽</p>
@@ -527,7 +550,6 @@ export default function Menu() {
                   overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease',
                   display: 'flex', flexDirection: 'column'
                 }}>
-                  {/* Image pleine largeur en haut — ratio 4:3 fixe, cohérent avec les cards catégories */}
                   <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', overflow: 'hidden' }}>
                     {item.image_url
                       ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
@@ -538,7 +560,6 @@ export default function Menu() {
                         {qty}
                       </div>
                     )}
-                    {/* Prix — badge flottant, bien visible sur la photo */}
                     <div style={{
                       position: 'absolute', bottom: '8px', left: '8px',
                       background: 'rgba(255,255,255,0.95)', color: '#C9A84C',
@@ -564,7 +585,6 @@ export default function Menu() {
         )}
       </div>
 
-      {/* BARRE COMMANDER */}
       {selectedItems.length > 0 && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: theme.primary, padding: '14px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)' }}>
           <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -579,7 +599,6 @@ export default function Menu() {
         </div>
       )}
 
-      {/* MODALE DÉTAIL PLAT */}
       {detailItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50 }}
           onClick={() => setDetailItem(null)}>

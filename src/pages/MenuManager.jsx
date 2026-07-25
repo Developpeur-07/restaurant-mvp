@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
-import { Camera, Pencil, Loader2, Menu as BurgerIcon } from 'lucide-react'
+import { Camera, Pencil, Loader2, Menu as BurgerIcon , Lock, Clipboard, Search, Trash2} from 'lucide-react'
+
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -428,7 +429,7 @@ export default function MenuManager() {
                         {darkMode ? '☀️ Mode clair' : '🌙 Mode sombre'}
                       </button>
                       {brand.logo_url && (
-                        <Link 
+                        <Link
                           to={`/dashboard`}
                           style={{
                             display: "flex",
@@ -508,7 +509,9 @@ export default function MenuManager() {
             background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '16px'
           }}>
-            <span>🔍</span>
+            <span>
+              <Search size={16} />
+            </span>
             <input
               type="text"
               placeholder="Rechercher..."
@@ -537,8 +540,8 @@ export default function MenuManager() {
               filtered.map(item => (
                 <div key={item.id} style={{
                   background: theme.cardBackground, borderRadius: '12px', padding: '12px 16px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                  borderLeft: `4px solid ${item.available ? theme.primary : '#e0e0e0'}`,
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
+
                   opacity: item.available ? 1 : 0.6,
                   display: 'flex', alignItems: 'center', gap: '12px'
                 }}>
@@ -576,15 +579,36 @@ export default function MenuManager() {
                     </button>
                     <button
                       onClick={() => openEdit(item)}
-                      style={{ background: theme.pageBackground, border: `1px solid ${theme.borderLight}`, borderRadius: '8px', padding: '6px 10px', color: theme.primary, cursor: 'pointer', fontSize: '0.78rem' }}
+                      style={{
+                        background: theme.pageBackground,
+                        border: `1px solid ${theme.borderLight}`,
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        color: theme.primary,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      ✏️
+                      <Pencil size={16} />
                     </button>
+
                     <button
                       onClick={() => deleteItem(item.id)}
-                      style={{ background: '#fee2e2', border: 'none', borderRadius: '8px', padding: '6px 10px', color: '#dc2626', cursor: 'pointer', fontSize: '0.78rem' }}
+                      style={{
+                        background: "#fee2e2",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        color: "#dc2626",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      🗑
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
@@ -799,14 +823,31 @@ export default function MenuManager() {
         )}
 
         {isFinite(features.maxMenuItems) && (
-          <div style={{
-            background: atMenuLimit ? '#FEF3C7' : theme.cardBackground,
-            border: `1px solid ${atMenuLimit ? '#F59E0B' : theme.borderLight}`,
-            borderRadius: '10px', padding: '10px 16px', marginBottom: '16px',
-            fontSize: '0.8rem', color: atMenuLimit ? '#92400E' : theme.textSecondary,
-            textAlign: 'center'
-          }}>
-            {atMenuLimit ? '🔒' : '📋'} {items.length}/{features.maxMenuItems} plats (mode gratuit) — réactivez pour un menu illimité
+          <div
+            style={{
+              background: atMenuLimit ? "#FEF3C7" : theme.cardBackground,
+              border: `1px solid ${atMenuLimit ? "#F59E0B" : theme.borderLight}`,
+              borderRadius: "10px",
+              padding: "10px 16px",
+              marginBottom: "16px",
+              fontSize: "0.8rem",
+              color: atMenuLimit ? "#92400E" : theme.textSecondary,
+              textAlign: "center",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+            }}
+          >
+            {atMenuLimit ? (
+              <Lock size={16} />
+            ) : (
+              <Clipboard size={16} />
+            )}
+            <span>
+              {items.length}/{features.maxMenuItems} plats (mode gratuit) — réactivez
+              pour un menu illimité
+            </span>
           </div>
         )}
 
@@ -912,8 +953,8 @@ export default function MenuManager() {
                 style={{
                   background: theme.cardBackground, border: 'none', borderRadius: '16px',
                   textAlign: 'center', cursor: 'pointer', overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  borderBottom: `3px solid ${theme.primary}`,
+                  boxShadow: '0 5px 10px rgba(0,0,0,0.08)',
+
                   transition: 'transform 0.15s ease',
                   display: 'flex', flexDirection: 'column', padding: 0
                 }}

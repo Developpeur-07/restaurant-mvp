@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import HeaderActions from '../components/HeaderActions'
+import { Package, Armchair } from 'lucide-react'
 
 export default function History() {
   const navigate = useNavigate()
@@ -76,12 +77,9 @@ export default function History() {
               </h1>
             </div>
           </div>
-          <HeaderActions
-            theme={theme}
-            actions={[
-              { label: darkMode ? '☀️ Mode clair' : '🌙 Mode sombre', onClick: toggleDarkMode },
-            ]}
-          />
+          <button className="menu-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer', fontSize: '0.95rem' }}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
         </div>
       </div>
 
@@ -110,13 +108,31 @@ export default function History() {
             {orders.map(order => {
               const orderTotal = order.items.reduce((s, i) => s + i.price * i.qty, 0)
               return (
-                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)', borderLeft: '4px solid #C9A84C' }}>
+                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>
-                        {order.order_type === 'emporter'
-                          ? `🥡 ${order.customer_name}`
-                          : `🪑 Table ${order.table_number}`}
+                      <p
+                        style={{
+                          margin: 0,
+                          fontWeight: "bold",
+                          color: theme.textPrimary,
+                          fontSize: "0.95rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        {order.order_type === "emporter" ? (
+                          <>
+                            <Package size={16} />
+                            {order.customer_name}
+                          </>
+                        ) : (
+                          <>
+                            <Armchair size={16} />
+                            Table {order.table_number}
+                          </>
+                        )}
                       </p>
                       <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
                         {new Date(order.created_at).toLocaleDateString('fr-FR')} · {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

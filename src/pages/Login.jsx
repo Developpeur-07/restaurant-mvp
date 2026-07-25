@@ -40,15 +40,15 @@ export default function Login() {
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ textAlign: 'center' }}>
         <p style={{ fontSize: '3rem', marginBottom: '16px' }}>📧</p>
-        <p style={{ fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
+        <p style={{ fontFamily: 'Georgia, serif', color: theme.textPrimary, fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
           Email envoyé
         </p>
-        <p style={{ color: theme.textSecondary, fontSize: '0.85rem' }}>
+        <p style={{ color: theme.textPrimary, fontSize: '0.85rem' }}>
           Vérifiez votre boîte mail pour réinitialiser votre mot de passe
         </p>
         <button
           onClick={() => { setResetSent(false); setMode('login') }}
-          style={{ marginTop: '20px', color: theme.primary, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
+          style={{ marginTop: '20px', color: theme.textPrimary, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
         >
           ← Retour à la connexion
         </button>
@@ -61,39 +61,44 @@ export default function Login() {
 
       {/* HEADER */}
       <div style={{
-        background: `linear-gradient(135deg, ${theme.primary}CC, ${theme.primary})`,
+        background: `linear-gradient(170deg, ${theme.textSecondary}CC, ${theme.textSecondary})`,
         padding: '40px 20px 32px',
         textAlign: 'center',
-        position: 'relative'
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <button
           onClick={toggleDarkMode}
           style={{
             background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
-            padding: '8px 10px', cursor: 'pointer', fontSize: '1rem', flexShrink: 0
+            padding: '8px 10px', cursor: 'pointer', fontSize: '1rem', flexShrink: 0,
+            position: 'absolute', top: '16px', right: '16px'
             
           }}
         >
           {darkMode ? '☀️' : '🌙'}
         </button>
 
-        <p style={{ color: '#C9A84C', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
+        <p style={{ color: '#fff', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
           Espace Administration
         </p>
         <h1 style={{ color: '#fff', fontSize: '1.8rem', fontFamily: 'Georgia, serif', margin: '0 0 8px' }}>
           Restaurant
         </h1>
-        <div style={{ width: '40px', height: '2px', background: '#C9A84C', margin: '0 auto' }} />
+        
       </div>
 
       {/* FORMULAIRE */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' }}>
         <div style={{ width: '100%', maxWidth: '380px' }}>
 
-          <h2 style={{ fontFamily: 'Georgia, serif', color: theme.primary, fontSize: '1.3rem', marginBottom: '6px' }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', color: theme.textPrimary, fontSize: '1.3rem', marginBottom: '6px' }}>
             {mode === 'login' ? 'Connexion' : 'Mot de passe oublié'}
           </h2>
-          <p style={{ color: theme.textSecondary, fontSize: '0.8rem', marginBottom: '24px' }}>
+          <p style={{ color: theme.textPrimary, fontSize: '0.8rem', marginBottom: '24px' }}>
             {mode === 'login' ? 'Accédez à votre tableau de bord' : 'Entrez votre email pour réinitialiser'}
           </p>
 
@@ -104,7 +109,7 @@ export default function Login() {
           )}
 
           <div style={{ marginBottom: '14px' }}>
-            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textPrimary, marginBottom: '6px', fontWeight: '600' }}>
               Email
             </label>
             <input
@@ -118,14 +123,14 @@ export default function Login() {
                 color: theme.textPrimary, outline: 'none', boxSizing: 'border-box',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={e => e.target.style.borderColor = theme.primary}
+              onFocus={e => e.target.style.borderColor = theme.textPrimary}
               onBlur={e => e.target.style.borderColor = theme.borderLight}
             />
           </div>
 
           {mode === 'login' && (
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textSecondary, marginBottom: '6px', fontWeight: '600' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textPrimary, marginBottom: '6px', fontWeight: '600' }}>
                 Mot de passe
               </label>
               <input
@@ -139,7 +144,7 @@ export default function Login() {
                   padding: '12px 14px', fontSize: '0.9rem', background: theme.cardBackground,
                   color: theme.textPrimary, outline: 'none', boxSizing: 'border-box'
                 }}
-                onFocus={e => e.target.style.borderColor = theme.primary}
+                onFocus={e => e.target.style.borderColor = theme.textPrimary}
                 onBlur={e => e.target.style.borderColor = theme.borderLight}
               />
             </div>
@@ -151,7 +156,7 @@ export default function Login() {
                 onClick={handleLogin}
                 disabled={!email || !password || loading}
                 style={{
-                  width: '100%', background: theme.primary, color: '#fff', border: 'none',
+                  width: '100%', background: theme.textMuted, color: theme.textPrimary, border: 'none',
                   borderRadius: '12px', padding: '14px', fontWeight: 'bold',
                   fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
                   opacity: (!email || !password || loading) ? 0.6 : 1,
@@ -162,7 +167,7 @@ export default function Login() {
               </button>
               <button
                 onClick={() => setMode('reset')}
-                style={{ width: '100%', background: 'none', border: 'none', color: theme.primary, fontSize: '0.82rem', cursor: 'pointer' }}
+                style={{ width: '100%', background: 'none', border: 'none', color: theme.textPrimary, fontSize: '0.82rem', cursor: 'pointer' }}
               >
                 Mot de passe oublié ?
               </button>
@@ -173,7 +178,7 @@ export default function Login() {
                 onClick={handleReset}
                 disabled={!email || loading}
                 style={{
-                  width: '100%', background: theme.primary, color: '#fff', border: 'none',
+                  width: '100%', background: theme.textPrimary, color: '#fff', border: 'none',
                   borderRadius: '12px', padding: '14px', fontWeight: 'bold',
                   fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
                   opacity: (!email || loading) ? 0.6 : 1
@@ -183,7 +188,7 @@ export default function Login() {
               </button>
               <button
                 onClick={() => setMode('login')}
-                style={{ width: '100%', background: 'none', border: 'none', color: theme.textSecondary, fontSize: '0.82rem', cursor: 'pointer' }}
+                style={{ width: '100%', background: 'none', border: 'none', color: theme.textPrimary, fontSize: '0.82rem', cursor: 'pointer' }}
               >
                 ← Retour à la connexion
               </button>

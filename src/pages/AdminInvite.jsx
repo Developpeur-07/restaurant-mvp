@@ -141,8 +141,8 @@ export default function AdminInvite() {
             return (
               <div key={t.id} style={{
                 background: theme.cardBackground, borderRadius: '12px', padding: '14px 16px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                borderLeft: `4px solid ${t.used ? '#6B7280' : isExpired ? '#dc2626' : '#166534'}`,
+                boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
+                
                 opacity: (t.used || isExpired) ? 0.7 : 1
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>

@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
+import { Sun, Moon } from "lucide-react";
 
 const STATUS_DISPLAY = {
   trial: { label: "Essai en cours", bg: "#DBEAFE", color: "#1E40AF" },
@@ -216,8 +217,25 @@ export default function Settings() {
               </h1>
             </div>
           </div>
-          <button onClick={toggleDarkMode} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px", padding: "8px 10px", cursor: "pointer", fontSize: "1rem" }}>
-            {darkMode ? "☀️" : "🌙"}
+          <button
+            onClick={toggleDarkMode}
+            style={{
+              background: "rgba(255,255,255,0.2)",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 10px",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "inherit",
+            }}
+          >
+            {darkMode ? (
+              <Sun size={18} strokeWidth={2} />
+            ) : (
+              <Moon size={18} strokeWidth={2} />
+            )}
           </button>
         </div>
       </div>
