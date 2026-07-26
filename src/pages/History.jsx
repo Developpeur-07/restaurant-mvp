@@ -2,40 +2,45 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
-import HeaderActions from '../components/HeaderActions'
-import { Package, Armchair } from 'lucide-react'
+import { useSubscription } from '../hooks/useSubscription'
+import { ArrowLeft, Sun, Moon, BarChart3, ShoppingBag, UtensilsCrossed } from 'lucide-react'
 
 export default function History() {
   const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
-  const [brand, setBrand] = useState({ name: '', primary_color: '#8B0000' })
 
-  // ── THÈME — appelé inconditionnellement, avant tout return ──
-  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
+  // ── ABONNEMENT + RESTAURANT — résout owner OU réception, source unique.
+  // History.jsx ne fait plus sa propre requête owner_id en doublon (c'était
+  // la cause du blocage/406 pour un compte réception).
+  const {
+    restaurantId, restaurantName, restaurantBrand,
+    loading: contextLoading,
+  } = useSubscription()
+
+  const primaryColor = restaurantBrand?.primary_color || '#1F2A44'
+  const { theme, darkMode, toggleDarkMode } = useTheme(primaryColor)
 
   useEffect(() => {
-    async function fetch() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    if (contextLoading) return
 
-      const { data: resto } = await supabase
-        .from('restaurants')
-        .select('id, name, primary_color')
-        .eq('owner_id', user.id)
-        .limit(1)
-        .single()
+    if (!restaurantId) {
+      queueMicrotask(() => setLoading(false))
+      return
+    }
 
-      if (!resto) return
-      setBrand({ name: resto.name || '', primary_color: resto.primary_color || '#8B0000' })
+    let cancelled = false
 
+    async function fetchOrders() {
       const { data } = await supabase
         .from('orders_archive')
         .select('*')
-        .eq('restaurant_id', resto.id)
+        .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })
         .limit(50)
+
+      if (cancelled) return
 
       setOrders(data || [])
       const sum = (data || []).reduce((s, o) =>
@@ -43,12 +48,23 @@ export default function History() {
       setTotal(sum)
       setLoading(false)
     }
-    fetch()
-  }, [])
 
-  if (loading) return (
+    fetchOrders()
+
+    return () => { cancelled = true }
+  }, [contextLoading, restaurantId])
+
+  if (contextLoading || loading) return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: theme.textSecondary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
+    </div>
+  )
+
+  if (!restaurantId) return (
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <p style={{ color: theme.textPrimary, textAlign: 'center' }}>
+        Ce compte n'a pas accès à l'historique.
+      </p>
     </div>
   )
 
@@ -57,16 +73,16 @@ export default function History() {
 
       {/* HEADER */}
       <div style={{
-        background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
+        background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor})`,
         padding: '20px 20px'
       }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               onClick={() => navigate('/dashboard')}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
             >
-              ← Retour
+              <ArrowLeft size={15} /> Retour
             </button>
             <div>
               <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
@@ -77,8 +93,8 @@ export default function History() {
               </h1>
             </div>
           </div>
-          <button className="menu-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer', fontSize: '0.95rem' }}>
-            {darkMode ? '☀️' : '🌙'}
+          <button onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer' }}>
+            {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
           </button>
         </div>
       </div>
@@ -100,7 +116,7 @@ export default function History() {
 
         {orders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 0', color: theme.textSecondary }}>
-            <p style={{ fontSize: '3rem', margin: '0 0 12px' }}>📊</p>
+            <BarChart3 size={48} style={{ margin: '0 0 12px' }} />
             <p style={{ fontFamily: 'Georgia, serif' }}>Aucune vente enregistrée</p>
           </div>
         ) : (
@@ -111,28 +127,10 @@ export default function History() {
                 <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontWeight: "bold",
-                          color: theme.textPrimary,
-                          fontSize: "0.95rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                      >
-                        {order.order_type === "emporter" ? (
-                          <>
-                            <Package size={16} />
-                            {order.customer_name}
-                          </>
-                        ) : (
-                          <>
-                            <Armchair size={16} />
-                            Table {order.table_number}
-                          </>
-                        )}
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {order.order_type === 'emporter'
+                          ? <><ShoppingBag size={15} /> {order.customer_name}</>
+                          : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
                       </p>
                       <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
                         {new Date(order.created_at).toLocaleDateString('fr-FR')} · {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
