@@ -5,13 +5,12 @@ import { useTheme } from "../lib/useTheme";
 import HeaderActions from '../components/HeaderActions'
 import { useSubscription } from '../hooks/useSubscription'
 import {
-  History, Package, Armchair, Banknote, Bell,
-  Sun,
+  Bell, AlertTriangle, Gift, Flame, Lock, UtensilsCrossed, ShoppingBag, Trash2, BarChart3, Wallet, Hourglass, Sun,
   Moon,
+  QrCode,
   Clipboard,
   Settings,
-  Trash2,
-} from "lucide-react";
+} from 'lucide-react'
 
 const STATUS_LABELS = {
   received: { label: 'Reçue', bg: '#FFF9C4', color: '#7B6000' },
@@ -35,14 +34,11 @@ const NEXT_LABEL = {
   received: "Démarrer préparation",
   preparing: "Marquer prête",
   ready: "Marquer servie",
-  served: (
-    <>
-      Marquer soldée <Banknote size={16} style={{ verticalAlign: "middle" }} />
-    </>
-  ),
+  served: "Marquer soldée",
   paid: null,
   cancelled: null,
 };
+
 function playNotification() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -88,51 +84,53 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [restaurantId, setRestaurantId] = useState(null);
-  const [brand, setBrand] = useState({ name: 'Restaurant', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' });
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const [todayStats, setTodayStats] = useState({ count: 0, revenue: 0, topItem: null });
   const [processingOrderId, setProcessingOrderId] = useState(null);
 
-  // ── THÈME — appelé inconditionnellement, avant tout return ──
-  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
-
-  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
-  const { subscriptionStatus, features, trialEndAt } = useSubscription();
+  // ── ABONNEMENT + RESTAURANT — vient du SubscriptionProvider posé par AdminRoute.
+  // Résout owner OU réception, source unique — Dashboard.jsx ne fait plus sa
+  // propre requête restaurant en doublon (c'était la cause du blocage infini
+  // pour tout compte non-propriétaire).
+  const {
+    subscriptionStatus, features, trialEndAt,
+    restaurantId, restaurantName, restaurantBrand, isOwner,
+    loading: contextLoading,
+  } = useSubscription();
 
   const trialDaysLeft = trialEndAt
     ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
-  // ─── INIT : restaurant + brand + commandes actives + channel Realtime ───
+  const brand = {
+    name: restaurantName || 'Restaurant',
+    primary_color: restaurantBrand?.primary_color || '#1F2A44',
+    secondary_color: restaurantBrand?.secondary_color || '#C9A84C',
+    logo_url: restaurantBrand?.logo_url || '',
+  };
+
+  // ── THÈME — appelé inconditionnellement, avant tout return ──
+  const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
+
+  // ─── INIT : commandes actives + channel Realtime, dépend de restaurantId ───
   useEffect(() => {
+    if (contextLoading) return; // useSubscription() n'a pas fini de résoudre le compte
+
+    if (!restaurantId) {
+      // Compte authentifié mais ni propriétaire ni réception d'aucun
+      // restaurant (ex: compte cuisine testant /dashboard par erreur) —
+      // on sort du chargement au lieu de rester bloqué indéfiniment.
+      setLoading(false);
+      return;
+    }
+
     let channel;
 
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: resto } = await supabase
-        .from("restaurants")
-        .select("id, name, primary_color, secondary_color, logo_url")
-        .eq("owner_id", user.id)
-        .limit(1)
-        .single();
-
-      if (!resto) return;
-
-      setRestaurantId(resto.id);
-      setBrand({
-        name: resto.name || 'Restaurant',
-        primary_color: resto.primary_color || '#8B0000',
-        secondary_color: resto.secondary_color || '#C9A84C',
-        logo_url: resto.logo_url || ''
-      });
-
       const { data } = await supabase
         .from("orders")
         .select("*")
-        .eq("restaurant_id", resto.id)
+        .eq("restaurant_id", restaurantId)
         .neq("status", "paid")
         .order("created_at", { ascending: true });
 
@@ -140,10 +138,10 @@ export default function Dashboard() {
       setLoading(false);
 
       channel = supabase
-        .channel("dashboard-" + resto.id)
+        .channel("dashboard-" + restaurantId)
         .on("postgres_changes", {
           event: "*", schema: "public", table: "orders",
-          filter: `restaurant_id=eq.${resto.id}`,
+          filter: `restaurant_id=eq.${restaurantId}`,
         }, (payload) => {
           if (payload.eventType === "INSERT") {
             playNotification();
@@ -170,7 +168,7 @@ export default function Dashboard() {
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, []);
+  }, [restaurantId]);
 
   // ─── STATS : dépend uniquement de restaurantId ───
   const fetchTodayStats = useCallback(async () => {
@@ -255,7 +253,7 @@ export default function Dashboard() {
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
   }
 
-  if (loading)
+  if (contextLoading || loading)
     return (
       <div
         style={{
@@ -272,6 +270,24 @@ export default function Dashboard() {
       </div>
     );
 
+  if (!restaurantId)
+    return (
+      <div
+        style={{
+          background: theme.pageBackground,
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
+        }}
+      >
+        <p style={{ color: theme.textPrimary, textAlign: "center" }}>
+          Restaurant introuvable pour ce compte.
+        </p>
+      </div>
+    );
+
   const activeOrders = orders.filter((o) => o.status !== "cancelled");
   const cancelledOrders = orders.filter((o) => o.status === "cancelled");
 
@@ -284,98 +300,49 @@ export default function Dashboard() {
         padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div
-          style={{
-            maxWidth: "640px",
-            margin: "0 auto",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {brand.logo_url && (
-              <img
-                src={brand.logo_url}
-                alt="logo"
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  border: `2px solid ${brand.secondary_color}`,
-                  flexShrink: 0,
-                }}
-              />
+              <img src={brand.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }} />
             )}
-
             <div>
-              <p
-                style={{
-                  color: brand.secondary_color,
-                  fontSize: "0.62rem",
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  margin: 0,
-                  fontFamily: "Georgia, serif",
-                }}
-              >
+              <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
                 Tableau de bord
               </p>
-
-              <h1
-                style={{
-                  color: "#fff",
-                  fontSize: "1.3rem",
-                  fontFamily: "Georgia, serif",
-                  margin: 0,
-                }}
-              >
+              <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
                 {brand.name}
               </h1>
-
               {newOrderAlert && (
-                <div
-                  style={{
-                    background: "#C9A84C",
-                    borderRadius: "20px",
-                    padding: "4px 10px",
-                    fontSize: "0.72rem",
-                    fontWeight: "bold",
-                    color: "#fff",
-                    animation: "pulse 0.5s ease infinite alternate",
-                    marginTop: "4px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <Bell size={14} />
-                  Nouvelle commande !
+                <div style={{
+                  background: brand.secondary_color, borderRadius: '20px', padding: '4px 10px',
+                  fontSize: '0.72rem', fontWeight: 'bold', color: '#fff',
+                  animation: 'pulse 0.5s ease infinite alternate',
+                  marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                }}>
+                  <Bell size={12} /> Nouvelle commande !
                 </div>
               )}
             </div>
           </div>
-
           <HeaderActions
             theme={theme}
             actions={[
               {
-                label: darkMode ? (
+                label: (
                   <>
-                    <Sun size={16} />
-                    <span>Mode clair</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon size={16} />
-                    <span>Mode sombre</span>
+                    {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                    <span>{darkMode ? "Mode clair" : "Mode sombre"}</span>
                   </>
                 ),
                 onClick: toggleDarkMode,
               },
               {
-                label: "QR Code",
+                label: (
+                  <>
+                    <QrCode size={16} />
+                    <span>QR Code</span>
+                  </>
+                ),
                 onClick: () => navigate("/qrcode"),
               },
               {
@@ -419,8 +386,8 @@ export default function Dashboard() {
             flexWrap: 'wrap',
           }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.88rem' }}>
-                 Abonnement suspendu — mode limité
+              <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertTriangle size={15} /> Abonnement suspendu — mode limité
               </p>
               <p style={{ margin: '2px 0 0', color: '#92400E', fontSize: '0.78rem' }}>
                 Vos commandes en cours continuent normalement. Certaines fonctionnalités (stats, branding) sont désactivées.
@@ -432,6 +399,7 @@ export default function Dashboard() {
                 background: '#F59E0B', color: '#fff', border: 'none',
                 borderRadius: '8px', padding: '8px 14px', fontWeight: '600',
                 fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                display: isOwner ? 'inline-block' : 'none',
               }}
             >
               Réactiver
@@ -451,8 +419,8 @@ export default function Dashboard() {
             color: trialDaysLeft <= 3 ? '#7B6000' : theme.textSecondary,
           }}>
             {trialDaysLeft <= 3
-              ? ` Votre essai se termine dans ${trialDaysLeft} jour${trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.`
-              : ` Vous êtes en période d'essai — toutes les fonctionnalités sont actives (${trialDaysLeft} jours restants).`}
+              ? <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Hourglass size={14} /> Votre essai se termine dans {trialDaysLeft} jour{trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.</span>
+              : <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Gift size={14} /> Vous êtes en période d'essai — toutes les fonctionnalités sont actives ({trialDaysLeft} jours restants).</span>}
           </div>
         )}
 
@@ -486,8 +454,8 @@ export default function Dashboard() {
               </div>
               {todayStats.topItem && (
                 <div style={{ flex: '1 1 auto', minWidth: '120px' }}>
-                  <p style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                     {todayStats.topItem.name}
+                  <p style={{ margin: 0, color: '#fff', fontSize: '0.95rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Flame size={15} /> {todayStats.topItem.name}
                   </p>
                   <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.7rem' }}>
                     {todayStats.topItem.qty} vendus aujourd'hui
@@ -502,8 +470,8 @@ export default function Dashboard() {
             borderRadius: '16px', padding: '18px', marginBottom: '20px',
             textAlign: "center", border: `1px dashed ${theme.borderLight}`,
           }}>
-            <p style={{ margin: 0, color: theme.textSecondary, fontSize: '0.85rem' }}>
-              🔒 Statistiques du jour (revenus, best-seller) disponibles avec un abonnement actif
+            <p style={{ margin: 0, color: theme.textSecondary, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Lock size={14} /> Statistiques du jour (revenus, best-seller) disponibles avec un abonnement actif
             </p>
           </div>
         )}
@@ -539,7 +507,7 @@ export default function Dashboard() {
         {/* COMMANDES ACTIVES */}
         {activeOrders.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 0", color: theme.textSecondary }}>
-            <p style={{ fontSize: "3rem", margin: "0 0 12px" }}>🍽</p>
+            <UtensilsCrossed size={48} style={{ margin: "0 0 12px" }} />
             <p style={{ fontFamily: "Georgia, serif" }}>
               Aucune commande en cours
             </p>
@@ -562,35 +530,16 @@ export default function Dashboard() {
                     background: theme.cardBackground,
                     borderRadius: "16px",
                     padding: "18px",
-                    boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
-
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    borderLeft: `4px solid ${theme.primary}`,
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
                     <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          color: theme.textPrimary,
-                          fontSize: "0.95rem",
-                          fontWeight: 600,
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {order.order_type === "emporter" ? (
-                          <>
-                            <Package size={16} strokeWidth={2} />
-                            <span>{order.customer_name}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Armchair size={16} strokeWidth={2} />
-                            <span>Table {order.table_number}</span>
-                          </>
-                        )}
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.primary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {order.order_type === 'emporter'
+                          ? <><ShoppingBag size={15} /> {order.customer_name}</>
+                          : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
                       </p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                         #{order.id.slice(0, 8).toUpperCase()} ·{" "}
@@ -636,7 +585,7 @@ export default function Dashboard() {
                       fontSize: "0.88rem",
                     }}>
                       <span style={{ color: theme.textPrimary }}>Total</span>
-                      <span style={{ color: theme.textPrimary }}>
+                      <span style={{ color: theme.primary }}>
                         {total.toLocaleString()} FCFA
                       </span>
                     </div>
@@ -651,18 +600,16 @@ export default function Dashboard() {
                         background: order.status === "served" ? brand.secondary_color : theme.primary,
                         color: "#fff",
                         border: "none",
-                        display:'flex',
-                        alignItems:'center',
-                        justifyContent:'center',
-                        gap:'6px',
                         borderRadius: "10px",
                         padding: "11px",
                         fontWeight: "bold",
                         fontSize: "0.88rem",
                         cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
                         opacity: processingOrderId === order.id ? 0.6 : 1,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                       }}
                     >
+                      {order.status === "served" && <Wallet size={15} />}
                       {nextLabel}
                     </button>
                   )}
@@ -692,35 +639,16 @@ export default function Dashboard() {
                       borderRadius: "12px",
                       padding: "14px",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-
+                      borderLeft: "4px solid #e0e0e0",
                       opacity: 0.75,
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            color: theme.textSecondary,
-                            fontSize: "0.9rem",
-                            fontWeight: 600,
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          {order.order_type === "emporter" ? (
-                            <>
-                              <Package size={15} strokeWidth={2} />
-                              <span>{order.customer_name}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Armchair size={15} strokeWidth={2} />
-                              <span>Table {order.table_number}</span>
-                            </>
-                          )}
+                        <p style={{ margin: 0, fontWeight: "bold", color: theme.textSecondary, fontSize: "0.9rem", display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {order.order_type === 'emporter'
+                            ? <><ShoppingBag size={14} /> {order.customer_name}</>
+                            : <><UtensilsCrossed size={14} /> Table {order.table_number}</>}
                         </p>
                         <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
                           #{order.id.slice(0, 8).toUpperCase()} · {total.toLocaleString()} FCFA
@@ -734,17 +662,13 @@ export default function Dashboard() {
                           borderRadius: "8px",
                           padding: "8px 12px",
                           color: "#dc2626",
-                          fontWeight: 600,
+                          fontWeight: "600",
                           fontSize: "0.78rem",
                           cursor: "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "6px",
+                          display: "flex", alignItems: "center", gap: "5px",
                         }}
                       >
-                        <Trash2 size={16} strokeWidth={2} />
-                        <span>Supprimer</span>
+                        <Trash2 size={14} /> Supprimer
                       </button>
                     </div>
                   </div>
@@ -768,14 +692,10 @@ export default function Dashboard() {
             fontSize: "0.85rem",
             cursor: "pointer",
             fontFamily: "Georgia, serif",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
           }}
         >
-          <History size={18} />
-          Voir l'historique des ventes
+          <BarChart3 size={16} /> Voir l'historique des ventes
         </button>
       </div>
     </div>
