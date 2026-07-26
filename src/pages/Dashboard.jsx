@@ -5,11 +5,12 @@ import { useTheme } from "../lib/useTheme";
 import HeaderActions from '../components/HeaderActions'
 import { useSubscription } from '../hooks/useSubscription'
 import {
-  Bell, AlertTriangle, Gift, Flame, Lock, UtensilsCrossed, ShoppingBag, Trash2, BarChart3, Wallet, Hourglass, Sun,
+  Bell, 
+  Sun,
   Moon,
   QrCode,
   Clipboard,
-  Settings,
+  Settings, AlertTriangle, Gift, Flame, Lock, UtensilsCrossed, ShoppingBag, Trash2, BarChart3, Wallet, Hourglass
 } from 'lucide-react'
 
 const STATUS_LABELS = {
@@ -120,11 +121,14 @@ export default function Dashboard() {
       // Compte authentifié mais ni propriétaire ni réception d'aucun
       // restaurant (ex: compte cuisine testant /dashboard par erreur) —
       // on sort du chargement au lieu de rester bloqué indéfiniment.
-      setLoading(false);
+      // queueMicrotask : évite l'avertissement React sur setState
+      // synchrone dans le corps d'un effet (avant tout await).
+      queueMicrotask(() => setLoading(false));
       return;
     }
 
     let channel;
+    let cancelled = false;
 
     async function init() {
       const { data } = await supabase
@@ -134,6 +138,7 @@ export default function Dashboard() {
         .neq("status", "paid")
         .order("created_at", { ascending: true });
 
+      if (cancelled) return;
       setOrders(data || []);
       setLoading(false);
 
@@ -166,9 +171,10 @@ export default function Dashboard() {
     init();
 
     return () => {
+      cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [restaurantId]);
+  }, [contextLoading, restaurantId]);
 
   // ─── STATS : dépend uniquement de restaurantId ───
   const fetchTodayStats = useCallback(async () => {
