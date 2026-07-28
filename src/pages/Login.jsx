@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { Sun, Moon, Mail } from 'lucide-react'
 
-
 export default function Login() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -20,13 +19,23 @@ export default function Login() {
   async function handleLogin() {
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('Email ou mot de passe incorrect')
       setLoading(false)
       return
     }
-    navigate('/dashboard')
+
+    // Compte cuisine -> /kitchen. Propriétaire et réception -> /dashboard
+    // (Dashboard.jsx résout maintenant les deux via SubscriptionProvider).
+    const { data: staffRow } = await supabase
+      .from('restaurant_staff')
+      .select('role')
+      .eq('user_id', data.user.id)
+      .eq('role', 'kitchen')
+      .maybeSingle()
+
+    navigate(staffRow ? '/kitchen' : '/dashboard')
   }
 
   async function handleReset() {
@@ -63,7 +72,7 @@ export default function Login() {
 
       {/* HEADER — theme.primary, cohérent avec QRCode/MenuManager/Dashboard/Kitchen */}
       <div style={{
-        background: `linear-gradient(135deg, ${theme.primary}CC, ${theme.primary})`,
+        background: `linear-gradient(170deg, ${theme.primary}CC, ${theme.primary})`,
         padding: '40px 20px 32px',
         textAlign: 'center',
         position: 'relative',

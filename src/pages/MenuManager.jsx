@@ -1,12 +1,10 @@
 import { Link } from 'react-router-dom';
-
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
-import { Camera, Pencil, Loader2, Menu as BurgerIcon , Lock, Clipboard, Search, Trash2} from 'lucide-react'
-
+import { Camera, Pencil, Loader2, Menu as BurgerIcon, Lock, Clipboard, Search, Trash2 } from 'lucide-react'
 
 const CATEGORIES = [
   { label: 'Croissanterie', emoji: '🥐', keywords: ['croissant', 'donuts', 'madeleine', 'pain', 'pudding', 'chausson', 'flan', 'brioche', 'palmier', 'sable', 'allumette', 'jesuite', 'cornet', 'paille', 'andalou', 'feuillette', 'jalousie', 'pic'] },
@@ -49,10 +47,9 @@ function getEmoji(item) {
   return CATEGORIES.find(c => c.keywords.some(k => item.name.toLowerCase().includes(k)))?.emoji || '🍽'
 }
 
-// Génère un slug simple pour le path de storage (évite accents/espaces dans le nom de fichier)
 function slugify(label) {
   return label
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // enlève les accents
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
@@ -73,36 +70,29 @@ export default function MenuManager() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [form, setForm] = useState({ name: '', price: '', estimated_minutes: '', description: '', image_url: '' })
 
-  // ── IMAGES DE CATÉGORIE ──
-  // Map { [label]: { id, image_url } } chargée depuis la table menu_categories
   const [categoryImages, setCategoryImages] = useState({})
-  // Label de la catégorie en cours d'upload (pour afficher le spinner sur la bonne card uniquement)
   const [uploadingCategory, setUploadingCategory] = useState(null)
-  // Label de la catégorie survolée (pour révéler le crayon d'édition en douceur sur desktop)
   const [hoveredCategory, setHoveredCategory] = useState(null)
-  // Menu burger ouvert/fermé — pour la consolidation des contrôles sous 429px
   const [burgerOpen, setBurgerOpen] = useState(false)
 
-  // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
 
-  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
-  const { features } = useSubscription()
+  // ── ABONNEMENT — restaurantId résout owner OU reception (SubscriptionProvider) ──
+  const { features, restaurantId: subRestaurantId, isOwner } = useSubscription()
   const atMenuLimit = items.length >= features.maxMenuItems
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!subRestaurantId) return
 
       const { data: resto } = await supabase
         .from('restaurants')
         .select('*')
-        .eq('owner_id', user.id)
-        .limit(1)
+        .eq('id', subRestaurantId)
         .single()
 
-      if (!resto) return
+      if (!resto) { setLoading(false); return }
+
       setRestaurantId(resto.id)
       setBrand({
         name: resto.name || '',
@@ -119,7 +109,6 @@ export default function MenuManager() {
 
       setItems(data || [])
 
-      // Charger les images de catégorie déjà uploadées pour ce restaurant
       const { data: catRows } = await supabase
         .from('menu_categories')
         .select('*')
@@ -134,9 +123,10 @@ export default function MenuManager() {
       setLoading(false)
     }
     init()
-  }, [])
+  }, [subRestaurantId])
 
   function openAdd() {
+    if (!isOwner) return
     if (atMenuLimit) {
       setMessage({ type: 'error', text: `Limite de ${features.maxMenuItems} plats atteinte (mode gratuit) — réactivez l'abonnement pour un menu illimité` })
       setTimeout(() => setMessage(null), 4000)
@@ -148,6 +138,7 @@ export default function MenuManager() {
   }
 
   function openEdit(item) {
+    if (!isOwner) return
     setEditItem(item)
     setForm({
       name: item.name,
@@ -160,6 +151,7 @@ export default function MenuManager() {
   }
 
   async function handleImageUpload(file, itemId) {
+    if (!isOwner) return null
     if (!file.type.startsWith('image/')) {
       setMessage({ type: 'error', text: 'Le fichier doit être une image' })
       return null
@@ -194,8 +186,8 @@ export default function MenuManager() {
     return publicUrl
   }
 
-  // ── Upload de l'image d'une catégorie (bucket séparé + table menu_categories) ──
   async function handleCategoryImageUpload(label, file) {
+    if (!isOwner) return
     if (!file.type.startsWith('image/')) {
       setMessage({ type: 'error', text: 'Le fichier doit être une image' })
       return
@@ -230,7 +222,6 @@ export default function MenuManager() {
       .from('category-images')
       .getPublicUrl(path)
 
-    // upsert : crée la ligne si elle n'existe pas encore pour ce (restaurant_id, label), sinon la met à jour
     const { data, error } = await supabase
       .from('menu_categories')
       .upsert(
@@ -253,6 +244,7 @@ export default function MenuManager() {
   }
 
   async function handleSave() {
+    if (!isOwner) return
     const cleanName = form.name.trim()
     const price = parseInt(form.price, 10)
     const minutes = parseInt(form.estimated_minutes, 10)
@@ -321,6 +313,7 @@ export default function MenuManager() {
   }
 
   async function toggleAvailable(item) {
+    if (!isOwner) return
     const { data } = await supabase
       .from('menu_items')
       .update({ available: !item.available })
@@ -332,6 +325,7 @@ export default function MenuManager() {
   }
 
   async function deleteItem(itemId) {
+    if (!isOwner) return
     if (!window.confirm('Supprimer ce plat définitivement ?')) return
     await supabase.from('menu_items').delete().eq('id', itemId)
     setItems(prev => prev.filter(i => i.id !== itemId))
@@ -355,8 +349,6 @@ export default function MenuManager() {
 
     return (
       <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
-
-        {/* HEADER — 2 lignes */}
         <style>{`
           @media (max-width: 429px) {
             .mm-desktop-controls { display: none !important; }
@@ -372,7 +364,6 @@ export default function MenuManager() {
           <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <button
-
                 onClick={() => { setActiveCategory(null); setSearch(''); setBurgerOpen(false) }}
                 style={{ display: 'flex', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '7px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}
               >
@@ -385,17 +376,18 @@ export default function MenuManager() {
                 {brand.logo_url && (
                   <img className="mm-desktop-controls" src={brand.logo_url} alt="logo" style={{ display: 'flex', width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
                 )}
-                <button
-                  className="mm-desktop-controls"
-                  onClick={openAdd}
-                  disabled={atMenuLimit}
-                  title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
-                  style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
-                >
-                  {atMenuLimit ? '🔒 Ajouter' : '+ Ajouter'}
-                </button>
+                {isOwner && (
+                  <button
+                    className="mm-desktop-controls"
+                    onClick={openAdd}
+                    disabled={atMenuLimit}
+                    title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+                    style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
+                  >
+                    {atMenuLimit ? '🔒 Ajouter' : '+ Ajouter'}
+                  </button>
+                )}
 
-                {/* Burger — n'apparaît que sous 429px, regroupe Retour + dark mode + logo */}
                 <button
                   className="mm-burger-btn"
                   onClick={() => setBurgerOpen(o => !o)}
@@ -412,15 +404,16 @@ export default function MenuManager() {
                       background: theme.cardBackground, borderRadius: '12px', boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
                       padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px'
                     }}>
-
-                      <button
-                        onClick={openAdd}
-                        disabled={atMenuLimit}
-                        title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
-                        style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
-                      >
-                        {atMenuLimit ? '🔒 Ajouter' : '+ Ajouter'}
-                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={openAdd}
+                          disabled={atMenuLimit}
+                          title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+                          style={{ background: brand.secondary_color, border: 'none', borderRadius: '8px', padding: '7px 14px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
+                        >
+                          {atMenuLimit ? '🔒 Ajouter' : '+ Ajouter'}
+                        </button>
+                      )}
 
                       <button
                         onClick={() => { toggleDarkMode(); setBurgerOpen(false) }}
@@ -444,21 +437,9 @@ export default function MenuManager() {
                           <img
                             src={brand.logo_url}
                             alt={`${brand.name} logo`}
-                            style={{
-                              width: 26,
-                              height: 26,
-                              borderRadius: "50%",
-                              objectFit: "cover",
-                            }}
+                            style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }}
                           />
-
-                          <span
-                            style={{
-                              color: theme.textPrimary,
-                              fontWeight: 600,
-                              fontSize: ".85rem",
-                            }}
-                          >
+                          <span style={{ color: theme.textPrimary, fontWeight: 600, fontSize: ".85rem" }}>
                             {brand.name}
                           </span>
                         </Link>
@@ -509,9 +490,7 @@ export default function MenuManager() {
             background: theme.cardBackground, borderRadius: '12px', padding: '10px 16px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '16px'
           }}>
-            <span>
-              <Search size={16} />
-            </span>
+            <span><Search size={16} /></span>
             <input
               type="text"
               placeholder="Rechercher..."
@@ -527,21 +506,22 @@ export default function MenuManager() {
               <div style={{ textAlign: 'center', padding: '40px 0', color: theme.textSecondary }}>
                 <p style={{ fontSize: '2rem', margin: '0 0 8px' }}>🍽</p>
                 <p style={{ fontFamily: 'Georgia, serif' }}>Aucun plat dans cette catégorie</p>
-                <button
-                  onClick={openAdd}
-                  disabled={atMenuLimit}
-                  title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
-                  style={{ marginTop: '12px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', opacity: atMenuLimit ? 0.5 : 1 }}
-                >
-                  {atMenuLimit ? `🔒 Limite de ${features.maxMenuItems} plats atteinte` : '+ Ajouter un plat'}
-                </button>
+                {isOwner && (
+                  <button
+                    onClick={openAdd}
+                    disabled={atMenuLimit}
+                    title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+                    style={{ marginTop: '12px', background: theme.primary, color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', opacity: atMenuLimit ? 0.5 : 1 }}
+                  >
+                    {atMenuLimit ? `🔒 Limite de ${features.maxMenuItems} plats atteinte` : '+ Ajouter un plat'}
+                  </button>
+                )}
               </div>
             ) : (
               filtered.map(item => (
                 <div key={item.id} style={{
                   background: theme.cardBackground, borderRadius: '12px', padding: '12px 16px',
                   boxShadow: '0 2px 5px rgba(0,0,0,0.06)',
-
                   opacity: item.available ? 1 : 0.6,
                   display: 'flex', alignItems: 'center', gap: '12px'
                 }}>
@@ -566,50 +546,40 @@ export default function MenuManager() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
-                    <button
-                      onClick={() => toggleAvailable(item)}
-                      style={{
-                        background: item.available ? '#DCFCE7' : '#F3F4F6',
-                        color: item.available ? '#166534' : '#6B7280',
-                        border: 'none', borderRadius: '20px', padding: '4px 10px',
-                        fontSize: '0.7rem', fontWeight: '600', cursor: 'pointer'
-                      }}
-                    >
-                      {item.available ? '✓' : '✗'}
-                    </button>
-                    <button
-                      onClick={() => openEdit(item)}
-                      style={{
-                        background: theme.pageBackground,
-                        border: `1px solid ${theme.borderLight}`,
-                        borderRadius: "8px",
-                        padding: "6px 10px",
-                        color: theme.primary,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Pencil size={16} />
-                    </button>
-
-                    <button
-                      onClick={() => deleteItem(item.id)}
-                      style={{
-                        background: "#fee2e2",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "6px 10px",
-                        color: "#dc2626",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {isOwner && (
+                      <>
+                        <button
+                          onClick={() => toggleAvailable(item)}
+                          style={{
+                            background: item.available ? '#DCFCE7' : '#F3F4F6',
+                            color: item.available ? '#166534' : '#6B7280',
+                            border: 'none', borderRadius: '20px', padding: '4px 10px',
+                            fontSize: '0.7rem', fontWeight: '600', cursor: 'pointer'
+                          }}
+                        >
+                          {item.available ? '✓' : '✗'}
+                        </button>
+                        <button
+                          onClick={() => openEdit(item)}
+                          style={{
+                            background: theme.pageBackground, border: `1px solid ${theme.borderLight}`,
+                            borderRadius: "8px", padding: "6px 10px", color: theme.primary, cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => deleteItem(item.id)}
+                          style={{
+                            background: "#fee2e2", border: "none", borderRadius: "8px", padding: "6px 10px",
+                            color: "#dc2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))
@@ -617,8 +587,7 @@ export default function MenuManager() {
           </div>
         </div>
 
-        {/* FORMULAIRE MODALE */}
-        {showForm && (
+        {showForm && isOwner && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 50, overflowY: 'auto' }}>
             <div style={{ background: theme.pageBackground, width: '100%', maxWidth: '480px', borderRadius: '20px 20px 0 0', padding: '28px 24px', maxHeight: '90vh', overflowY: 'auto' }}>
               <div style={{ width: '40px', height: '3px', background: theme.borderLight, borderRadius: '2px', margin: '0 auto 20px' }} />
@@ -644,7 +613,7 @@ export default function MenuManager() {
                   background: theme.cardBackground, border: `2px dashed ${theme.borderLight}`, borderRadius: '10px',
                   padding: '12px', cursor: 'pointer'
                 }}>
-                  <span style={{ fontSize: '1.5rem' }}>📷</span>
+                  <Camera size={20} color={theme.textSecondary} />
                   <span style={{ fontSize: '0.82rem', color: theme.textSecondary }}>
                     {uploadingImage ? 'Upload en cours...' : 'Choisir une image'}
                   </span>
@@ -732,8 +701,6 @@ export default function MenuManager() {
   // PAGE ACCUEIL — GRILLE CATÉGORIES
   return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
-
-      {/* HEADER */}
       <style>{`
         @media (max-width: 429px) {
           .mm-desktop-controls { display: none !important; }
@@ -772,7 +739,6 @@ export default function MenuManager() {
               {darkMode ? '☀️' : '🌙'}
             </button>
 
-            {/* Burger — n'apparaît que sous 429px */}
             <button
               className="mm-burger-btn"
               onClick={() => setBurgerOpen(o => !o)}
@@ -827,23 +793,12 @@ export default function MenuManager() {
             style={{
               background: atMenuLimit ? "#FEF3C7" : theme.cardBackground,
               border: `1px solid ${atMenuLimit ? "#F59E0B" : theme.borderLight}`,
-              borderRadius: "10px",
-              padding: "10px 16px",
-              marginBottom: "16px",
-              fontSize: "0.8rem",
-              color: atMenuLimit ? "#92400E" : theme.textSecondary,
-              textAlign: "center",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
+              borderRadius: "10px", padding: "10px 16px", marginBottom: "16px",
+              fontSize: "0.8rem", color: atMenuLimit ? "#92400E" : theme.textSecondary,
+              textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
             }}
           >
-            {atMenuLimit ? (
-              <Lock size={16} />
-            ) : (
-              <Clipboard size={16} />
-            )}
+            {atMenuLimit ? <Lock size={16} /> : <Clipboard size={16} />}
             <span>
               {items.length}/{features.maxMenuItems} plats (mode gratuit) — réactivez
               pour un menu illimité
@@ -868,20 +823,11 @@ export default function MenuManager() {
           Sélectionnez une catégorie à gérer
         </h2>
         <p style={{ color: theme.textSecondary, fontSize: '0.75rem', marginBottom: '16px', textAlign: 'center' }}>
-          Ajoute une photo de présentation à chaque catégorie pour un rendu plus pro
+          {isOwner ? "Ajoute une photo de présentation à chaque catégorie pour un rendu plus pro" : "Consultation seule — la gestion du menu est réservée au propriétaire"}
         </p>
 
-        {/* Spinner propre pour l'état upload (remplace l'ancien ⏳) */}
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
-        {/*
-          Grille responsive "anti-abdos" :
-          - auto-fill + minmax laisse le navigateur décider du nombre de colonnes
-            selon la largeur dispo, au lieu d'un nombre de colonnes fixe qui s'étire
-            en cases identiques sur grand écran.
-          - minmax(180px, 1fr) : jamais plus petit que 180px, jamais plus grand
-            que sa part équitable de l'espace restant.
-        */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
@@ -892,7 +838,6 @@ export default function MenuManager() {
             const isUploadingThis = uploadingCategory === label
             const isHovered = hoveredCategory === label
 
-            // ── ÉTAT 1 : pas encore de photo — toute la card devient le CTA d'ajout ──
             if (!catImage) {
               return (
                 <div
@@ -903,30 +848,36 @@ export default function MenuManager() {
                     overflow: 'hidden', display: 'flex', flexDirection: 'column'
                   }}
                 >
-                  <label style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    gap: '5px', padding: '16px 10px 10px', cursor: isUploadingThis ? 'default' : 'pointer'
-                  }}>
-                    {isUploadingThis
-                      ? <Loader2 size={26} color={theme.textSecondary} style={{ animation: 'spin 1s linear infinite' }} />
-                      : <Camera size={26} color={theme.textSecondary} strokeWidth={1.75} />
-                    }
-                    <span style={{ fontSize: '0.72rem', color: theme.textSecondary, fontWeight: '600' }}>
-                      {isUploadingThis ? 'Upload en cours...' : 'Ajouter une photo'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      style={{ display: 'none' }}
-                      disabled={isUploadingThis}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (!file) return
-                        await handleCategoryImageUpload(label, file)
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
+                  {isOwner ? (
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      gap: '5px', padding: '16px 10px 10px', cursor: isUploadingThis ? 'default' : 'pointer'
+                    }}>
+                      {isUploadingThis
+                        ? <Loader2 size={26} color={theme.textSecondary} style={{ animation: 'spin 1s linear infinite' }} />
+                        : <Camera size={26} color={theme.textSecondary} strokeWidth={1.75} />
+                      }
+                      <span style={{ fontSize: '0.72rem', color: theme.textSecondary, fontWeight: '600' }}>
+                        {isUploadingThis ? 'Upload en cours...' : 'Ajouter une photo'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        disabled={isUploadingThis}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          await handleCategoryImageUpload(label, file)
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <div style={{ padding: '16px 10px 10px', display: 'flex', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '1.6rem' }}>{data.emoji}</span>
+                    </div>
+                  )}
 
                   <div style={{ padding: '0 10px 10px', textAlign: 'center' }}>
                     <p style={{ margin: '0 0 6px', fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
@@ -943,7 +894,6 @@ export default function MenuManager() {
               )
             }
 
-            // ── ÉTAT 2 : photo déjà présente — card normale, crayon discret au survol ──
             return (
               <button
                 key={label}
@@ -954,49 +904,45 @@ export default function MenuManager() {
                   background: theme.cardBackground, border: 'none', borderRadius: '16px',
                   textAlign: 'center', cursor: 'pointer', overflow: 'hidden',
                   boxShadow: '0 5px 10px rgba(0,0,0,0.08)',
-
                   transition: 'transform 0.15s ease',
                   display: 'flex', flexDirection: 'column', padding: 0
                 }}
               >
-                {/* Zone image — ratio rectangulaire 4:3, pas carré, pour casser l'effet "tuiles identiques" */}
-                <div style={{
-                  position: 'relative', width: '100%', aspectRatio: '4 / 3',
-                  overflow: 'hidden'
-                }}>
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', overflow: 'hidden' }}>
                   <img src={catImage} alt={label} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
 
-                  {/* Crayon d'édition — discret par défaut, plus visible au survol (desktop) / toujours cliquable (mobile) */}
-                  <label
-                    onClick={e => e.stopPropagation()}
-                    style={{
-                      position: 'absolute', top: '8px', right: '8px',
-                      background: 'rgba(0,0,0,0.55)', borderRadius: '50%',
-                      width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: isUploadingThis ? 'default' : 'pointer',
-                      opacity: isHovered ? 1 : 0.75,
-                      transform: isHovered ? 'scale(1.08)' : 'scale(1)',
-                      transition: 'opacity 0.15s ease, transform 0.15s ease'
-                    }}
-                  >
-                    {isUploadingThis
-                      ? <Loader2 size={14} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
-                      : <Pencil size={13} color="#fff" strokeWidth={2} />
-                    }
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      style={{ display: 'none' }}
-                      disabled={isUploadingThis}
+                  {isOwner && (
+                    <label
                       onClick={e => e.stopPropagation()}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (!file) return
-                        await handleCategoryImageUpload(label, file)
-                        e.target.value = ''
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: 'rgba(0,0,0,0.55)', borderRadius: '50%',
+                        width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: isUploadingThis ? 'default' : 'pointer',
+                        opacity: isHovered ? 1 : 0.75,
+                        transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                        transition: 'opacity 0.15s ease, transform 0.15s ease'
                       }}
-                    />
-                  </label>
+                    >
+                      {isUploadingThis
+                        ? <Loader2 size={14} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+                        : <Pencil size={13} color="#fff" strokeWidth={2} />
+                      }
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: 'none' }}
+                        disabled={isUploadingThis}
+                        onClick={e => e.stopPropagation()}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          await handleCategoryImageUpload(label, file)
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
 
                 <div style={{ padding: '9px 10px' }}>

@@ -201,12 +201,12 @@ export default function Kitchen() {
                     borderRadius: "16px",
                     padding: "18px",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    borderLeft: `4px solid ${theme.primary}`,
+                    
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.primary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {order.order_type === 'emporter'
                           ? <><ShoppingBag size={15} /> {order.customer_name}</>
                           : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}

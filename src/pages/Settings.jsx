@@ -23,8 +23,8 @@ export default function Settings() {
   const [message, setMessage] = useState(null);
   const [brand, setBrand] = useState({
     name: "",
-    primary_color: "",
-    secondary_color: "",
+    primary_color: "#1F2A44",
+    secondary_color: "#C9A84C",
     slogan: "",
     address: "",
     logo_url: "",
@@ -34,8 +34,8 @@ export default function Settings() {
 
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
 
-  // ── ABONNEMENT — vient du SubscriptionProvider posé par AdminRoute ──
-  const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features } = useSubscription();
+  // ── ABONNEMENT — restaurantId résout owner OU reception (SubscriptionProvider) ──
+  const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features, restaurantId, isOwner } = useSubscription();
 
   const trialDaysLeft = trialEndAt
     ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
@@ -49,17 +49,18 @@ export default function Settings() {
       if (!user) return;
       setUser(user);
 
+      if (!restaurantId) return;
+
       const { data: resto } = await supabase
         .from("restaurants")
         .select("*")
-        .eq("owner_id", user.id)
-        .limit(1)
+        .eq("id", restaurantId)
         .single();
 
       if (resto) {
         setBrand({
           name: resto.name || "",
-          primary_color: resto.primary_color || "#8B0000",
+          primary_color: resto.primary_color || "#1F2A44",
           secondary_color: resto.secondary_color || "#C9A84C",
           slogan: resto.slogan || "",
           address: resto.address || "",
@@ -68,9 +69,10 @@ export default function Settings() {
       }
     }
     init();
-  }, []);
+  }, [restaurantId]);
 
   async function handleLogoUpload(e) {
+    if (!isOwner) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -113,6 +115,7 @@ export default function Settings() {
   }
 
   async function handleBrandSave() {
+    if (!isOwner) return;
     setBrandLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -182,6 +185,7 @@ export default function Settings() {
   }
 
   async function handleAddAdmin() {
+    if (!isOwner) return;
     if (!newAdminEmail) return;
     window.open(
       "https://supabase.com/dashboard/project/vtgflrwctsqgntmuguvf/auth/users",
@@ -209,7 +213,7 @@ export default function Settings() {
               ← Retour
             </button>
             <div>
-              <p style={{ color: "#C9A84C", fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: 0, fontFamily: "Georgia, serif" }}>
+              <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: 0, fontFamily: "Georgia, serif" }}>
                 Administration
               </p>
               <h1 style={{ color: "#fff", fontSize: "1.4rem", fontFamily: "Georgia, serif", margin: 0 }}>
@@ -220,22 +224,12 @@ export default function Settings() {
           <button
             onClick={toggleDarkMode}
             style={{
-              background: "rgba(255,255,255,0.2)",
-              border: "none",
-              borderRadius: "8px",
-              padding: "8px 10px",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "inherit",
+              background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px",
+              padding: "8px 10px", cursor: "pointer", display: "inline-flex",
+              alignItems: "center", justifyContent: "center", color: "inherit",
             }}
           >
-            {darkMode ? (
-              <Sun size={18} strokeWidth={2} />
-            ) : (
-              <Moon size={18} strokeWidth={2} />
-            )}
+            {darkMode ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
           </button>
         </div>
       </div>
@@ -264,7 +258,7 @@ export default function Settings() {
           </p>
         </div>
 
-        {/* ABONNEMENT */}
+        {/* ABONNEMENT — visible pour tous (lecture seule) */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0 }}>
@@ -298,7 +292,7 @@ export default function Settings() {
             </p>
           )}
 
-          {subscriptionStatus === "suspended" && (
+          {subscriptionStatus === "suspended" && isOwner && (
             <>
               <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 12px" }}>
                 Vos commandes en cours continuent normalement. Réactivez pour retrouver stats, branding et Realtime.
@@ -318,134 +312,136 @@ export default function Settings() {
           )}
         </div>
 
-        {/* IDENTITÉ VISUELLE */}
-        <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
-            Identité visuelle
-          </h2>
+        {/* IDENTITÉ VISUELLE — réservé au propriétaire */}
+        {isOwner && (
+          <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
+              Identité visuelle
+            </h2>
 
-          <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`, borderRadius: "12px", padding: "16px", textAlign: "center", marginBottom: "16px" }}>
-            {brand.logo_url && (
-              <img src={brand.logo_url} alt="logo" style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px" }} />
-            )}
-            <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 4px", fontFamily: "Georgia, serif" }}>
-              {brand.slogan || "Votre slogan ici"}
-            </p>
-            <p style={{ color: "#fff", fontSize: "1.3rem", fontFamily: "Georgia, serif", fontWeight: "bold", margin: "0 0 4px" }}>
-              {brand.name || "Nom du restaurant"}
-            </p>
-            <div style={{ width: "30px", height: "2px", background: brand.secondary_color, margin: "6px auto" }} />
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.7rem", margin: 0 }}>
-              {brand.address || "Votre adresse"}
-            </p>
-          </div>
-
-          {[
-            { label: "Nom du restaurant", key: "name", type: "text", placeholder: "Ex: Le Bourgeois" },
-            { label: "Slogan", key: "slogan", type: "text", placeholder: "Ex: Le Goût Du Bon Gâteau" },
-            { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
-          ].map((field) => (
-            <div key={field.key} style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
-                {field.label}
-              </label>
-              <input
-                type={field.type}
-                placeholder={field.placeholder}
-                value={brand[field.key] || ""}
-                onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                style={{
-                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
-                  padding: "10px 14px", fontSize: "0.88rem", background: theme.pageBackground,
-                  color: theme.textPrimary, outline: "none", boxSizing: "border-box"
-                }}
-              />
-            </div>
-          ))}
-
-          <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
-              Logo
-            </label>
-
-            <input
-              type="file"
-              accept="image/png, image/jpeg, image/webp, image/svg+xml"
-              onChange={handleLogoUpload}
-              disabled={uploadingLogo}
-              style={{
-                width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
-                padding: "10px 14px", fontSize: "0.82rem", background: theme.pageBackground,
-                color: theme.textPrimary, outline: "none", boxSizing: "border-box",
-                cursor: uploadingLogo ? "not-allowed" : "pointer", opacity: uploadingLogo ? 0.6 : 1
-              }}
-            />
-            {uploadingLogo && (
-              <p style={{ fontSize: "0.75rem", color: theme.primary, margin: "6px 0 0" }}>
-                Upload en cours...
+            <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`, borderRadius: "12px", padding: "16px", textAlign: "center", marginBottom: "16px" }}>
+              {brand.logo_url && (
+                <img src={brand.logo_url} alt="logo" style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px" }} />
+              )}
+              <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 4px", fontFamily: "Georgia, serif" }}>
+                {brand.slogan || "Votre slogan ici"}
               </p>
-            )}
+              <p style={{ color: "#fff", fontSize: "1.3rem", fontFamily: "Georgia, serif", fontWeight: "bold", margin: "0 0 4px" }}>
+                {brand.name || "Nom du restaurant"}
+              </p>
+              <div style={{ width: "30px", height: "2px", background: brand.secondary_color, margin: "6px auto" }} />
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.7rem", margin: 0 }}>
+                {brand.address || "Votre adresse"}
+              </p>
+            </div>
 
-            <input
-              type="text"
-              placeholder="ou colle une URL https://..."
-              value={brand.logo_url || ""}
-              onChange={(e) => setBrand((prev) => ({ ...prev, logo_url: e.target.value }))}
-              style={{
-                width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
-                padding: "10px 14px", fontSize: "0.88rem", background: theme.pageBackground,
-                color: theme.textPrimary, outline: "none", boxSizing: "border-box", marginTop: "8px"
-              }}
-            />
-
-            {brand.logo_url && (
-              <div style={{ marginTop: "12px", display: "flex", justifyContent: "center" }}>
-                <img src={brand.logo_url} alt="Logo" style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${theme.borderLight}` }} />
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
             {[
-              { label: "Couleur principale", key: "primary_color" },
-              { label: "Couleur accent", key: "secondary_color" },
+              { label: "Nom du restaurant", key: "name", type: "text", placeholder: "Ex: Le Bourgeois" },
+              { label: "Slogan", key: "slogan", type: "text", placeholder: "Ex: Le Goût Du Bon Gâteau" },
+              { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
             ].map((field) => (
-              <div key={field.key}>
+              <div key={field.key} style={{ marginBottom: "12px" }}>
                 <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
                   {field.label}
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <input
-                    type="color"
-                    value={brand[field.key]}
-                    onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{ width: "44px", height: "44px", borderRadius: "8px", border: `2px solid ${theme.borderLight}`, cursor: "pointer", padding: "2px", flexShrink: 0 }}
-                  />
-                  <input
-                    type="text"
-                    value={brand[field.key]}
-                    onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                    style={{
-                      flex: 1, border: `2px solid ${theme.borderLight}`, borderRadius: "8px",
-                      padding: "10px", fontSize: "0.82rem", background: theme.pageBackground,
-                      color: theme.textPrimary, outline: "none", minWidth: 0
-                    }}
-                  />
-                </div>
+                <input
+                  type={field.type}
+                  placeholder={field.placeholder}
+                  value={brand[field.key] || ""}
+                  onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  style={{
+                    width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
+                    padding: "10px 14px", fontSize: "0.88rem", background: theme.pageBackground,
+                    color: theme.textPrimary, outline: "none", boxSizing: "border-box"
+                  }}
+                />
               </div>
             ))}
+
+            <div style={{ marginBottom: "12px" }}>
+              <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
+                Logo
+              </label>
+
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                onChange={handleLogoUpload}
+                disabled={uploadingLogo}
+                style={{
+                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
+                  padding: "10px 14px", fontSize: "0.82rem", background: theme.pageBackground,
+                  color: theme.textPrimary, outline: "none", boxSizing: "border-box",
+                  cursor: uploadingLogo ? "not-allowed" : "pointer", opacity: uploadingLogo ? 0.6 : 1
+                }}
+              />
+              {uploadingLogo && (
+                <p style={{ fontSize: "0.75rem", color: theme.primary, margin: "6px 0 0" }}>
+                  Upload en cours...
+                </p>
+              )}
+
+              <input
+                type="text"
+                placeholder="ou colle une URL https://..."
+                value={brand.logo_url || ""}
+                onChange={(e) => setBrand((prev) => ({ ...prev, logo_url: e.target.value }))}
+                style={{
+                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
+                  padding: "10px 14px", fontSize: "0.88rem", background: theme.pageBackground,
+                  color: theme.textPrimary, outline: "none", boxSizing: "border-box", marginTop: "8px"
+                }}
+              />
+
+              {brand.logo_url && (
+                <div style={{ marginTop: "12px", display: "flex", justifyContent: "center" }}>
+                  <img src={brand.logo_url} alt="Logo" style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${theme.borderLight}` }} />
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+              {[
+                { label: "Couleur principale", key: "primary_color" },
+                { label: "Couleur accent", key: "secondary_color" },
+              ].map((field) => (
+                <div key={field.key}>
+                  <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
+                    {field.label}
+                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <input
+                      type="color"
+                      value={brand[field.key] || theme.primary}
+                      onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      style={{ width: "44px", height: "44px", borderRadius: "8px", border: `2px solid ${theme.borderLight}`, cursor: "pointer", padding: "2px", flexShrink: 0 }}
+                    />
+                    <input
+                      type="text"
+                      value={brand[field.key]}
+                      onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      style={{
+                        flex: 1, border: `2px solid ${theme.borderLight}`, borderRadius: "8px",
+                        padding: "10px", fontSize: "0.82rem", background: theme.pageBackground,
+                        color: theme.textPrimary, outline: "none", minWidth: 0
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleBrandSave}
+              disabled={brandLoading || uploadingLogo}
+              style={{ width: "100%", background: theme.primary, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: brandLoading || uploadingLogo ? 0.6 : 1 }}
+            >
+              {brandLoading ? "Sauvegarde..." : "Sauvegarder l'identité"}
+            </button>
           </div>
+        )}
 
-          <button
-            onClick={handleBrandSave}
-            disabled={brandLoading || uploadingLogo}
-            style={{ width: "100%", background: theme.primary, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: brandLoading || uploadingLogo ? 0.6 : 1 }}
-          >
-            {brandLoading ? "Sauvegarde..." : "Sauvegarder l'identité"}
-          </button>
-        </div>
-
-        {/* CHANGER MOT DE PASSE */}
+        {/* CHANGER MOT DE PASSE — dispo pour tout compte (propriétaire ou staff) */}
         <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
             Changer le mot de passe
@@ -480,36 +476,38 @@ export default function Settings() {
           </button>
         </div>
 
-        {/* AJOUTER UN ADMIN — gated par features.multiStaffAccounts */}
-        <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px" }}>
-            Ajouter un administrateur
-          </h2>
+        {/* AJOUTER UN ADMIN — réservé au propriétaire */}
+        {isOwner && (
+          <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px" }}>
+              Ajouter un administrateur
+            </h2>
 
-          {features.multiStaffAccounts ? (
-            <>
-              <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
-                Un email d'invitation sera envoyé automatiquement
+            {features.multiStaffAccounts ? (
+              <>
+                <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
+                  Un email d'invitation sera envoyé automatiquement
+                </p>
+                <input
+                  type="email" placeholder="email@restaurant.com" value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+                />
+                <button
+                  onClick={handleAddAdmin}
+                  disabled={!newAdminEmail}
+                  style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
+                >
+                  Ouvrir le panneau d'invitation →
+                </button>
+              </>
+            ) : (
+              <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: 0 }}>
+                🔒 Les comptes staff multiples sont disponibles avec un abonnement actif
               </p>
-              <input
-                type="email" placeholder="email@restaurant.com" value={newAdminEmail}
-                onChange={(e) => setNewAdminEmail(e.target.value)}
-                style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-              />
-              <button
-                onClick={handleAddAdmin}
-                disabled={!newAdminEmail}
-                style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
-              >
-                Ouvrir le panneau d'invitation →
-              </button>
-            </>
-          ) : (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: 0 }}>
-              🔒 Les comptes staff multiples sont disponibles avec un abonnement actif
-            </p>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         <button
           onClick={handleLogout}

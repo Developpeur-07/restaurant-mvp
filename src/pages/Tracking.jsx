@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../lib/useTheme";
+import {
+  Sun, Moon, ReceiptText,
+  ChefHat,
+  CircleX,
+  ShoppingBag,
+  UtensilsCrossed,
+  CircleCheckBig,
+} from "lucide-react";
 
 const STATUS_CONFIG = {
   received: {
@@ -19,17 +27,17 @@ const STATUS_CONFIG = {
     sublabel: "Rendez-vous en caisse pour récupérer votre commande",
     step: 3,
   },
-  
-    served:{
-        label:"Servie",
-        sublabel:"Votre commande a été servie.",
-        step:4
-    },
-    paid:{
-        label:"Commande payée",
-        sublabel:"Merci de votre visite.",
-        step:5
-    },
+
+  served: {
+    label: "Servie",
+    sublabel: "Votre commande a été servie.",
+    step: 4
+  },
+  paid: {
+    label: "Commande payée",
+    sublabel: "Merci de votre visite.",
+    step: 5
+  },
   cancelled: {
     label: "Commande annulée",
     sublabel: "Votre commande a été annulée",
@@ -157,6 +165,7 @@ export default function Tracking() {
           style={{
             background: "rgba(255,255,255,0.2)",
             border: "none",
+            color: "#fff",
             borderRadius: "8px",
             padding: "8px 10px",
             cursor: "pointer",
@@ -166,7 +175,7 @@ export default function Tracking() {
             right: "16px",
           }}
         >
-          {darkMode ? "☀️" : "🌙"}
+          {darkMode ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         {restaurant?.logo_url && (
@@ -221,14 +230,23 @@ export default function Tracking() {
             boxShadow: `0 4px 20px ${theme.primary}40`,
           }}
         >
-          <p style={{ fontSize: "2.5rem", margin: "0 0 8px" }}>
-            {order.status === "received"
-              ? "🧾"
-              : order.status === "preparing"
-                ? "👨‍🍳"
-                : order.status === "cancelled"
-                  ? "❌"
-                  : "✅"}
+          <p
+            style={{
+              margin: "0 0 8px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            {order.status === "received" ? (
+              <ReceiptText size={40} color={theme.primary} />
+            ) : order.status === "preparing" ? (
+              <ChefHat size={40} color="#1E40AF" />
+            ) : order.status === "cancelled" ? (
+              <CircleX size={40} color="#DC2626" />
+            ) : (
+              <CircleCheckBig size={40} color="#16A34A" />
+            )}
           </p>
           <p
             style={{
@@ -359,10 +377,10 @@ export default function Tracking() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
             <div>
-              <p style={{ margin: 0, fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
-                {order.order_type === "emporter"
-                  ? `🥡 À emporter — ${order.customer_name}`
-                  : `🪑 Table ${order.table_number}`}
+              <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {order.order_type === 'emporter'
+                  ? <><ShoppingBag size={15} /> {order.customer_name}</>
+                  : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
               </p>
               <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                 #{order.id.slice(0, 8).toUpperCase()}

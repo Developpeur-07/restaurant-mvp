@@ -15,7 +15,7 @@ export default function History() {
   // History.jsx ne fait plus sa propre requête owner_id en doublon (c'était
   // la cause du blocage/406 pour un compte réception).
   const {
-    restaurantId, restaurantName, restaurantBrand,
+    restaurantId, restaurantBrand,
     loading: contextLoading,
   } = useSubscription()
 
