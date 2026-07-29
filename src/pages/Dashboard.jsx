@@ -5,7 +5,7 @@ import { useTheme } from "../lib/useTheme";
 import HeaderActions from '../components/HeaderActions'
 import { useSubscription } from '../hooks/useSubscription'
 import {
-  Bell, 
+  Bell,
   Sun,
   Moon,
   QrCode,
@@ -297,6 +297,39 @@ export default function Dashboard() {
   const activeOrders = orders.filter((o) => o.status !== "cancelled");
   const cancelledOrders = orders.filter((o) => o.status === "cancelled");
 
+  // ── Regroupement par session (sur place) — une session = une table, un reçu ──
+  // Les commandes "emporter" n'ont pas de session_id, elles restent isolées.
+  function groupBySession(list) {
+    const groups = new Map();
+    list.forEach((o) => {
+      const key = o.session_id || `solo-${o.id}`;
+      if (!groups.has(key)) {
+        groups.set(key, { sessionId: o.session_id, tableNumber: o.table_number, orders: [] });
+      }
+      groups.get(key).orders.push(o);
+    });
+    return Array.from(groups.values());
+  }
+
+  const activeGroups = groupBySession(activeOrders);
+
+  async function sendSessionToKitchen(sessionId) {
+    if (processingOrderId === sessionId) return;
+    setProcessingOrderId(sessionId);
+
+    const { error } = await supabase.rpc('transition_session_orders_status', {
+      p_session_id: sessionId,
+      p_new_status: 'preparing',
+    });
+
+    if (error) {
+      console.error('Envoi en cuisine groupé refusé', error);
+      alert('Action impossible : ' + error.message);
+    }
+
+    setProcessingOrderId(null);
+  }
+
   return (
     <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
 
@@ -510,8 +543,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* COMMANDES ACTIVES */}
-        {activeOrders.length === 0 ? (
+        {activeGroups.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 0", color: theme.textSecondary }}>
             <UtensilsCrossed size={48} style={{ margin: "0 0 12px" }} />
             <p style={{ fontFamily: "Georgia, serif" }}>
@@ -519,106 +551,138 @@ export default function Dashboard() {
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
-            {activeOrders.map((order) => {
-              const config = STATUS_LABELS[order.status];
-              const nextStatus = NEXT_STATUS[order.status];
-              const nextLabel = NEXT_LABEL[order.status];
-              const total = order.items.reduce((s, i) => s + i.price * i.qty, 0);
-              const estimatedTime = order.estimated_ready_at
-                ? new Date(order.estimated_ready_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                : null;
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "32px" }}>
+            {activeGroups.map((group) => {
+              const isGrouped = group.sessionId && group.orders.length > 1;
+              const sessionTotal = group.orders.reduce(
+                (sum, o) => sum + o.items.reduce((s, i) => s + i.price * i.qty, 0), 0
+              );
+              const hasReceivedOrders = group.orders.some((o) => o.status === "received");
 
               return (
                 <div
-                  key={order.id}
+                  key={group.sessionId || group.orders[0].id}
                   style={{
-                    background: theme.cardBackground,
-                    borderRadius: "16px",
-                    padding: "18px",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    
+                    background: isGrouped ? theme.pageBackground : "transparent",
+                    border: isGrouped ? `2px dashed ${theme.borderLight}` : "none",
+                    borderRadius: "18px",
+                    padding: isGrouped ? "12px" : "0",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {order.order_type === 'emporter'
-                          ? <><ShoppingBag size={15} /> {order.customer_name}</>
-                          : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
+                  {isGrouped && (
+                    <div style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      marginBottom: "10px", padding: "0 4px",
+                    }}>
+                      <p style={{ margin: 0, fontWeight: "bold", color: theme.textPrimary, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <UtensilsCrossed size={15} /> Table {group.tableNumber} — {group.orders.length} commandes · {sessionTotal.toLocaleString()} FCFA
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
-                        #{order.id.slice(0, 8).toUpperCase()} ·{" "}
-                        {new Date(order.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <span style={{
-                        background: config.bg,
-                        color: config.color,
-                        fontSize: "0.72rem",
-                        fontWeight: "600",
-                        padding: "4px 10px",
-                        borderRadius: "20px",
-                      }}>
-                        {config.label}
-                      </span>
-                      {estimatedTime && (
-                        <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
-                          Prête à {estimatedTime}
-                        </p>
+                      {hasReceivedOrders && (
+                        <button
+                          disabled={processingOrderId === group.sessionId}
+                          onClick={() => sendSessionToKitchen(group.sessionId)}
+                          style={{
+                            background: theme.primary, color: "#fff", border: "none",
+                            borderRadius: "8px", padding: "7px 12px", fontWeight: "600",
+                            fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
+                            opacity: processingOrderId === group.sessionId ? 0.6 : 1,
+                          }}
+                        >
+                          Tout envoyer en cuisine
+                        </button>
                       )}
                     </div>
-                  </div>
-
-                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "12px", marginBottom: "14px" }}>
-                    {order.items.map((item, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
-                        <span style={{ color: theme.textPrimary }}>
-                          <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
-                        </span>
-                        <span style={{ color: "#C9A84C", fontWeight: "600" }}>
-                          {(item.price * item.qty).toLocaleString()} FCFA
-                        </span>
-                      </div>
-                    ))}
-                    <div style={{
-                      borderTop: `1px solid ${theme.borderLight}`,
-                      paddingTop: "10px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontWeight: "bold",
-                      fontSize: "0.88rem",
-                    }}>
-                      <span style={{ color: theme.textPrimary }}>Total</span>
-                      <span style={{ color: theme.textPrimary }}>
-                        {total.toLocaleString()} FCFA
-                      </span>
-                    </div>
-                  </div>
-
-                  {nextStatus && (
-                    <button
-                      disabled={processingOrderId === order.id}
-                      onClick={() => transitionStatus(order.id, nextStatus)}
-                      style={{
-                        width: "100%",
-                        background: order.status === "served" ? brand.secondary_color : theme.primary,
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "10px",
-                        padding: "11px",
-                        fontWeight: "bold",
-                        fontSize: "0.88rem",
-                        cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
-                        opacity: processingOrderId === order.id ? 0.6 : 1,
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                      }}
-                    >
-                      {order.status === "served" && <Wallet size={15} />}
-                      {nextLabel}
-                    </button>
                   )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {group.orders.map((order) => {
+                      const config = STATUS_LABELS[order.status];
+                      const nextStatus = NEXT_STATUS[order.status];
+                      const nextLabel = NEXT_LABEL[order.status];
+                      const total = order.items.reduce((s, i) => s + i.price * i.qty, 0);
+                      const estimatedTime = order.estimated_ready_at
+                        ? new Date(order.estimated_ready_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+                        : null;
+
+                      return (
+                        <div
+                          key={order.id}
+                          style={{
+                            background: theme.cardBackground,
+                            borderRadius: "16px",
+                            padding: "18px",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {order.order_type === 'emporter'
+                                  ? <><ShoppingBag size={15} /> {order.customer_name}</>
+                                  : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
+                              </p>
+                              <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
+                                #{order.id.slice(0, 8).toUpperCase()} ·{" "}
+                                {new Date(order.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <span style={{
+                                background: config.bg, color: config.color, fontSize: "0.72rem",
+                                fontWeight: "600", padding: "4px 10px", borderRadius: "20px",
+                              }}>
+                                {config.label}
+                              </span>
+                              {estimatedTime && (
+                                <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
+                                  Prête à {estimatedTime}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "12px", marginBottom: "14px" }}>
+                            {order.items.map((item, i) => (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                                <span style={{ color: theme.textPrimary }}>
+                                  <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
+                                </span>
+                                <span style={{ color: "#C9A84C", fontWeight: "600" }}>
+                                  {(item.price * item.qty).toLocaleString()} FCFA
+                                </span>
+                              </div>
+                            ))}
+                            <div style={{
+                              borderTop: `1px solid ${theme.borderLight}`, paddingTop: "10px",
+                              display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "0.88rem",
+                            }}>
+                              <span style={{ color: theme.textPrimary }}>Total</span>
+                              <span style={{ color: theme.textPrimary }}>{total.toLocaleString()} FCFA</span>
+                            </div>
+                          </div>
+
+                          {nextStatus && (
+                            <button
+                              disabled={processingOrderId === order.id}
+                              onClick={() => transitionStatus(order.id, nextStatus)}
+                              style={{
+                                width: "100%",
+                                background: order.status === "served" ? brand.secondary_color : theme.primary,
+                                color: "#fff", border: "none", borderRadius: "10px", padding: "11px",
+                                fontWeight: "bold", fontSize: "0.88rem",
+                                cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
+                                opacity: processingOrderId === order.id ? 0.6 : 1,
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                              }}
+                            >
+                              {order.status === "served" && <Wallet size={15} />}
+                              {nextLabel}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
@@ -645,7 +709,7 @@ export default function Dashboard() {
                       borderRadius: "12px",
                       padding: "14px",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-                      
+
                       opacity: 0.75,
                     }}
                   >
