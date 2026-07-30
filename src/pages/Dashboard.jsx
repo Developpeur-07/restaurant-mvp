@@ -6,6 +6,7 @@ import HeaderActions from '../components/HeaderActions'
 import { useSubscription } from '../hooks/useSubscription'
 import {
   Bell,
+  BellRing,
   Sun,
   Moon,
   QrCode,
@@ -88,6 +89,8 @@ export default function Dashboard() {
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const [todayStats, setTodayStats] = useState({ count: 0, revenue: 0, topItem: null });
   const [processingOrderId, setProcessingOrderId] = useState(null);
+  // ── Sessions signalées "J'ai terminé" par le client, en attente de clôture réception ──
+  const [pendingClosureSessions, setPendingClosureSessions] = useState(new Set());
 
   // ── ABONNEMENT + RESTAURANT — vient du SubscriptionProvider posé par AdminRoute.
   // Résout owner OU réception, source unique — Dashboard.jsx ne fait plus sa
@@ -113,7 +116,7 @@ export default function Dashboard() {
   // ── THÈME — appelé inconditionnellement, avant tout return ──
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
 
-  // ─── INIT : commandes actives + channel Realtime, dépend de restaurantId ───
+  // ─── INIT : commandes actives + sessions en attente de clôture + channel Realtime ───
   useEffect(() => {
     if (contextLoading) return; // useSubscription() n'a pas fini de résoudre le compte
 
@@ -142,12 +145,24 @@ export default function Dashboard() {
       setOrders(data || []);
       setLoading(false);
 
+      // ── Sessions déjà en attente de clôture au chargement (ex: après refresh) ──
+      const { data: pendingSessions } = await supabase
+        .from("order_sessions")
+        .select("id")
+        .eq("restaurant_id", restaurantId)
+        .eq("status", "pending_closure");
+
+      if (!cancelled) {
+        setPendingClosureSessions(new Set((pendingSessions || []).map((s) => s.id)));
+      }
+
       channel = supabase
         .channel("dashboard-" + restaurantId)
         .on("postgres_changes", {
           event: "*", schema: "public", table: "orders",
           filter: `restaurant_id=eq.${restaurantId}`,
         }, (payload) => {
+          
           if (payload.eventType === "INSERT") {
             playNotification();
             setNewOrderAlert(true);
@@ -164,6 +179,21 @@ export default function Dashboard() {
           if (payload.eventType === "DELETE") {
             setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
           }
+        })
+        .on("postgres_changes", {
+          event: "UPDATE", schema: "public", table: "order_sessions",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        }, (payload) => {
+          setPendingClosureSessions((prev) => {
+            const next = new Set(prev);
+            if (payload.new.status === "pending_closure") {
+              if (!prev.has(payload.new.id)) playNotification();
+              next.add(payload.new.id);
+            } else {
+              next.delete(payload.new.id);
+            }
+            return next;
+          });
         })
         .subscribe();
     }
@@ -249,6 +279,40 @@ export default function Dashboard() {
     } else if (newStatus === 'paid') {
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
       fetchTodayStats();
+    } else {
+      // Mise à jour optimiste — en plus du Realtime (pas à sa place).
+      // Le Realtime reste actif juste en dessous pour notifier les autres
+      // écrans (cuisine, client). Ceci évite seulement d'attendre son
+      // aller-retour pour rafraîchir CET écran après TON propre clic.
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+    }
+
+    setProcessingOrderId(null);
+  }
+
+  // ── Transition groupée par session — "Tout envoyer en cuisine" ──
+  async function sendSessionToKitchen(sessionId) {
+    if (processingOrderId === sessionId) return;
+    setProcessingOrderId(sessionId);
+
+    const { error } = await supabase.rpc('transition_session_orders_status', {
+      p_session_id: sessionId,
+      p_new_status: 'preparing',
+    });
+
+    if (error) {
+      console.error('Envoi en cuisine groupé refusé', error);
+      alert('Action impossible : ' + error.message);
+    } else {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.session_id === sessionId && o.status === 'received'
+            ? { ...o, status: 'preparing' }
+            : o
+        )
+      );
     }
 
     setProcessingOrderId(null);
@@ -312,23 +376,6 @@ export default function Dashboard() {
   }
 
   const activeGroups = groupBySession(activeOrders);
-
-  async function sendSessionToKitchen(sessionId) {
-    if (processingOrderId === sessionId) return;
-    setProcessingOrderId(sessionId);
-
-    const { error } = await supabase.rpc('transition_session_orders_status', {
-      p_session_id: sessionId,
-      p_new_status: 'preparing',
-    });
-
-    if (error) {
-      console.error('Envoi en cuisine groupé refusé', error);
-      alert('Action impossible : ' + error.message);
-    }
-
-    setProcessingOrderId(null);
-  }
 
   return (
     <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
@@ -543,6 +590,7 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* COMMANDES ACTIVES — groupées par session (table) */}
         {activeGroups.length === 0 ? (
           <div style={{ textAlign: "center", padding: "48px 0", color: theme.textSecondary }}>
             <UtensilsCrossed size={48} style={{ margin: "0 0 12px" }} />
@@ -554,6 +602,7 @@ export default function Dashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "32px" }}>
             {activeGroups.map((group) => {
               const isGrouped = group.sessionId && group.orders.length > 1;
+              const isPendingClosure = group.sessionId && pendingClosureSessions.has(group.sessionId);
               const sessionTotal = group.orders.reduce(
                 (sum, o) => sum + o.items.reduce((s, i) => s + i.price * i.qty, 0), 0
               );
@@ -569,28 +618,40 @@ export default function Dashboard() {
                     padding: isGrouped ? "12px" : "0",
                   }}
                 >
-                  {isGrouped && (
+                  {(isGrouped || isPendingClosure) && (
                     <div style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      marginBottom: "10px", padding: "0 4px",
+                      marginBottom: "10px", padding: "0 4px", flexWrap: "wrap", gap: "8px",
                     }}>
                       <p style={{ margin: 0, fontWeight: "bold", color: theme.textPrimary, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
                         <UtensilsCrossed size={15} /> Table {group.tableNumber} — {group.orders.length} commandes · {sessionTotal.toLocaleString()} FCFA
                       </p>
-                      {hasReceivedOrders && (
-                        <button
-                          disabled={processingOrderId === group.sessionId}
-                          onClick={() => sendSessionToKitchen(group.sessionId)}
-                          style={{
-                            background: theme.primary, color: "#fff", border: "none",
-                            borderRadius: "8px", padding: "7px 12px", fontWeight: "600",
-                            fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
-                            opacity: processingOrderId === group.sessionId ? 0.6 : 1,
-                          }}
-                        >
-                          Tout envoyer en cuisine
-                        </button>
-                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {isPendingClosure && (
+                          <span style={{
+                            background: "#FFF9C4", color: "#7B6000", fontSize: "0.7rem",
+                            fontWeight: "700", padding: "4px 10px", borderRadius: "20px",
+                            display: "inline-flex", alignItems: "center", gap: "4px",
+                            animation: "pulse 1s ease infinite alternate",
+                          }}>
+                            <BellRing size={12} /> Client prêt à payer
+                          </span>
+                        )}
+                        {hasReceivedOrders && (
+                          <button
+                            disabled={processingOrderId === group.sessionId}
+                            onClick={() => sendSessionToKitchen(group.sessionId)}
+                            style={{
+                              background: theme.primary, color: "#fff", border: "none",
+                              borderRadius: "8px", padding: "7px 12px", fontWeight: "600",
+                              fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
+                              opacity: processingOrderId === group.sessionId ? 0.6 : 1,
+                            }}
+                          >
+                            Tout envoyer en cuisine
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -628,8 +689,12 @@ export default function Dashboard() {
                             </div>
                             <div style={{ textAlign: "right" }}>
                               <span style={{
-                                background: config.bg, color: config.color, fontSize: "0.72rem",
-                                fontWeight: "600", padding: "4px 10px", borderRadius: "20px",
+                                background: config.bg,
+                                color: config.color,
+                                fontSize: "0.72rem",
+                                fontWeight: "600",
+                                padding: "4px 10px",
+                                borderRadius: "20px",
                               }}>
                                 {config.label}
                               </span>
@@ -653,11 +718,17 @@ export default function Dashboard() {
                               </div>
                             ))}
                             <div style={{
-                              borderTop: `1px solid ${theme.borderLight}`, paddingTop: "10px",
-                              display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "0.88rem",
+                              borderTop: `1px solid ${theme.borderLight}`,
+                              paddingTop: "10px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              fontWeight: "bold",
+                              fontSize: "0.88rem",
                             }}>
                               <span style={{ color: theme.textPrimary }}>Total</span>
-                              <span style={{ color: theme.textPrimary }}>{total.toLocaleString()} FCFA</span>
+                              <span style={{ color: theme.textPrimary }}>
+                                {total.toLocaleString()} FCFA
+                              </span>
                             </div>
                           </div>
 
@@ -668,8 +739,12 @@ export default function Dashboard() {
                               style={{
                                 width: "100%",
                                 background: order.status === "served" ? brand.secondary_color : theme.primary,
-                                color: "#fff", border: "none", borderRadius: "10px", padding: "11px",
-                                fontWeight: "bold", fontSize: "0.88rem",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "10px",
+                                padding: "11px",
+                                fontWeight: "bold",
+                                fontSize: "0.88rem",
                                 cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
                                 opacity: processingOrderId === order.id ? 0.6 : 1,
                                 display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
@@ -709,7 +784,6 @@ export default function Dashboard() {
                       borderRadius: "12px",
                       padding: "14px",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-
                       opacity: 0.75,
                     }}
                   >

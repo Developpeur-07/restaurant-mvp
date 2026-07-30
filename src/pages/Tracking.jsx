@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   UtensilsCrossed,
   CircleCheckBig,
+  Receipt,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -27,7 +28,6 @@ const STATUS_CONFIG = {
     sublabel: "Rendez-vous en caisse pour récupérer votre commande",
     step: 3,
   },
-
   served: {
     label: "Servie",
     sublabel: "Votre commande a été servie.",
@@ -45,50 +45,96 @@ const STATUS_CONFIG = {
   },
 };
 
+// Config compacte pour les cards "autres commandes de la table"
+const STATUS_BADGE = {
+  received: { label: "Reçue", bg: "#FFF9C4", color: "#7B6000" },
+  preparing: { label: "En préparation", bg: "#DBEAFE", color: "#1E40AF" },
+  ready: { label: "Prête", bg: "#DCFCE7", color: "#166534" },
+  served: { label: "Servie", bg: "#E0E7FF", color: "#3730A3" },
+  paid: { label: "Payée", bg: "#F0FDF4", color: "#166534" },
+  cancelled: { label: "Annulée", bg: "#F3F4F6", color: "#6B7280" },
+};
+
 export default function Tracking() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
+  const [siblingOrders, setSiblingOrders] = useState([]); // autres commandes de la même session
   const [loading, setLoading] = useState(true);
   const [restaurant, setRestaurant] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    async function fetchOrder() {
+    let channel;
+    let cancelled = false;
+
+    async function init() {
       const { data } = await supabase
         .from("orders")
         .select("*")
         .eq("id", orderId)
         .single();
+
+      if (cancelled) return;
       setOrder(data);
       setLoading(false);
 
-      if (data) {
-        const { data: resto } = await supabase
-          .from("restaurants")
-          .select("name, primary_color, secondary_color, slogan, address, logo_url")
-          .eq("id", data.restaurant_id)
-          .single();
-        setRestaurant(resto);
+      if (!data) return;
+
+      const { data: resto } = await supabase
+        .from("restaurants")
+        .select("name, primary_color, secondary_color, slogan, address, logo_url")
+        .eq("id", data.restaurant_id)
+        .single();
+      if (!cancelled) setRestaurant(resto);
+
+      // ── Commandes sœurs de la même session (table) ──
+      if (data.session_id) {
+        const { data: siblings } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("session_id", data.session_id)
+          .neq("id", orderId)
+          .order("created_at", { ascending: true });
+        if (!cancelled) setSiblingOrders(siblings || []);
       }
+
+      // ── Realtime : scope session si dispo, sinon commande seule (emporter) ──
+      const filter = data.session_id
+        ? `session_id=eq.${data.session_id}`
+        : `id=eq.${orderId}`;
+
+      channel = supabase
+        .channel("tracking-" + (data.session_id || orderId))
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders", filter },
+          (payload) => {
+            if (payload.eventType === "DELETE") {
+              setSiblingOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+              return;
+            }
+            const updated = payload.new;
+            if (updated.id === orderId) {
+              setOrder(updated);
+            } else {
+              setSiblingOrders((prev) => {
+                const exists = prev.some((o) => o.id === updated.id);
+                return exists
+                  ? prev.map((o) => (o.id === updated.id ? updated : o))
+                  : [...prev, updated];
+              });
+            }
+          },
+        )
+        .subscribe();
     }
 
-    fetchOrder();
+    init();
 
-    const channel = supabase
-      .channel("order-" + orderId)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `id=eq.${orderId}`,
-        },
-        (payload) => setOrder(payload.new),
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [orderId]);
 
   // ── THÈME — hook appelé avant tout return conditionnel (règle des Hooks) ──
@@ -140,6 +186,14 @@ export default function Tracking() {
 
   const orderAge = order ? now - new Date(order.created_at).getTime() : 0;
   const canCancel = order && order.status === "received" && orderAge < 5 * 60 * 1000;
+
+  // ── Total de session (commande courante + commandes sœurs, hors annulées) ──
+  const hasSession = siblingOrders.length > 0;
+  const sessionTotal = hasSession
+    ? [order, ...siblingOrders]
+        .filter((o) => o.status !== "cancelled")
+        .reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.price * i.qty, 0), 0)
+    : total;
 
   // Couleur du bandeau de statut, dérivée du thème du restaurant
   const statusGradient = isCancelled
@@ -218,6 +272,25 @@ export default function Tracking() {
       </div>
 
       <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>
+
+        {/* Bandeau table — visible seulement si on est bien en session multi-commandes */}
+        {hasSession && (
+          <div style={{
+            background: theme.cardBackground,
+            border: `1px dashed ${theme.borderLight}`,
+            borderRadius: "12px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <UtensilsCrossed size={15} color={theme.textSecondary} />
+            <p style={{ margin: 0, fontSize: "0.78rem", color: theme.textSecondary }}>
+              Table {order.table_number} · {siblingOrders.length + 1} commande{siblingOrders.length + 1 > 1 ? "s" : ""} sur cette session
+            </p>
+          </div>
+        )}
 
         {/* STATUT PRINCIPAL — couleur dérivée du thème, plus de gradient fixe sur le texte */}
         <div
@@ -332,7 +405,9 @@ export default function Tracking() {
           })}
         </div>
 
-        {/* BOUTON ANNULER — visible 5 min max après réception, guard anti double-clic */}
+        {/* BOUTON ANNULER — migré vers la RPC transition_order_status (gère déjà
+            la règle received->cancelled, anonyme, fenêtre de 5 min) au lieu
+            d'un update direct */}
         {canCancel && (
           <div style={{ marginBottom: "16px" }}>
             <button
@@ -341,10 +416,13 @@ export default function Tracking() {
                 const confirm = window.confirm("Annuler cette commande ?");
                 if (!confirm) return;
                 setCancelling(true);
-                await supabase
-                  .from("orders")
-                  .update({ status: "cancelled" })
-                  .eq("id", orderId);
+                const { error } = await supabase.rpc('transition_order_status', {
+                  p_order_id: orderId,
+                  p_new_status: 'cancelled',
+                });
+                if (error) {
+                  alert("Annulation impossible : " + error.message);
+                }
                 setCancelling(false);
               }}
               style={{
@@ -373,6 +451,7 @@ export default function Tracking() {
             borderRadius: "16px",
             padding: "20px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            marginBottom: hasSession ? "16px" : "0",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
@@ -430,6 +509,70 @@ export default function Tracking() {
             </span>
           </div>
         </div>
+
+        {/* AUTRES COMMANDES DE LA TABLE — n'apparaît que si la session en a d'autres */}
+        {hasSession && (
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: "16px",
+              padding: "20px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 14px", fontSize: "0.85rem", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
+              Autres commandes de cette table
+            </h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+              {siblingOrders.map((sib) => {
+                const badge = STATUS_BADGE[sib.status] || STATUS_BADGE.received;
+                const sibTotal = sib.items.reduce((s, i) => s + i.price * i.qty, 0);
+                return (
+                  <div
+                    key={sib.id}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "10px 12px", background: theme.pageBackground, borderRadius: "10px",
+                    }}
+                  >
+                    <div>
+                      <p style={{ margin: 0, fontSize: "0.78rem", color: theme.textPrimary, fontWeight: "600" }}>
+                        #{sib.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
+                        {sib.items.reduce((n, i) => n + i.qty, 0)} article(s) · {sibTotal.toLocaleString()} FCFA
+                      </p>
+                    </div>
+                    <span style={{
+                      background: badge.bg, color: badge.color, fontSize: "0.68rem",
+                      fontWeight: "600", padding: "3px 9px", borderRadius: "20px",
+                    }}>
+                      {badge.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                borderTop: `2px solid ${theme.textPrimary}20`,
+                paddingTop: "12px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif", display: "flex", alignItems: "center", gap: "6px" }}>
+                <Receipt size={15} /> Total table
+              </span>
+              <span style={{ fontWeight: "bold", color: theme.textPrimary, fontSize: "1.1rem" }}>
+                {sessionTotal.toLocaleString()} FCFA
+              </span>
+            </div>
+          </div>
+        )}
 
         <p style={{ textAlign: "center", fontSize: "0.72rem", color: theme.textSecondary, marginTop: "20px" }}>
           Cette page se met à jour automatiquement
