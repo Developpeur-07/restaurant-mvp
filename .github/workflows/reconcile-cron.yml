@@ -1,0 +1,18 @@
+name: Réconciliation paiements (horaire)
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Appeler la route de réconciliation
+        run: |
+          curl --fail --show-error --silent \
+            -X POST \
+            "https://restaurant-mvp.vercel.app/api/cron/reconcile-payments" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
