@@ -11,7 +11,8 @@ import {
   Moon,
   QrCode,
   Clipboard,
-  Settings, AlertTriangle, Gift, Flame, Lock, UtensilsCrossed, ShoppingBag, Trash2, BarChart3, Wallet, Hourglass
+  Settings, AlertTriangle, Gift, Flame, Lock, UtensilsCrossed, ShoppingBag, Trash2, BarChart3, Wallet, Hourglass,
+  Receipt, Printer,
 } from 'lucide-react'
 
 const STATUS_LABELS = {
@@ -91,6 +92,9 @@ export default function Dashboard() {
   const [processingOrderId, setProcessingOrderId] = useState(null);
   // ── Sessions signalées "J'ai terminé" par le client, en attente de clôture réception ──
   const [pendingClosureSessions, setPendingClosureSessions] = useState(new Set());
+  // ── Clôture de session en cours (spinner bouton) + reçu à afficher après succès ──
+  const [closingSessionId, setClosingSessionId] = useState(null);
+  const [receipt, setReceipt] = useState(null);
 
   // ── ABONNEMENT + RESTAURANT — vient du SubscriptionProvider posé par AdminRoute.
   // Résout owner OU réception, source unique — Dashboard.jsx ne fait plus sa
@@ -162,7 +166,6 @@ export default function Dashboard() {
           event: "*", schema: "public", table: "orders",
           filter: `restaurant_id=eq.${restaurantId}`,
         }, (payload) => {
-          
           if (payload.eventType === "INSERT") {
             playNotification();
             setNewOrderAlert(true);
@@ -316,6 +319,55 @@ export default function Dashboard() {
     }
 
     setProcessingOrderId(null);
+  }
+
+  // ── Clôture de session + encaissement — réutilise transition_session_orders_status
+  // côté DB (served -> paid, archivage), génère un reçu récapitulatif côté front.
+  async function closeSessionAndCharge(group) {
+    if (closingSessionId === group.sessionId) return;
+    const confirmClose = window.confirm(
+      `Clôturer et encaisser la table ${group.tableNumber} (${group.orders.length} commande${group.orders.length > 1 ? 's' : ''}) ?`
+    );
+    if (!confirmClose) return;
+    setClosingSessionId(group.sessionId);
+
+    // Capture des données AVANT l'appel RPC — les commandes vont être
+    // archivées puis supprimées de `orders`, donc plus disponibles ensuite.
+    const items = [];
+    group.orders.forEach((o) => {
+      o.items.forEach((i) => {
+        const existing = items.find((x) => x.name === i.name && x.price === i.price);
+        if (existing) existing.qty += i.qty;
+        else items.push({ ...i });
+      });
+    });
+    const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+
+    const { data, error } = await supabase.rpc('close_session_and_charge', {
+      p_session_id: group.sessionId,
+    });
+
+    if (error) {
+      console.error('Clôture refusée', error);
+      alert('Action impossible : ' + error.message);
+    } else {
+      setOrders((prev) => prev.filter((o) => o.session_id !== group.sessionId));
+      setPendingClosureSessions((prev) => {
+        const next = new Set(prev);
+        next.delete(group.sessionId);
+        return next;
+      });
+      setReceipt({
+        tableNumber: group.tableNumber,
+        sessionNumber: data?.session_number,
+        items,
+        total,
+        closedAt: data?.closed_at || new Date().toISOString(),
+      });
+      fetchTodayStats();
+    }
+
+    setClosingSessionId(null);
   }
 
   async function deleteOrder(orderId) {
@@ -607,6 +659,8 @@ export default function Dashboard() {
                 (sum, o) => sum + o.items.reduce((s, i) => s + i.price * i.qty, 0), 0
               );
               const hasReceivedOrders = group.orders.some((o) => o.status === "received");
+              // Toutes les commandes de la session sont servies -> prête à être encaissée
+              const allServed = group.sessionId && group.orders.every((o) => o.status === "served");
 
               return (
                 <div
@@ -618,7 +672,7 @@ export default function Dashboard() {
                     padding: isGrouped ? "12px" : "0",
                   }}
                 >
-                  {(isGrouped || isPendingClosure) && (
+                  {(isGrouped || isPendingClosure || allServed) && (
                     <div style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       marginBottom: "10px", padding: "0 4px", flexWrap: "wrap", gap: "8px",
@@ -649,6 +703,21 @@ export default function Dashboard() {
                             }}
                           >
                             Tout envoyer en cuisine
+                          </button>
+                        )}
+                        {allServed && (
+                          <button
+                            disabled={closingSessionId === group.sessionId}
+                            onClick={() => closeSessionAndCharge(group)}
+                            style={{
+                              background: "#166534", color: "#fff", border: "none",
+                              borderRadius: "8px", padding: "7px 12px", fontWeight: "600",
+                              fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
+                              opacity: closingSessionId === group.sessionId ? 0.6 : 1,
+                              display: "inline-flex", alignItems: "center", gap: "5px",
+                            }}
+                          >
+                            <Receipt size={13} /> {closingSessionId === group.sessionId ? "..." : "Clôturer & encaisser"}
                           </button>
                         )}
                       </div>
@@ -842,6 +911,52 @@ export default function Dashboard() {
           <BarChart3 size={16} /> Voir l'historique des ventes
         </button>
       </div>
+
+      {/* REÇU — affiché après "Clôturer & encaisser", fond blanc fixe (imprimable) */}
+      {receipt && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "20px" }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px", fontFamily: "monospace" }}>
+            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+              <p style={{ margin: 0, fontWeight: "bold", fontSize: "1rem", color: "#111" }}>{brand.name}</p>
+              <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: "#666" }}>
+                Table {receipt.tableNumber}{receipt.sessionNumber ? ` · Session #${receipt.sessionNumber}` : ""}
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: "#999" }}>
+                {new Date(receipt.closedAt).toLocaleString("fr-FR")}
+              </p>
+            </div>
+
+            <div style={{ borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "12px 0", marginBottom: "12px" }}>
+              {receipt.items.map((item, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "6px", color: "#111" }}>
+                  <span>{item.qty}× {item.name}</span>
+                  <span>{(item.price * item.qty).toLocaleString()} FCFA</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "0.95rem", marginBottom: "20px", color: "#111" }}>
+              <span>TOTAL</span>
+              <span>{receipt.total.toLocaleString()} FCFA</span>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => window.print()}
+                style={{ flex: 1, background: theme.primary, color: "#fff", border: "none", borderRadius: "10px", padding: "11px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+              >
+                <Printer size={15} /> Imprimer
+              </button>
+              <button
+                onClick={() => setReceipt(null)}
+                style={{ flex: 1, background: "transparent", border: "2px solid #ddd", borderRadius: "10px", padding: "11px", fontWeight: "bold", cursor: "pointer", color: "#333" }}
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
