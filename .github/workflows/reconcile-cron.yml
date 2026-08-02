@@ -14,5 +14,5 @@ jobs:
         run: |
           curl --fail --show-error --silent \
             -X POST \
-            "https://restaurant-mvp.vercel.app/api/cron/reconcile-payments" \
+            "https://restaurant-mvp-jesus-net-s-projects.vercel.app/api/cron/reconcile-payments" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
