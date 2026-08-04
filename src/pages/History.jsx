@@ -74,13 +74,13 @@ export default function History() {
       {/* HEADER */}
       <div style={{
         background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor})`,
-        padding: '20px 20px'
+        padding: '24px 20px'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               onClick={() => navigate('/dashboard')}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 14px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
             >
               <ArrowLeft size={15} /> Retour
             </button>
@@ -99,40 +99,40 @@ export default function History() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 18px' }}>
 
         {/* TOTAL */}
-        <div style={{ background: theme.primary, borderRadius: '16px', padding: '20px', textAlign: 'center', marginBottom: '24px' }}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', margin: '0 0 4px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        <div style={{ background: theme.primary, borderRadius: '20px', padding: '24px', textAlign: 'center', marginBottom: '28px' }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', margin: '0 0 6px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Total encaissé
           </p>
           <p style={{ color: '#C9A84C', fontSize: '2rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', margin: 0 }}>
             {total.toLocaleString()} FCFA
           </p>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', margin: '4px 0 0' }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', margin: '6px 0 0' }}>
             {orders.length} commande(s) soldée(s)
           </p>
         </div>
 
         {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: theme.textSecondary }}>
-            <BarChart3 size={48} style={{ margin: '0 0 12px' }} />
+          <div style={{ textAlign: 'center', padding: '56px 0', color: theme.textSecondary }}>
+            <BarChart3 size={48} style={{ margin: '0 0 14px' }} />
             <p style={{ fontFamily: 'Georgia, serif' }}>Aucune vente enregistrée</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {orders.map(order => {
               const orderTotal = order.items.reduce((s, i) => s + i.price * i.qty, 0)
               return (
-                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '12px', padding: '16px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '16px', padding: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
                         {order.order_type === 'emporter'
                           ? <><ShoppingBag size={15} /> {order.customer_name}</>
                           : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
                       </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
                         {new Date(order.created_at).toLocaleDateString('fr-FR')} · {new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -140,9 +140,9 @@ export default function History() {
                       {orderTotal.toLocaleString()} FCFA
                     </p>
                   </div>
-                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: '10px' }}>
+                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: '14px' }}>
                     {order.items.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
                         <span style={{ color: theme.textPrimary }}><span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
                         <span style={{ color: theme.textSecondary }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
                       </div>
