@@ -435,13 +435,13 @@ export default function Dashboard() {
       {/* HEADER */}
       <div style={{
         background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
-        padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
+        padding: '24px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             {brand.logo_url && (
-              <img src={brand.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }} />
+              <img src={brand.logo_url} alt="logo" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }} />
             )}
             <div>
               <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
@@ -452,10 +452,10 @@ export default function Dashboard() {
               </h1>
               {newOrderAlert && (
                 <div style={{
-                  background: brand.secondary_color, borderRadius: '20px', padding: '4px 10px',
+                  background: brand.secondary_color, borderRadius: '20px', padding: '5px 12px',
                   fontSize: '0.72rem', fontWeight: 'bold', color: '#fff',
                   animation: 'pulse 0.5s ease infinite alternate',
-                  marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                  marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px'
                 }}>
                   <Bell size={12} /> Nouvelle commande !
                 </div>
@@ -507,27 +507,29 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "28px 18px" }}>
 
-        {/* BANNIÈRE ABONNEMENT — visible seulement si accès dégradé */}
+        {/* BANNIÈRE ABONNEMENT — visible seulement si accès dégradé.
+            Responsive : passe en colonne sous ~420px (bouton pleine largeur)
+            au lieu de wrap brut qui écrasait le texte contre le bouton. */}
         {subscriptionStatus === 'suspended' && (
           <div style={{
             background: '#FEF3C7',
             border: '1px solid #F59E0B',
-            borderRadius: '12px',
-            padding: '14px 16px',
-            marginBottom: '20px',
+            borderRadius: '18px',
+            padding: '18px 20px',
+            marginBottom: '24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '12px',
+            gap: '16px',
             flexWrap: 'wrap',
           }}>
-            <div>
-              <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <AlertTriangle size={15} /> Abonnement suspendu — mode limité
+            <div style={{ flex: '1 1 220px', minWidth: '220px' }}>
+              <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <AlertTriangle size={16} /> Abonnement suspendu — mode limité
               </p>
-              <p style={{ margin: '2px 0 0', color: '#92400E', fontSize: '0.78rem' }}>
+              <p style={{ margin: '6px 0 0', color: '#92400E', fontSize: '0.8rem', lineHeight: 1.5 }}>
                 Vos commandes en cours continuent normalement. Certaines fonctionnalités (stats, branding) sont désactivées.
               </p>
             </div>
@@ -535,9 +537,11 @@ export default function Dashboard() {
               onClick={() => navigate('/settings')}
               style={{
                 background: '#F59E0B', color: '#fff', border: 'none',
-                borderRadius: '8px', padding: '8px 14px', fontWeight: '600',
-                fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                borderRadius: '10px', padding: '10px 18px', fontWeight: '600',
+                fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap',
                 display: isOwner ? 'inline-block' : 'none',
+                flex: '1 1 auto',
+                minWidth: '140px',
               }}
             >
               Réactiver
@@ -550,15 +554,16 @@ export default function Dashboard() {
           <div style={{
             background: trialDaysLeft <= 3 ? '#FFF9C4' : theme.cardBackground,
             border: `1px dashed ${trialDaysLeft <= 3 ? '#F59E0B' : theme.borderLight}`,
-            borderRadius: '12px',
-            padding: '10px 14px',
-            marginBottom: '20px',
-            fontSize: '0.78rem',
+            borderRadius: '18px',
+            padding: '14px 18px',
+            marginBottom: '24px',
+            fontSize: '0.8rem',
+            lineHeight: 1.5,
             color: trialDaysLeft <= 3 ? '#7B6000' : theme.textSecondary,
           }}>
             {trialDaysLeft <= 3
-              ? <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Hourglass size={14} /> Votre essai se termine dans {trialDaysLeft} jour{trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.</span>
-              : <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Gift size={14} /> Vous êtes en période d'essai — toutes les fonctionnalités sont actives ({trialDaysLeft} jours restants).</span>}
+              ? <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Hourglass size={14} /> Votre essai se termine dans {trialDaysLeft} jour{trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.</span>
+              : <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Gift size={14} /> Vous êtes en période d'essai — toutes les fonctionnalités sont actives ({trialDaysLeft} jours restants).</span>}
           </div>
         )}
 
@@ -566,14 +571,14 @@ export default function Dashboard() {
         {features.stats ? (
           <div style={{
             background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}DD)`,
-            borderRadius: '16px', padding: '18px', marginBottom: '20px',
+            borderRadius: '22px', padding: '24px', marginBottom: '24px',
             boxShadow: `0 4px 16px ${theme.textSecondary}40`,
             textAlign: "center",
           }}>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 16px', fontFamily: 'Georgia, serif' }}>
               Aujourd'hui
             </p>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
                 <p style={{ margin: 0, color: '#fff', fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
                   {todayStats.count}
@@ -605,17 +610,17 @@ export default function Dashboard() {
         ) : (
           <div style={{
             background: theme.cardBackground,
-            borderRadius: '16px', padding: '18px', marginBottom: '20px',
+            borderRadius: '22px', padding: '24px', marginBottom: '24px',
             textAlign: "center", border: `1px dashed ${theme.borderLight}`,
           }}>
-            <p style={{ margin: 0, color: theme.textSecondary, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <p style={{ margin: 0, color: theme.textSecondary, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px' }}>
               <Lock size={14} /> Statistiques du jour (revenus, best-seller) disponibles avec un abonnement actif
             </p>
           </div>
         )}
 
         {/* STATS RAPIDES — fond et texte thème */}
-        <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
+        <div style={{ display: "flex", gap: "14px", marginBottom: "28px" }}>
           {[
             { label: "En cours", value: activeOrders.length, color: theme.textPrimary },
             { label: "En préparation", value: orders.filter((o) => o.status === "preparing").length, color: "#1E40AF" },
@@ -626,8 +631,8 @@ export default function Dashboard() {
               style={{
                 flex: 1,
                 background: theme.cardBackground,
-                borderRadius: "12px",
-                padding: "14px",
+                borderRadius: "18px",
+                padding: "18px 14px",
                 textAlign: "center",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
               }}
@@ -635,7 +640,7 @@ export default function Dashboard() {
               <p style={{ margin: 0, fontSize: "1.6rem", fontWeight: "bold", color: stat.color, fontFamily: "Georgia, serif" }}>
                 {stat.value}
               </p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.68rem", color: theme.textSecondary }}>
+              <p style={{ margin: "4px 0 0", fontSize: "0.68rem", color: theme.textSecondary }}>
                 {stat.label}
               </p>
             </div>
@@ -644,14 +649,14 @@ export default function Dashboard() {
 
         {/* COMMANDES ACTIVES — groupées par session (table) */}
         {activeGroups.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "48px 0", color: theme.textSecondary }}>
-            <UtensilsCrossed size={48} style={{ margin: "0 0 12px" }} />
+          <div style={{ textAlign: "center", padding: "56px 0", color: theme.textSecondary }}>
+            <UtensilsCrossed size={48} style={{ margin: "0 0 14px" }} />
             <p style={{ fontFamily: "Georgia, serif" }}>
               Aucune commande en cours
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "32px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginBottom: "36px" }}>
             {activeGroups.map((group) => {
               const isGrouped = group.sessionId && group.orders.length > 1;
               const isPendingClosure = group.sessionId && pendingClosureSessions.has(group.sessionId);
@@ -668,24 +673,24 @@ export default function Dashboard() {
                   style={{
                     background: isGrouped ? theme.pageBackground : "transparent",
                     border: isGrouped ? `2px dashed ${theme.borderLight}` : "none",
-                    borderRadius: "18px",
-                    padding: isGrouped ? "12px" : "0",
+                    borderRadius: "22px",
+                    padding: isGrouped ? "16px" : "0",
                   }}
                 >
                   {(isGrouped || isPendingClosure || allServed) && (
                     <div style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      marginBottom: "10px", padding: "0 4px", flexWrap: "wrap", gap: "8px",
+                      marginBottom: "14px", padding: "0 6px", flexWrap: "wrap", gap: "10px",
                     }}>
-                      <p style={{ margin: 0, fontWeight: "bold", color: theme.textPrimary, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <p style={{ margin: 0, fontWeight: "bold", color: theme.textPrimary, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "7px" }}>
                         <UtensilsCrossed size={15} /> Table {group.tableNumber} — {group.orders.length} commandes · {sessionTotal.toLocaleString()} FCFA
                       </p>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                         {isPendingClosure && (
                           <span style={{
                             background: "#FFF9C4", color: "#7B6000", fontSize: "0.7rem",
-                            fontWeight: "700", padding: "4px 10px", borderRadius: "20px",
-                            display: "inline-flex", alignItems: "center", gap: "4px",
+                            fontWeight: "700", padding: "5px 12px", borderRadius: "20px",
+                            display: "inline-flex", alignItems: "center", gap: "5px",
                             animation: "pulse 1s ease infinite alternate",
                           }}>
                             <BellRing size={12} /> Client prêt à payer
@@ -697,7 +702,7 @@ export default function Dashboard() {
                             onClick={() => sendSessionToKitchen(group.sessionId)}
                             style={{
                               background: theme.primary, color: "#fff", border: "none",
-                              borderRadius: "8px", padding: "7px 12px", fontWeight: "600",
+                              borderRadius: "10px", padding: "8px 14px", fontWeight: "600",
                               fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
                               opacity: processingOrderId === group.sessionId ? 0.6 : 1,
                             }}
@@ -711,10 +716,10 @@ export default function Dashboard() {
                             onClick={() => closeSessionAndCharge(group)}
                             style={{
                               background: "#166534", color: "#fff", border: "none",
-                              borderRadius: "8px", padding: "7px 12px", fontWeight: "600",
+                              borderRadius: "10px", padding: "8px 14px", fontWeight: "600",
                               fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
                               opacity: closingSessionId === group.sessionId ? 0.6 : 1,
-                              display: "inline-flex", alignItems: "center", gap: "5px",
+                              display: "inline-flex", alignItems: "center", gap: "6px",
                             }}
                           >
                             <Receipt size={13} /> {closingSessionId === group.sessionId ? "..." : "Clôturer & encaisser"}
@@ -724,7 +729,7 @@ export default function Dashboard() {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     {group.orders.map((order) => {
                       const config = STATUS_LABELS[order.status];
                       const nextStatus = NEXT_STATUS[order.status];
@@ -739,19 +744,19 @@ export default function Dashboard() {
                           key={order.id}
                           style={{
                             background: theme.cardBackground,
-                            borderRadius: "16px",
-                            padding: "18px",
+                            borderRadius: "20px",
+                            padding: "22px",
                             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
                             <div>
-                              <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
                                 {order.order_type === 'emporter'
                                   ? <><ShoppingBag size={15} /> {order.customer_name}</>
                                   : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
                               </p>
-                              <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
+                              <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                                 #{order.id.slice(0, 8).toUpperCase()} ·{" "}
                                 {new Date(order.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                               </p>
@@ -762,22 +767,22 @@ export default function Dashboard() {
                                 color: config.color,
                                 fontSize: "0.72rem",
                                 fontWeight: "600",
-                                padding: "4px 10px",
+                                padding: "5px 12px",
                                 borderRadius: "20px",
                               }}>
                                 {config.label}
                               </span>
                               {estimatedTime && (
-                                <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
+                                <p style={{ margin: "6px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                                   Prête à {estimatedTime}
                                 </p>
                               )}
                             </div>
                           </div>
 
-                          <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "12px", marginBottom: "14px" }}>
+                          <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "16px", marginBottom: "18px" }}>
                             {order.items.map((item, i) => (
-                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "8px" }}>
                                 <span style={{ color: theme.textPrimary }}>
                                   <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                                 </span>
@@ -788,7 +793,7 @@ export default function Dashboard() {
                             ))}
                             <div style={{
                               borderTop: `1px solid ${theme.borderLight}`,
-                              paddingTop: "10px",
+                              paddingTop: "14px",
                               display: "flex",
                               justifyContent: "space-between",
                               fontWeight: "bold",
@@ -810,13 +815,13 @@ export default function Dashboard() {
                                 background: order.status === "served" ? brand.secondary_color : theme.primary,
                                 color: "#fff",
                                 border: "none",
-                                borderRadius: "10px",
-                                padding: "11px",
+                                borderRadius: "12px",
+                                padding: "13px",
                                 fontWeight: "bold",
                                 fontSize: "0.88rem",
                                 cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
                                 opacity: processingOrderId === order.id ? 0.6 : 1,
-                                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                                display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
                               }}
                             >
                               {order.status === "served" && <Wallet size={15} />}
@@ -835,14 +840,14 @@ export default function Dashboard() {
 
         {/* COMMANDES ANNULÉES — label corrigé pour gérer aussi "à emporter" */}
         {cancelledOrders.length > 0 && (
-          <div style={{ marginBottom: "24px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+          <div style={{ marginBottom: "28px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
               <div style={{ width: "4px", height: "16px", background: "#6B7280", borderRadius: "2px" }} />
               <h2 style={{ margin: 0, fontSize: "0.8rem", color: "#6B7280", letterSpacing: "0.1em", textTransform: "uppercase" }}>
                 Annulées
               </h2>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {cancelledOrders.map((order) => {
                 const total = order.items.reduce((s, i) => s + i.price * i.qty, 0);
                 return (
@@ -850,20 +855,20 @@ export default function Dashboard() {
                     key={order.id}
                     style={{
                       background: theme.cardBackground,
-                      borderRadius: "12px",
-                      padding: "14px",
+                      borderRadius: "16px",
+                      padding: "16px",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
                       opacity: 0.75,
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
                       <div>
-                        <p style={{ margin: 0, fontWeight: "bold", color: theme.textSecondary, fontSize: "0.9rem", display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <p style={{ margin: 0, fontWeight: "bold", color: theme.textSecondary, fontSize: "0.9rem", display: 'flex', alignItems: 'center', gap: '7px' }}>
                           {order.order_type === 'emporter'
                             ? <><ShoppingBag size={14} /> {order.customer_name}</>
                             : <><UtensilsCrossed size={14} /> Table {order.table_number}</>}
                         </p>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
+                        <p style={{ margin: "4px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
                           #{order.id.slice(0, 8).toUpperCase()} · {total.toLocaleString()} FCFA
                         </p>
                       </div>
@@ -872,13 +877,13 @@ export default function Dashboard() {
                         style={{
                           background: "#fee2e2",
                           border: "none",
-                          borderRadius: "8px",
-                          padding: "8px 12px",
+                          borderRadius: "10px",
+                          padding: "9px 14px",
                           color: "#dc2626",
                           fontWeight: "600",
                           fontSize: "0.78rem",
                           cursor: "pointer",
-                          display: "flex", alignItems: "center", gap: "5px",
+                          display: "flex", alignItems: "center", gap: "6px",
                         }}
                       >
                         <Trash2 size={14} /> Supprimer
@@ -898,14 +903,14 @@ export default function Dashboard() {
             width: "100%",
             background: "transparent",
             border: `2px solid ${theme.borderLight}`,
-            borderRadius: "12px",
-            padding: "12px",
+            borderRadius: "16px",
+            padding: "14px",
             color: theme.textPrimary,
             fontWeight: "600",
             fontSize: "0.85rem",
             cursor: "pointer",
             fontFamily: "Georgia, serif",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "7px",
           }}
         >
           <BarChart3 size={16} /> Voir l'historique des ventes
@@ -915,41 +920,41 @@ export default function Dashboard() {
       {/* REÇU — affiché après "Clôturer & encaisser", fond blanc fixe (imprimable) */}
       {receipt && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "20px" }}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", width: "100%", maxWidth: "360px", fontFamily: "monospace" }}>
-            <div style={{ textAlign: "center", marginBottom: "16px" }}>
-              <p style={{ margin: 0, fontWeight: "bold", fontSize: "1rem", color: "#111" }}>{brand.name}</p>
-              <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: "#666" }}>
+          <div style={{ background: "#fff", borderRadius: "22px", padding: "28px", width: "100%", maxWidth: "360px" }}>
+            <div style={{ textAlign: "center", marginBottom: "20px" }}>
+              <p style={{ margin: 0, fontWeight: "normal", fontSize: "1.1rem", color: "#111", fontFamily: "Georgia, serif" }}>{brand.name}</p>
+              <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "#666", fontFamily: "monospace" }}>
                 Table {receipt.tableNumber}{receipt.sessionNumber ? ` · Session #${receipt.sessionNumber}` : ""}
               </p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: "#999" }}>
+              <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: "#999", fontFamily: "monospace" }}>
                 {new Date(receipt.closedAt).toLocaleString("fr-FR")}
               </p>
             </div>
 
-            <div style={{ borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "12px 0", marginBottom: "12px" }}>
+            <div style={{ borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "16px 0", marginBottom: "16px" }}>
               {receipt.items.map((item, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "6px", color: "#111" }}>
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "8px", color: "#111", fontFamily: "monospace" }}>
                   <span>{item.qty}× {item.name}</span>
                   <span>{(item.price * item.qty).toLocaleString()} FCFA</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "0.95rem", marginBottom: "20px", color: "#111" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "0.95rem", marginBottom: "24px", color: "#111", fontFamily: "monospace" }}>
               <span>TOTAL</span>
               <span>{receipt.total.toLocaleString()} FCFA</span>
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "12px" }}>
               <button
                 onClick={() => window.print()}
-                style={{ flex: 1, background: theme.primary, color: "#fff", border: "none", borderRadius: "10px", padding: "11px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
+                style={{ flex: 1, background: theme.primary, color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}
               >
                 <Printer size={15} /> Imprimer
               </button>
               <button
                 onClick={() => setReceipt(null)}
-                style={{ flex: 1, background: "transparent", border: "2px solid #ddd", borderRadius: "10px", padding: "11px", fontWeight: "bold", cursor: "pointer", color: "#333" }}
+                style={{ flex: 1, background: "transparent", border: "2px solid #ddd", borderRadius: "12px", padding: "13px", fontWeight: "bold", cursor: "pointer", color: "#333" }}
               >
                 Fermer
               </button>
