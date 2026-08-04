@@ -13,7 +13,7 @@ import AdminInvite from "./pages/AdminInvite";
 import Onboarding from "./pages/Onboarding";
 import StaffRoute from "./components/StaffRoute";
 import Kitchen from "./pages/Kitchen";
-
+import SuperAdmin from "./pages/SuperAdmin";
 import SuperAdminRoute from './components/SuperAdminRoute'
 
 
@@ -78,11 +78,19 @@ export default function App() {
           </StaffRoute>
         }
       />
-      
+
       <Route path="/onboarding/:token" element={<Onboarding />} />
       <Route path="/admin-invite" element={
         <SuperAdminRoute><AdminInvite /></SuperAdminRoute>
       } />
+      <Route
+        path="/super-admin"
+        element={
+          <SuperAdminRoute>
+            <SuperAdmin />
+          </SuperAdminRoute>
+        }
+      />
 
     </Routes>
   );
