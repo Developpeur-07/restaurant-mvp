@@ -132,12 +132,14 @@ export default function Kitchen() {
       {/* HEADER */}
       <div style={{
         background: `linear-gradient(135deg, ${theme.textSecondary}CC, ${theme.textSecondary})`,
-        padding: '20px 20px', position: 'sticky', top: 0, zIndex: 40,
+        padding: '24px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div>
-            <p style={{ color: theme.textPrimary,textBold: 'bold', fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
+            {/* Bug corrigé : `textBold: 'bold'` n'est pas une propriété CSS valide
+                (ignorée silencieusement) — remplacé par `fontWeight: 'bold'`. */}
+            <p style={{ color: theme.textPrimary, fontWeight: 'bold', fontSize: '0.72rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
               Dashboard cuisine
             </p>
             <h1 style={{ color: '#fff', fontSize: '1.3rem', fontFamily: 'Georgia, serif', margin: 0 }}>
@@ -145,10 +147,10 @@ export default function Kitchen() {
             </h1>
             {newOrderAlert && (
               <div style={{
-                background: '#C9A84C', borderRadius: '20px', padding: '4px 10px',
+                background: '#C9A84C', borderRadius: '20px', padding: '5px 12px',
                 fontSize: '0.72rem', fontWeight: 'bold', color: '#fff',
                 animation: 'pulse 0.5s ease infinite alternate',
-                marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px'
+                marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px'
               }}>
                 <Bell size={12} /> Nouvelle commande !
               </div>
@@ -156,38 +158,38 @@ export default function Kitchen() {
           </div>
           <button
             onClick={toggleDarkMode}
-            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 10px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           >
             {darkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
       </div>
 
-      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "28px 18px" }}>
 
         {/* COMPTEUR */}
         <div style={{
-          background: theme.cardBackground, borderRadius: '12px', padding: '14px',
-          textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '20px'
+          background: theme.cardBackground, borderRadius: '18px', padding: '18px',
+          textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', marginBottom: '24px'
         }}>
           <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>
             {orders.length}
           </p>
-          <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: theme.textSecondary }}>
+          <p style={{ margin: '4px 0 0', fontSize: '0.68rem', color: theme.textSecondary }}>
             commande(s) en préparation
           </p>
         </div>
 
         {/* COMMANDES EN PRÉPARATION */}
         {orders.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "48px 0", color: theme.textSecondary }}>
-            <ChefHat size={48} style={{ margin: "0 0 12px" }} />
+          <div style={{ textAlign: "center", padding: "56px 0", color: theme.textSecondary }}>
+            <ChefHat size={48} style={{ margin: "0 0 14px" }} />
             <p style={{ fontFamily: "Georgia, serif" }}>
               Aucune commande en préparation
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {orders.map((order) => {
               const estimatedTime = order.estimated_ready_at
                 ? new Date(order.estimated_ready_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
@@ -198,20 +200,19 @@ export default function Kitchen() {
                   key={order.id}
                   style={{
                     background: theme.cardBackground,
-                    borderRadius: "16px",
-                    padding: "18px",
+                    borderRadius: "20px",
+                    padding: "22px",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                    
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
                     <div>
-                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
                         {order.order_type === 'emporter'
                           ? <><ShoppingBag size={15} /> {order.customer_name}</>
                           : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                         #{order.id.slice(0, 8).toUpperCase()} ·{" "}
                         {new Date(order.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -219,16 +220,16 @@ export default function Kitchen() {
                     {estimatedTime && (
                       <span style={{
                         background: '#DBEAFE', color: '#1E40AF', fontSize: "0.72rem",
-                        fontWeight: "600", padding: "4px 10px", borderRadius: "20px",
+                        fontWeight: "600", padding: "5px 12px", borderRadius: "20px",
                       }}>
                         Prête à {estimatedTime}
                       </span>
                     )}
                   </div>
 
-                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "12px", marginBottom: "14px" }}>
+                  <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "16px", marginBottom: "18px" }}>
                     {order.items.map((item, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "8px" }}>
                         <span style={{ color: theme.textPrimary }}>
                           <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                         </span>
@@ -244,8 +245,8 @@ export default function Kitchen() {
                       background: theme.primary,
                       color: "#fff",
                       border: "none",
-                      borderRadius: "10px",
-                      padding: "11px",
+                      borderRadius: "12px",
+                      padding: "13px",
                       fontWeight: "bold",
                       fontSize: "0.88rem",
                       cursor: processingOrderId === order.id ? "not-allowed" : "pointer",
