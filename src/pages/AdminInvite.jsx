@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
+import { ArrowLeft, Sun, Moon, Check, Copy } from 'lucide-react'
 
 export default function AdminInvite() {
   const navigate = useNavigate()
@@ -69,15 +70,15 @@ export default function AdminInvite() {
 
       <div style={{
         background: `linear-gradient(135deg, ${theme.primary}CC, ${theme.primary})`,
-        padding: '28px 20px 24px'
+        padding: '32px 20px 28px'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               onClick={() => navigate('/dashboard')}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 12px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 14px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
             >
-              ← Retour
+              <ArrowLeft size={15} /> Retour
             </button>
             <div>
               <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
@@ -90,18 +91,18 @@ export default function AdminInvite() {
           </div>
           <button
             onClick={toggleDarkMode}
-            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontSize: '1rem', flexShrink: 0 }}
+            style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
           >
-            {darkMode ? '☀️' : '🌙'}
+            {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
           </button>
         </div>
       </div>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '24px 16px' }}>
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 18px' }}>
 
         {/* GÉNÉRATEUR */}
-        <div style={{ background: theme.cardBackground, borderRadius: '16px', padding: '20px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '1rem', margin: '0 0 14px' }}>
+        <div style={{ background: theme.cardBackground, borderRadius: '20px', padding: '24px', marginBottom: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif', fontSize: '1rem', margin: '0 0 16px' }}>
             Nouveau lien d'invitation
           </h2>
           <input
@@ -111,9 +112,9 @@ export default function AdminInvite() {
             onChange={e => setRestaurantName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && generateToken()}
             style={{
-              width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px',
-              padding: '12px 14px', fontSize: '0.9rem', background: theme.pageBackground,
-              color: theme.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: '12px'
+              width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '12px',
+              padding: '13px 15px', fontSize: '0.9rem', background: theme.pageBackground,
+              color: theme.textPrimary, outline: 'none', boxSizing: 'border-box', marginBottom: '14px'
             }}
           />
           <button
@@ -121,7 +122,7 @@ export default function AdminInvite() {
             disabled={!restaurantName.trim() || generating}
             style={{
               width: '100%', background: theme.primary, color: '#fff', border: 'none',
-              borderRadius: '10px', padding: '12px', fontWeight: 'bold',
+              borderRadius: '12px', padding: '13px', fontWeight: 'bold',
               fontSize: '0.88rem', cursor: 'pointer',
               opacity: (!restaurantName.trim() || generating) ? 0.6 : 1
             }}
@@ -131,33 +132,33 @@ export default function AdminInvite() {
         </div>
 
         {/* LISTE DES TOKENS */}
-        <h2 style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '0.95rem', margin: '0 0 12px' }}>
+        <h2 style={{ color: theme.primary, fontFamily: 'Georgia, serif', fontSize: '0.95rem', margin: '0 0 14px' }}>
           Invitations ({tokens.length})
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {tokens.map(t => {
             const isExpired = new Date(t.expires_at) < new Date()
             return (
               <div key={t.id} style={{
-                background: theme.cardBackground, borderRadius: '12px', padding: '14px 16px',
+                background: theme.cardBackground, borderRadius: '16px', padding: '16px 18px',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.10)',
-                
                 opacity: (t.used || isExpired) ? 0.7 : 1
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '8px' }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.9rem' }}>
                       {t.restaurant_name}
                     </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: theme.textSecondary }}>
                       Créé le {new Date(t.created_at).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
                   <span style={{
-                    fontSize: '0.68rem', fontWeight: '600', padding: '3px 8px', borderRadius: '12px',
+                    fontSize: '0.68rem', fontWeight: '600', padding: '4px 10px', borderRadius: '14px',
                     background: t.used ? '#F3F4F6' : isExpired ? '#fee2e2' : '#DCFCE7',
-                    color: t.used ? '#6B7280' : isExpired ? '#dc2626' : '#166534'
+                    color: t.used ? '#6B7280' : isExpired ? '#dc2626' : '#166534',
+                    whiteSpace: 'nowrap',
                   }}>
                     {t.used ? 'Utilisé' : isExpired ? 'Expiré' : 'Actif'}
                   </span>
@@ -168,11 +169,12 @@ export default function AdminInvite() {
                     onClick={() => copyLink(t.token, t.id)}
                     style={{
                       width: '100%', background: theme.pageBackground, border: `1px solid ${theme.borderLight}`,
-                      borderRadius: '8px', padding: '10px', color: theme.primary,
-                      fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer'
+                      borderRadius: '10px', padding: '11px', color: theme.primary,
+                      fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                     }}
                   >
-                    {copiedId === t.id ? '✓ Copié !' : '📋 Copier le lien'}
+                    {copiedId === t.id ? <><Check size={14} /> Copié !</> : <><Copy size={14} /> Copier le lien</>}
                   </button>
                 )}
               </div>
