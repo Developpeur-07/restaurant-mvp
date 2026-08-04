@@ -10,6 +10,7 @@ import {
   UtensilsCrossed,
   CircleCheckBig,
   Receipt,
+  Check,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -209,7 +210,7 @@ export default function Tracking() {
       <div
         style={{
           background: `linear-gradient(135deg, ${restaurant?.primary_color || theme.primary}, ${restaurant?.primary_color || theme.primary}CC)`,
-          padding: "28px 20px 24px",
+          padding: "32px 20px 28px",
           textAlign: "center",
           position: "relative",
         }}
@@ -220,13 +221,14 @@ export default function Tracking() {
             background: "rgba(255,255,255,0.2)",
             border: "none",
             color: "#fff",
-            borderRadius: "8px",
-            padding: "8px 10px",
+            borderRadius: "10px",
+            padding: "9px 11px",
             cursor: "pointer",
-            fontSize: "1rem",
+            display: "flex",
+            alignItems: "center",
             position: "absolute",
-            top: "16px",
-            right: "16px",
+            top: "18px",
+            right: "18px",
           }}
         >
           {darkMode ? <Sun size={16} /> : <Moon size={16} />}
@@ -241,7 +243,7 @@ export default function Tracking() {
               height: "40px",
               borderRadius: "50%",
               objectFit: "cover",
-              marginBottom: "8px",
+              marginBottom: "10px",
               border: `2px solid ${restaurant.secondary_color || theme.borderLight}`,
             }}
           />
@@ -252,13 +254,13 @@ export default function Tracking() {
             fontSize: "0.7rem",
             letterSpacing: "0.3em",
             textTransform: "uppercase",
-            marginBottom: "4px",
+            marginBottom: "6px",
             fontFamily: "Georgia, serif",
           }}
         >
           {restaurant?.slogan || "Patisserie · Snack · Restaurant"}
         </p>
-        <h1 style={{ color: "#fff", fontSize: "1.6rem", fontFamily: "Georgia, serif", margin: "0 0 4px" }}>
+        <h1 style={{ color: "#fff", fontSize: "1.6rem", fontFamily: "Georgia, serif", margin: "0 0 6px" }}>
           {restaurant?.name || "Restaurant"}
         </h1>
         <div
@@ -266,24 +268,24 @@ export default function Tracking() {
             width: "40px",
             height: "2px",
             background: restaurant?.secondary_color || "#C9A84C",
-            margin: "8px auto",
+            margin: "10px auto",
           }}
         />
       </div>
 
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "28px 18px" }}>
 
         {/* Bandeau table — visible seulement si on est bien en session multi-commandes */}
         {hasSession && (
           <div style={{
             background: theme.cardBackground,
             border: `1px dashed ${theme.borderLight}`,
-            borderRadius: "12px",
-            padding: "10px 14px",
-            marginBottom: "16px",
+            borderRadius: "16px",
+            padding: "12px 16px",
+            marginBottom: "20px",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "9px",
           }}>
             <UtensilsCrossed size={15} color={theme.textSecondary} />
             <p style={{ margin: 0, fontSize: "0.78rem", color: theme.textSecondary }}>
@@ -296,16 +298,16 @@ export default function Tracking() {
         <div
           style={{
             background: statusGradient,
-            borderRadius: "16px",
-            padding: "28px 20px",
+            borderRadius: "20px",
+            padding: "32px 22px",
             textAlign: "center",
-            marginBottom: "24px",
+            marginBottom: "28px",
             boxShadow: `0 4px 20px ${theme.primary}40`,
           }}
         >
           <p
             style={{
-              margin: "0 0 8px",
+              margin: "0 0 10px",
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
@@ -327,7 +329,7 @@ export default function Tracking() {
               fontSize: "1.4rem",
               fontWeight: "bold",
               fontFamily: "Georgia, serif",
-              margin: "0 0 6px",
+              margin: "0 0 8px",
             }}
           >
             {config.label}
@@ -338,10 +340,10 @@ export default function Tracking() {
           {estimatedTime && !isReady && !isCancelled && (
             <div
               style={{
-                marginTop: "16px",
+                marginTop: "18px",
                 background: "rgba(255,255,255,0.15)",
-                borderRadius: "8px",
-                padding: "10px 16px",
+                borderRadius: "10px",
+                padding: "11px 18px",
                 display: "inline-block",
               }}
             >
@@ -353,13 +355,13 @@ export default function Tracking() {
         </div>
 
         {/* BARRE DE PROGRESSION — couleurs liées au thème, adaptées au dark mode */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "24px", padding: "0 8px" }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: "28px", padding: "0 8px" }}>
           {["received", "preparing", "ready"].map((s, i) => {
             const done = STATUS_CONFIG[s].step <= config.step;
             const labels = ["Reçue", "Préparation", "Prête"];
             return (
               <div key={s} style={{ display: "flex", alignItems: "center", flex: 1 }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
                   <div
                     style={{
                       width: "32px",
@@ -375,7 +377,7 @@ export default function Tracking() {
                       transition: "all 0.3s ease",
                     }}
                   >
-                    {done ? "✓" : i + 1}
+                    {done ? <Check size={16} /> : i + 1}
                   </div>
                   <p
                     style={{
@@ -394,7 +396,7 @@ export default function Tracking() {
                     style={{
                       flex: 1,
                       height: "2px",
-                      margin: "0 4px 16px",
+                      margin: "0 4px 18px",
                       background: STATUS_CONFIG[s].step < config.step ? theme.primary : theme.borderLight,
                       transition: "background 0.3s ease",
                     }}
@@ -409,7 +411,7 @@ export default function Tracking() {
             la règle received->cancelled, anonyme, fenêtre de 5 min) au lieu
             d'un update direct */}
         {canCancel && (
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginBottom: "20px" }}>
             <button
               disabled={cancelling}
               onClick={async () => {
@@ -429,8 +431,8 @@ export default function Tracking() {
                 width: "100%",
                 background: "transparent",
                 border: `2px solid ${theme.primary}`,
-                borderRadius: "12px",
-                padding: "12px",
+                borderRadius: "14px",
+                padding: "13px",
                 color: theme.primary,
                 fontWeight: "bold",
                 fontSize: "0.9rem",
@@ -448,20 +450,20 @@ export default function Tracking() {
         <div
           style={{
             background: theme.cardBackground,
-            borderRadius: "16px",
-            padding: "20px",
+            borderRadius: "20px",
+            padding: "24px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            marginBottom: hasSession ? "16px" : "0",
+            marginBottom: hasSession ? "20px" : "0",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "18px" }}>
             <div>
-              <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
                 {order.order_type === 'emporter'
                   ? <><ShoppingBag size={15} /> {order.customer_name}</>
                   : <><UtensilsCrossed size={15} /> Table {order.table_number}</>}
               </p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
+              <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary }}>
                 #{order.id.slice(0, 8).toUpperCase()}
               </p>
             </div>
@@ -469,7 +471,7 @@ export default function Tracking() {
               <p style={{ margin: 0, fontSize: "0.72rem", color: theme.textSecondary }}>
                 Commandé à
               </p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: theme.textPrimary, fontWeight: "600" }}>
+              <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: theme.textPrimary, fontWeight: "600" }}>
                 {new Date(order.created_at).toLocaleTimeString("fr-FR", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -478,9 +480,9 @@ export default function Tracking() {
             </div>
           </div>
 
-          <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "16px" }}>
+          <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: "18px" }}>
             {order.items.map((item, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
                 <span style={{ color: theme.textPrimary, fontSize: "0.88rem" }}>
                   <span style={{ color: theme.textPrimary, fontWeight: "bold" }}>{item.qty}×</span> {item.name}
                 </span>
@@ -494,8 +496,8 @@ export default function Tracking() {
           <div
             style={{
               borderTop: `2px solid ${theme.textPrimary}20`,
-              marginTop: "12px",
-              paddingTop: "12px",
+              marginTop: "14px",
+              paddingTop: "14px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -515,16 +517,16 @@ export default function Tracking() {
           <div
             style={{
               background: theme.cardBackground,
-              borderRadius: "16px",
-              padding: "20px",
+              borderRadius: "20px",
+              padding: "24px",
               boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             }}
           >
-            <h2 style={{ margin: "0 0 14px", fontSize: "0.85rem", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: "0.85rem", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
               Autres commandes de cette table
             </h2>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
               {siblingOrders.map((sib) => {
                 const badge = STATUS_BADGE[sib.status] || STATUS_BADGE.received;
                 const sibTotal = sib.items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -533,20 +535,20 @@ export default function Tracking() {
                     key={sib.id}
                     style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "10px 12px", background: theme.pageBackground, borderRadius: "10px",
+                      padding: "12px 14px", background: theme.pageBackground, borderRadius: "12px",
                     }}
                   >
                     <div>
                       <p style={{ margin: 0, fontSize: "0.78rem", color: theme.textPrimary, fontWeight: "600" }}>
                         #{sib.id.slice(0, 8).toUpperCase()}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.7rem", color: theme.textSecondary }}>
                         {sib.items.reduce((n, i) => n + i.qty, 0)} article(s) · {sibTotal.toLocaleString()} FCFA
                       </p>
                     </div>
                     <span style={{
                       background: badge.bg, color: badge.color, fontSize: "0.68rem",
-                      fontWeight: "600", padding: "3px 9px", borderRadius: "20px",
+                      fontWeight: "600", padding: "4px 10px", borderRadius: "20px",
                     }}>
                       {badge.label}
                     </span>
@@ -558,13 +560,13 @@ export default function Tracking() {
             <div
               style={{
                 borderTop: `2px solid ${theme.textPrimary}20`,
-                paddingTop: "12px",
+                paddingTop: "14px",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
-              <span style={{ fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif", display: "flex", alignItems: "center", gap: "7px" }}>
                 <Receipt size={15} /> Total table
               </span>
               <span style={{ fontWeight: "bold", color: theme.textPrimary, fontSize: "1.1rem" }}>
@@ -574,7 +576,7 @@ export default function Tracking() {
           </div>
         )}
 
-        <p style={{ textAlign: "center", fontSize: "0.72rem", color: theme.textSecondary, marginTop: "20px" }}>
+        <p style={{ textAlign: "center", fontSize: "0.72rem", color: theme.textSecondary, marginTop: "24px" }}>
           Cette page se met à jour automatiquement
         </p>
       </div>
