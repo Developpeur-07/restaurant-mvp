@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, ArrowLeft, Mail, Lock } from "lucide-react";
 
 const STATUS_DISPLAY = {
   trial: { label: "Essai en cours", bg: "#DBEAFE", color: "#1E40AF" },
@@ -206,11 +206,18 @@ export default function Settings() {
     <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
 
       {/* HEADER */}
-      <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`, padding: "28px 20px 24px" }}>
+      <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`, padding: "32px 20px 28px" }}>
         <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <button onClick={() => navigate("/dashboard")} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px", padding: "8px 12px", color: "#fff", cursor: "pointer", fontSize: "0.85rem" }}>
-              ← Retour
+            <button
+              onClick={() => navigate("/dashboard")}
+              style={{
+                background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "10px",
+                padding: "9px 14px", color: "#fff", cursor: "pointer", fontSize: "0.85rem",
+                display: "inline-flex", alignItems: "center", gap: "6px",
+              }}
+            >
+              <ArrowLeft size={15} /> Retour
             </button>
             <div>
               <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: 0, fontFamily: "Georgia, serif" }}>
@@ -224,8 +231,8 @@ export default function Settings() {
           <button
             onClick={toggleDarkMode}
             style={{
-              background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "8px",
-              padding: "8px 10px", cursor: "pointer", display: "inline-flex",
+              background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "10px",
+              padding: "9px 11px", cursor: "pointer", display: "inline-flex",
               alignItems: "center", justifyContent: "center", color: "inherit",
             }}
           >
@@ -234,13 +241,13 @@ export default function Settings() {
         </div>
       </div>
 
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 16px" }}>
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "28px 18px" }}>
 
         {message && (
           <div style={{
             background: message.type === "success" ? "#f0fff0" : "#fff0f0",
             border: `1px solid ${message.type === "success" ? "#90EE90" : "#ffcccc"}`,
-            borderRadius: "10px", padding: "12px 16px", marginBottom: "20px"
+            borderRadius: "14px", padding: "14px 18px", marginBottom: "24px"
           }}>
             <p style={{ margin: 0, fontSize: "0.85rem", color: message.type === "success" ? "#2d6b2d" : "#cc0000" }}>
               {message.text}
@@ -249,43 +256,43 @@ export default function Settings() {
         )}
 
         {/* COMPTE ACTUEL */}
-        <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 12px" }}>
+        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 14px" }}>
             Compte actuel
           </h2>
-          <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0 }}>
-            📧 {user?.email}
+          <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+            <Mail size={15} /> {user?.email}
           </p>
         </div>
 
         {/* ABONNEMENT — visible pour tous (lecture seule) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0 }}>
               Abonnement
             </h2>
             {statusDisplay && (
               <span style={{
                 background: statusDisplay.bg, color: statusDisplay.color,
-                fontSize: "0.72rem", fontWeight: "600", padding: "4px 10px", borderRadius: "20px",
+                fontSize: "0.72rem", fontWeight: "600", padding: "5px 12px", borderRadius: "20px",
               }}>
                 {statusDisplay.label}
               </span>
             )}
           </div>
 
-          <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 4px" }}>
+          <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
             Plan : <strong style={{ color: theme.textPrimary }}>{plan === "pro" ? "Pro" : "Free"}</strong>
           </p>
 
           {subscriptionStatus === "trial" && trialDaysLeft !== null && (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 4px" }}>
+            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
               Essai : <strong style={{ color: theme.textPrimary }}>{trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}</strong>
             </p>
           )}
 
           {subscriptionStatus === "active" && nextBillingDate && (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 4px" }}>
+            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
               Prochaine échéance : <strong style={{ color: theme.textPrimary }}>
                 {new Date(nextBillingDate).toLocaleDateString("fr-FR")}
               </strong>
@@ -294,7 +301,7 @@ export default function Settings() {
 
           {subscriptionStatus === "suspended" && isOwner && (
             <>
-              <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 12px" }}>
+              <p style={{ color: theme.textSecondary, fontSize: "0.82rem", lineHeight: 1.5, margin: "8px 0 16px" }}>
                 Vos commandes en cours continuent normalement. Réactivez pour retrouver stats, branding et Realtime.
               </p>
               <button
@@ -302,7 +309,7 @@ export default function Settings() {
                 title="Le paiement en ligne arrive bientôt"
                 style={{
                   width: "100%", background: theme.borderLight, color: theme.textSecondary,
-                  border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold",
+                  border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold",
                   fontSize: "0.88rem", cursor: "not-allowed",
                 }}
               >
@@ -314,22 +321,22 @@ export default function Settings() {
 
         {/* IDENTITÉ VISUELLE — réservé au propriétaire */}
         {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
+          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
               Identité visuelle
             </h2>
 
-            <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`, borderRadius: "12px", padding: "16px", textAlign: "center", marginBottom: "16px" }}>
+            <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`, borderRadius: "16px", padding: "20px", textAlign: "center", marginBottom: "20px" }}>
               {brand.logo_url && (
-                <img src={brand.logo_url} alt="logo" style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", marginBottom: "8px" }} />
+                <img src={brand.logo_url} alt="logo" style={{ width: "48px", height: "48px", borderRadius: "50%", objectFit: "cover", marginBottom: "10px" }} />
               )}
-              <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 4px", fontFamily: "Georgia, serif" }}>
+              <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: "0 0 6px", fontFamily: "Georgia, serif" }}>
                 {brand.slogan || "Votre slogan ici"}
               </p>
-              <p style={{ color: "#fff", fontSize: "1.3rem", fontFamily: "Georgia, serif", fontWeight: "bold", margin: "0 0 4px" }}>
+              <p style={{ color: "#fff", fontSize: "1.3rem", fontFamily: "Georgia, serif", fontWeight: "bold", margin: "0 0 6px" }}>
                 {brand.name || "Nom du restaurant"}
               </p>
-              <div style={{ width: "30px", height: "2px", background: brand.secondary_color, margin: "6px auto" }} />
+              <div style={{ width: "30px", height: "2px", background: brand.secondary_color, margin: "8px auto" }} />
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.7rem", margin: 0 }}>
                 {brand.address || "Votre adresse"}
               </p>
@@ -340,8 +347,8 @@ export default function Settings() {
               { label: "Slogan", key: "slogan", type: "text", placeholder: "Ex: Le Goût Du Bon Gâteau" },
               { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
             ].map((field) => (
-              <div key={field.key} style={{ marginBottom: "12px" }}>
-                <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
+              <div key={field.key} style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
                   {field.label}
                 </label>
                 <input
@@ -350,16 +357,16 @@ export default function Settings() {
                   value={brand[field.key] || ""}
                   onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   style={{
-                    width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
-                    padding: "10px 14px", fontSize: "0.88rem", background: theme.pageBackground,
+                    width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
+                    padding: "11px 15px", fontSize: "0.88rem", background: theme.pageBackground,
                     color: theme.textPrimary, outline: "none", boxSizing: "border-box"
                   }}
                 />
               </div>
             ))}
 
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
                 Logo
               </label>
 
@@ -369,14 +376,14 @@ export default function Settings() {
                 onChange={handleLogoUpload}
                 disabled={uploadingLogo}
                 style={{
-                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
-                  padding: "10px 14px", fontSize: "0.82rem", background: theme.pageBackground,
+                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
+                  padding: "11px 15px", fontSize: "0.82rem", background: theme.pageBackground,
                   color: theme.textPrimary, outline: "none", boxSizing: "border-box",
                   cursor: uploadingLogo ? "not-allowed" : "pointer", opacity: uploadingLogo ? 0.6 : 1
                 }}
               />
               {uploadingLogo && (
-                <p style={{ fontSize: "0.75rem", color: theme.primary, margin: "6px 0 0" }}>
+                <p style={{ fontSize: "0.75rem", color: theme.primary, margin: "8px 0 0" }}>
                   Upload en cours...
                 </p>
               )}
@@ -387,42 +394,42 @@ export default function Settings() {
                 value={brand.logo_url || ""}
                 onChange={(e) => setBrand((prev) => ({ ...prev, logo_url: e.target.value }))}
                 style={{
-                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
-                  padding: "10px 14px", fontSize: "0.88rem", background: theme.pageBackground,
-                  color: theme.textPrimary, outline: "none", boxSizing: "border-box", marginTop: "8px"
+                  width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
+                  padding: "11px 15px", fontSize: "0.88rem", background: theme.pageBackground,
+                  color: theme.textPrimary, outline: "none", boxSizing: "border-box", marginTop: "10px"
                 }}
               />
 
               {brand.logo_url && (
-                <div style={{ marginTop: "12px", display: "flex", justifyContent: "center" }}>
+                <div style={{ marginTop: "14px", display: "flex", justifyContent: "center" }}>
                   <img src={brand.logo_url} alt="Logo" style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${theme.borderLight}` }} />
                 </div>
               )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "20px" }}>
               {[
                 { label: "Couleur principale", key: "primary_color" },
                 { label: "Couleur accent", key: "secondary_color" },
               ].map((field) => (
                 <div key={field.key}>
-                  <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "6px", fontWeight: "600" }}>
+                  <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
                     {field.label}
                   </label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <input
                       type="color"
                       value={brand[field.key] || theme.primary}
                       onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      style={{ width: "44px", height: "44px", borderRadius: "8px", border: `2px solid ${theme.borderLight}`, cursor: "pointer", padding: "2px", flexShrink: 0 }}
+                      style={{ width: "44px", height: "44px", borderRadius: "10px", border: `2px solid ${theme.borderLight}`, cursor: "pointer", padding: "2px", flexShrink: 0 }}
                     />
                     <input
                       type="text"
                       value={brand[field.key]}
                       onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
                       style={{
-                        flex: 1, border: `2px solid ${theme.borderLight}`, borderRadius: "8px",
-                        padding: "10px", fontSize: "0.82rem", background: theme.pageBackground,
+                        flex: 1, border: `2px solid ${theme.borderLight}`, borderRadius: "10px",
+                        padding: "11px", fontSize: "0.82rem", background: theme.pageBackground,
                         color: theme.textPrimary, outline: "none", minWidth: 0
                       }}
                     />
@@ -434,7 +441,7 @@ export default function Settings() {
             <button
               onClick={handleBrandSave}
               disabled={brandLoading || uploadingLogo}
-              style={{ width: "100%", background: theme.primary, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: brandLoading || uploadingLogo ? 0.6 : 1 }}
+              style={{ width: "100%", background: theme.primary, color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: brandLoading || uploadingLogo ? 0.6 : 1 }}
             >
               {brandLoading ? "Sauvegarde..." : "Sauvegarder l'identité"}
             </button>
@@ -442,25 +449,25 @@ export default function Settings() {
         )}
 
         {/* CHANGER MOT DE PASSE — dispo pour tout compte (propriétaire ou staff) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 16px" }}>
+        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
             Changer le mot de passe
           </h2>
 
           <input
             type="password" placeholder="Mot de passe actuel" value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "10px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
           />
           <input
             type="password" placeholder="Nouveau mot de passe" value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "10px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
           />
           <input
             type="password" placeholder="Confirmer le mot de passe" value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "14px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "16px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
           />
           <button
             type="button"
@@ -468,7 +475,7 @@ export default function Settings() {
             disabled={!currentPassword || !newPassword || !confirmPassword || loading}
             style={{
               width: "100%", background: theme.primary, color: "#fff", border: "none",
-              borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem",
+              borderRadius: "12px", padding: "13px", fontWeight: "bold", fontSize: "0.88rem",
               cursor: "pointer", opacity: !currentPassword || !newPassword || !confirmPassword || loading ? 0.6 : 1
             }}
           >
@@ -478,32 +485,32 @@ export default function Settings() {
 
         {/* AJOUTER UN ADMIN — réservé au propriétaire */}
         {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "16px", padding: "20px", marginBottom: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px" }}>
+          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 8px" }}>
               Ajouter un administrateur
             </h2>
 
             {features.multiStaffAccounts ? (
               <>
-                <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 14px" }}>
+                <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 16px" }}>
                   Un email d'invitation sera envoyé automatiquement
                 </p>
                 <input
                   type="email" placeholder="email@restaurant.com" value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
-                  style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "10px", padding: "11px 14px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+                  style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "14px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
                 />
                 <button
                   onClick={handleAddAdmin}
                   disabled={!newAdminEmail}
-                  style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "10px", padding: "12px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
+                  style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
                 >
                   Ouvrir le panneau d'invitation →
                 </button>
               </>
             ) : (
-              <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: 0 }}>
-                🔒 Les comptes staff multiples sont disponibles avec un abonnement actif
+              <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+                <Lock size={14} /> Les comptes staff multiples sont disponibles avec un abonnement actif
               </p>
             )}
           </div>
@@ -511,7 +518,7 @@ export default function Settings() {
 
         <button
           onClick={handleLogout}
-          style={{ width: "100%", background: "transparent", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "13px", color: theme.textSecondary, fontWeight: "600", fontSize: "0.88rem", cursor: "pointer" }}
+          style={{ width: "100%", background: "transparent", border: `2px solid ${theme.borderLight}`, borderRadius: "14px", padding: "14px", color: theme.textSecondary, fontWeight: "600", fontSize: "0.88rem", cursor: "pointer" }}
         >
           Se déconnecter
         </button>
