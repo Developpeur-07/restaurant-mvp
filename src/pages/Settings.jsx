@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
-import { Sun, Moon, ArrowLeft, Mail, Lock } from "lucide-react";
+import { Sun, Moon, ArrowLeft, Mail, Lock, ChefHat, Bell, Copy, Check } from "lucide-react";
 
 const STATUS_DISPLAY = {
   trial: { label: "Essai en cours", bg: "#DBEAFE", color: "#1E40AF" },
@@ -12,13 +12,17 @@ const STATUS_DISPLAY = {
   suspended: { label: "Suspendu", bg: "#FEE2E2", color: "#991B1B" },
 };
 
+const STAFF_ROLES = [
+  { value: "reception", label: "Réception", Icon: Bell },
+  { value: "kitchen", label: "Cuisine", Icon: ChefHat },
+];
+
 export default function Settings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [newAdminEmail, setNewAdminEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [brand, setBrand] = useState({
@@ -31,6 +35,13 @@ export default function Settings() {
   });
   const [brandLoading, setBrandLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  // ── INVITATION STAFF — génération de lien scopé restaurant + rôle ──
+  const [newStaffRole, setNewStaffRole] = useState("reception");
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [staffTokens, setStaffTokens] = useState([]);
+  const [loadingTokens, setLoadingTokens] = useState(true);
+  const [copiedTokenId, setCopiedTokenId] = useState(null);
 
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
 
@@ -70,6 +81,21 @@ export default function Settings() {
     }
     init();
   }, [restaurantId]);
+
+  // ── Liste des invitations staff déjà générées pour ce restaurant ──
+  useEffect(() => {
+    async function fetchStaffTokens() {
+      if (!isOwner || !restaurantId) { setLoadingTokens(false); return; }
+      const { data } = await supabase
+        .from("staff_invitation_tokens")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .order("created_at", { ascending: false });
+      setStaffTokens(data || []);
+      setLoadingTokens(false);
+    }
+    fetchStaffTokens();
+  }, [isOwner, restaurantId]);
 
   async function handleLogoUpload(e) {
     if (!isOwner) return;
@@ -184,17 +210,45 @@ export default function Settings() {
     setConfirmPassword("");
   }
 
-  async function handleAddAdmin() {
-    if (!isOwner) return;
-    if (!newAdminEmail) return;
-    window.open(
-      "https://supabase.com/dashboard/project/vtgflrwctsqgntmuguvf/auth/users",
-      "_blank",
-    );
-    setMessage({
-      type: "success",
-      text: `Ouvre le lien → Invite User → entre ${newAdminEmail}`,
-    });
+  // ── Génère un lien d'invitation staff scopé restaurant_id + rôle choisi ──
+  async function generateStaffToken() {
+    if (!isOwner || !restaurantId) return;
+    setGeneratingToken(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setGeneratingToken(false);
+      setMessage({ type: "error", text: "Session expirée, reconnecte-toi" });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("staff_invitation_tokens")
+      .insert({
+        restaurant_id: restaurantId,
+        role: newStaffRole,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    setGeneratingToken(false);
+
+    if (error) {
+      setMessage({ type: "error", text: "Erreur lors de la génération : " + error.message });
+      return;
+    }
+
+    setStaffTokens((prev) => [data, ...prev]);
+    setMessage({ type: "success", text: "Lien d'invitation généré ✓" });
+    setTimeout(() => setMessage(null), 3000);
+  }
+
+  function copyStaffLink(token, id) {
+    const url = `${window.location.origin}/staff-onboarding/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedTokenId(id);
+    setTimeout(() => setCopiedTokenId(null), 2000);
   }
 
   async function handleLogout() {
@@ -483,30 +537,93 @@ export default function Settings() {
           </button>
         </div>
 
-        {/* AJOUTER UN ADMIN — réservé au propriétaire */}
+        {/* INVITER DU STAFF — réservé au propriétaire, remplace l'ancien lien vers Supabase Dashboard */}
         {isOwner && (
           <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 8px" }}>
-              Ajouter un administrateur
+              Inviter un membre de l'équipe
             </h2>
 
             {features.multiStaffAccounts ? (
               <>
                 <p style={{ color: theme.textSecondary, fontSize: "0.75rem", margin: "0 0 16px" }}>
-                  Un email d'invitation sera envoyé automatiquement
+                  Choisis le rôle, génère le lien, partage-le — le compte staff est rattaché automatiquement à ce restaurant
                 </p>
-                <input
-                  type="email" placeholder="email@restaurant.com" value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "14px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-                />
+
+                <div style={{ display: "flex", gap: "12px", marginBottom: "16px" }}>
+                  {STAFF_ROLES.map((r) => (
+                    <button
+                      key={r.value}
+                      onClick={() => setNewStaffRole(r.value)}
+                      style={{
+                        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                        padding: "14px 10px", borderRadius: "14px", cursor: "pointer",
+                        border: `2px solid ${newStaffRole === r.value ? theme.primary : theme.borderLight}`,
+                        background: newStaffRole === r.value ? `${theme.primary}1A` : theme.pageBackground,
+                      }}
+                    >
+                      <r.Icon size={20} color={newStaffRole === r.value ? theme.primary : theme.textSecondary} />
+                      <span style={{ fontSize: "0.8rem", fontWeight: "600", color: newStaffRole === r.value ? theme.primary : theme.textPrimary }}>
+                        {r.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
                 <button
-                  onClick={handleAddAdmin}
-                  disabled={!newAdminEmail}
-                  style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: !newAdminEmail ? 0.6 : 1 }}
+                  onClick={generateStaffToken}
+                  disabled={generatingToken}
+                  style={{ width: "100%", background: brand.secondary_color, color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer", opacity: generatingToken ? 0.6 : 1, marginBottom: "20px" }}
                 >
-                  Ouvrir le panneau d'invitation →
+                  {generatingToken ? "Génération..." : "+ Générer le lien"}
                 </button>
+
+                {!loadingTokens && staffTokens.length > 0 && (
+                  <>
+                    <div style={{ height: "1px", background: theme.borderLight, margin: "0 0 16px" }} />
+                    <p style={{ fontSize: "0.78rem", color: theme.textSecondary, margin: "0 0 12px", fontWeight: "600" }}>
+                      Invitations ({staffTokens.length})
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {staffTokens.map((t) => {
+                        const isExpired = new Date(t.expires_at) < new Date();
+                        const roleInfo = STAFF_ROLES.find((r) => r.value === t.role) || STAFF_ROLES[0];
+                        return (
+                          <div key={t.id} style={{
+                            background: theme.pageBackground, borderRadius: "14px", padding: "14px 16px",
+                            opacity: (t.used || isExpired) ? 0.65 : 1,
+                          }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", gap: "8px" }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", fontWeight: "600", color: theme.textPrimary }}>
+                                <roleInfo.Icon size={14} /> {roleInfo.label}
+                              </span>
+                              <span style={{
+                                fontSize: "0.68rem", fontWeight: "600", padding: "4px 10px", borderRadius: "14px",
+                                background: t.used ? "#F3F4F6" : isExpired ? "#fee2e2" : "#DCFCE7",
+                                color: t.used ? "#6B7280" : isExpired ? "#dc2626" : "#166534",
+                              }}>
+                                {t.used ? "Utilisé" : isExpired ? "Expiré" : "Actif"}
+                              </span>
+                            </div>
+                            {!t.used && !isExpired && (
+                              <button
+                                onClick={() => copyStaffLink(t.token, t.id)}
+                                style={{
+                                  width: "100%", background: theme.cardBackground, border: `1px solid ${theme.borderLight}`,
+                                  borderRadius: "10px", padding: "10px", color: theme.primary,
+                                  fontSize: "0.76rem", fontWeight: "600", cursor: "pointer",
+                                  display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                                }}
+                              >
+                                {copiedTokenId === t.id ? <><Check size={13} /> Copié !</> : <><Copy size={13} /> Copier le lien</>}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
