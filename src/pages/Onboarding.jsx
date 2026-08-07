@@ -175,7 +175,7 @@ export default function Onboarding() {
 
       {/* HEADER */}
       <div style={{
-        background: `linear-gradient(135deg, ${brand.primary_color}, ${brand.primary_color}CC)`,
+        background: `linear-gradient(135deg, ${theme.textSecondary}, ${theme.textSecondary}CC)`,
         padding: '36px 20px 28px', textAlign: 'center', position: 'relative'
       }}>
         <button
@@ -189,7 +189,7 @@ export default function Onboarding() {
           {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
         </button>
 
-        <p style={{ color: brand.secondary_color, fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Georgia, serif' }}>
+        <p style={{ color: theme.textPrimary, fontSize: '1.25rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '10px', fontFamily: 'Georgia, serif' }}>
           Bienvenue
         </p>
         <h1 style={{ color: '#fff', fontSize: '1.6rem', fontFamily: 'Georgia, serif', margin: '0 0 14px' }}>
@@ -218,7 +218,7 @@ export default function Onboarding() {
         {/* ÉTAPE 1 — COMPTE */}
         {step === 1 && (
           <>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal', color: theme.primary, fontSize: '1.25rem', marginBottom: '8px' }}>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal', color: theme.textPrimary, fontSize: '1.25rem', marginBottom: '8px' }}>
               Créez votre compte
             </h2>
             <p style={{ color: theme.textSecondary, fontSize: '0.82rem', marginBottom: '28px' }}>
@@ -254,7 +254,7 @@ export default function Onboarding() {
               onClick={handleCreateAccount}
               disabled={!email || !password || !confirmPassword || creating}
               style={{
-                width: '100%', background: theme.primary, color: '#fff', border: 'none',
+                width: '100%', background: theme.textMuted, color: '#fff', border: 'none',
                 borderRadius: '14px', padding: '15px', fontWeight: 'bold', fontSize: '0.95rem',
                 cursor: 'pointer', opacity: (!email || !password || !confirmPassword || creating) ? 0.6 : 1
               }}
@@ -267,7 +267,7 @@ export default function Onboarding() {
         {/* ÉTAPE 2 — IDENTITÉ */}
         {step === 2 && (
           <>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal', color: theme.primary, fontSize: '1.25rem', marginBottom: '8px' }}>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal', color: theme.textPrimary, fontSize: '1.25rem', marginBottom: '8px' }}>
               Votre identité visuelle
             </h2>
             <p style={{ color: theme.textSecondary, fontSize: '0.82rem', marginBottom: '28px' }}>
@@ -341,7 +341,7 @@ export default function Onboarding() {
         {/* ÉTAPE 3 — PREMIER PLAT */}
         {step === 3 && (
           <>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal', color: theme.primary, fontSize: '1.25rem', marginBottom: '8px' }}>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal', color: theme.textPrimary, fontSize: '1.25rem', marginBottom: '8px' }}>
               Ajoutez votre premier plat
             </h2>
             <p style={{ color: theme.textSecondary, fontSize: '0.82rem', marginBottom: '28px' }}>
