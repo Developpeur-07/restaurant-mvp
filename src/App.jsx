@@ -15,7 +15,7 @@ import StaffRoute from "./components/StaffRoute";
 import Kitchen from "./pages/Kitchen";
 import SuperAdmin from "./pages/SuperAdmin";
 import SuperAdminRoute from './components/SuperAdminRoute'
-
+import StaffOnboarding from "./pages/StaffOnboarding";
 
 export default function App() {
   return (
@@ -83,6 +83,8 @@ export default function App() {
       <Route path="/admin-invite" element={
         <SuperAdminRoute><AdminInvite /></SuperAdminRoute>
       } />
+
+      <Route path="/staff-onboarding/:token" element={<StaffOnboarding />} />
       <Route
         path="/super-admin"
         element={
