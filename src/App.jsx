@@ -3,6 +3,7 @@ import Menu from "./pages/Menu";
 import Tracking from "./pages/Tracking";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import RegisterPage from './pages/RegisterPage';
 import QRCodePage from "./pages/QRCode";
 import UpdatePassword from "./pages/UpdatePassword";
 import AdminRoute from "./components/AdminRoute";
@@ -28,6 +29,7 @@ export default function App() {
       <Route path="/menu/:restaurantId/:category" element={<Menu />} />
       <Route path="/tracking/:orderId" element={<Tracking />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/register/:token" element={<RegisterPage />} />
       <Route path="/update-password" element={<UpdatePassword />} />
       <Route
         path="/dashboard"
