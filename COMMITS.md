@@ -44,3 +44,32 @@ compte auth orphelin reste créé sans restaurant associé. Pas de rollback auto
 `RETURNING`, ne conservant que Rêve Voilé (`b0b0b0b0-...`, active,
 jesusnetng@gmail.com). Comptes `auth.users` orphelins correspondants supprimés
 via Dashboard Supabase.
+
+## 🎯 Décision actée (session du 08 août 2026, suite) — Stratégie de paiement segmentée
+
+**Constat** : le todo initial traitait "paiement" comme un problème unique et
+penchait par défaut vers Mobile Money/CinetPay, en confondant deux paiements
+différents avec deux payeurs différents :
+1. Abonnement SaaS — le restaurateur paie Le Bourgeois (B2B, faible volume,
+   montant fixe récurrent)
+2. Commande client — le client du restaurant paie son addition (volume élevé,
+   petit montant, consommateur final)
+
+**Décision** : segmenter par cas d'usage plutôt qu'un mécanisme unique.
+- **Abonnement SaaS (Phase 2, révisée)** : virement bancaire + confirmation
+  manuelle via `SuperAdminRoute`. Justifié par le profil du segment premium
+  (clients avec infrastructure bancaire déjà en place) et le faible volume —
+  cohérent avec le principe "manuel d'abord". Débloque la monétisation sans
+  attendre la résolution du blocage RCCM.
+- **Paiement client final (Phase 5bis, inchangée)** : CinetPay/Mobile Money
+  reste pertinent ici — c'est son vrai terrain (volume élevé, petits montants,
+  consommateur non-bancarisé).
+
+**Impact** : le blocage CinetPay/RCCM ne bloque plus le chemin critique de
+l'abonnement SaaS. Phase 2 peut être codée immédiatement (instructions de
+virement + bouton confirmation manuelle), sans dépendance à un compte marchand
+agrégateur.
+
+**Reste à vérifier (prérequis Phase 2 révisée)** : confirmer avec la banque si
+un compte professionnel pour recevoir les virements nécessite un RCCM, ou si un
+compte plus simple suffit en attendant la régularisation de la structure propre.
