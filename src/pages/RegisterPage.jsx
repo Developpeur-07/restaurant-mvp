@@ -1,225 +1,243 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Store, Mail, Lock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { supabase } from './../lib/supabase';
-
+import { useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useTheme } from '../lib/useTheme'
+import { Sun, Moon, Store, CheckCircle2 } from 'lucide-react'
 
 export default function RegisterPage() {
-  const { token } = useParams();
+  const { token } = useParams()
+  const { theme, darkMode, toggleDarkMode } = useTheme('#1F2A44')
 
-  const [restaurantName, setRestaurantName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
+  const [restaurantName, setRestaurantName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
+  async function handleSubmit() {
+    setError('')
 
     if (!restaurantName.trim()) {
-      setError("Le nom du restaurant est requis.");
-      return;
+      setError('Le nom du restaurant est requis')
+      return
     }
     if (password.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères.");
-      return;
+      setError('Le mot de passe doit contenir au moins 8 caractères')
+      return
     }
     if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
-      return;
+      setError('Les mots de passe ne correspondent pas')
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
 
-    try {
-      // 1. Création du compte auth
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-      });
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password
+    })
 
-      if (signUpError) {
-        if (signUpError.message.toLowerCase().includes('already registered')) {
-          throw new Error("Un compte existe déjà avec cet email. Connectez-vous plutôt.");
-        }
-        throw new Error(signUpError.message);
-      }
-
-      const ownerId = signUpData?.user?.id;
-      if (!ownerId) {
-        throw new Error("La création du compte a échoué. Réessayez.");
-      }
-
-      // 2. Consommation du token + création du restaurant
-      const { error: rpcError } = await supabase.rpc('use_restaurant_registration_token', {
-        p_token: token,
-        p_restaurant_name: restaurantName.trim(),
-        p_owner_user_id: ownerId,
-      });
-
-      if (rpcError) {
-        throw new Error(rpcError.message);
-      }
-
-      setSuccess(true);
-    } catch (err) {
-      setError(err.message || "Une erreur inattendue est survenue.");
-    } finally {
-      setLoading(false);
+    if (signUpError) {
+      setError(
+        signUpError.message.toLowerCase().includes('already registered')
+          ? 'Un compte existe déjà avec cet email. Connectez-vous plutôt.'
+          : signUpError.message
+      )
+      setLoading(false)
+      return
     }
-  };
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-6">
-        <div className="max-w-md w-full bg-white rounded-3xl p-10 text-center shadow-sm">
-          <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8 text-green-600" strokeWidth={1.5} />
-          </div>
-          <h1
-            className="text-2xl mb-3"
-            style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal' }}
-          >
-            Compte créé
-          </h1>
-          <p className="text-neutral-600 mb-8 leading-relaxed">
-            Votre restaurant a bien été enregistré. Vous pouvez maintenant vous connecter
-            pour accéder à votre espace.
-          </p>
-          <Link
-            to="/login"
-            className="inline-block w-full py-3 rounded-2xl text-white font-medium transition"
-            style={{ backgroundColor: '#1F2A44' }}
-          >
-            Aller à la connexion
-          </Link>
-        </div>
-      </div>
-    );
+    const ownerId = signUpData?.user?.id
+    if (!ownerId) {
+      setError("La création du compte a échoué. Réessayez.")
+      setLoading(false)
+      return
+    }
+
+    const { error: rpcError } = await supabase.rpc('use_restaurant_registration_token', {
+      p_token: token,
+      p_restaurant_name: restaurantName.trim(),
+      p_owner_user_id: ownerId
+    })
+
+    if (rpcError) {
+      setError(rpcError.message)
+      setLoading(false)
+      return
+    }
+
+    setSuccess(true)
+    setLoading(false)
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-6 py-12">
-      <div className="max-w-md w-full bg-white rounded-3xl p-10 shadow-sm">
-        <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mb-6">
-          <Store className="w-6 h-6" strokeWidth={1.5} style={{ color: '#1F2A44' }} />
-        </div>
-
-        <h1
-          className="text-2xl mb-2"
-          style={{ fontFamily: 'Georgia, serif', fontWeight: 'normal' }}
+  if (success) return (
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ textAlign: 'center' }}>
+        <CheckCircle2 size={48} color={theme.primary} style={{ marginBottom: '16px' }} />
+        <p style={{ fontFamily: 'Georgia, serif', color: theme.textPrimary, fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '8px' }}>
+          Compte créé
+        </p>
+        <p style={{ color: theme.textPrimary, fontSize: '0.85rem', maxWidth: '320px', margin: '0 auto 20px' }}>
+          Votre restaurant a bien été enregistré. Vous pouvez maintenant vous connecter
+          pour accéder à votre espace.
+        </p>
+        <Link
+          to="/login"
+          style={{
+            display: 'inline-block', background: theme.primary, color: '#fff',
+            border: 'none', borderRadius: '12px', padding: '14px 28px',
+            fontWeight: 'bold', fontSize: '0.9rem', textDecoration: 'none'
+          }}
         >
-          Créer votre restaurant
-        </h1>
-        <p className="text-neutral-500 mb-8 text-sm leading-relaxed">
-          Ce lien vous a été transmis directement. Renseignez vos informations pour
-          activer votre espace.
-        </p>
-
-        {error && (
-          <div className="flex items-start gap-3 bg-red-50 rounded-2xl p-4 mb-6">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" strokeWidth={1.5} />
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Nom du restaurant
-            </label>
-            <div className="relative">
-              <Store className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" strokeWidth={1.5} />
-              <input
-                type="text"
-                value={restaurantName}
-                onChange={(e) => setRestaurantName(e.target.value)}
-                placeholder="Le nom de votre établissement"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" strokeWidth={1.5} />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vous@exemple.com"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Mot de passe
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" strokeWidth={1.5} />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="8 caractères minimum"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition"
-                required
-                minLength={8}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Confirmer le mot de passe
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" strokeWidth={1.5} />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Retapez le mot de passe"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-300 transition"
-                required
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-2xl text-white font-medium transition flex items-center justify-center gap-2 disabled:opacity-60"
-            style={{ backgroundColor: '#1F2A44' }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Création en cours...
-              </>
-            ) : (
-              "Créer mon compte"
-            )}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-neutral-500 mt-6">
-          Déjà un compte ?{' '}
-          <Link to="/login" className="font-medium" style={{ color: '#1F2A44' }}>
-            Se connecter
-          </Link>
-        </p>
+          Aller à la connexion
+        </Link>
       </div>
     </div>
-  );
+  )
+
+  return (
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+
+      <div style={{
+        background: `linear-gradient(170deg, ${theme.primary}CC, ${theme.primary})`,
+        padding: '40px 20px 32px',
+        textAlign: 'center',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <button
+          onClick={toggleDarkMode}
+          style={{
+            background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px',
+            padding: '8px 10px', cursor: 'pointer', flexShrink: 0,
+            position: 'absolute', top: '16px', right: '16px',
+            display: 'flex', alignItems: 'center'
+          }}
+        >
+          {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
+        </button>
+
+        <Store size={28} color="#fff" style={{ marginBottom: '10px' }} />
+        <p style={{ color: '#fff', fontSize: '0.7rem', letterSpacing: '0.3em', textTransform: 'uppercase', marginBottom: '8px', fontFamily: 'Georgia, serif' }}>
+          Inscription
+        </p>
+        <h1 style={{ color: '#fff', fontSize: '1.8rem', fontFamily: 'Georgia, serif', margin: '0 0 8px' }}>
+          Créer votre restaurant
+        </h1>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' }}>
+        <div style={{ width: '100%', maxWidth: '380px' }}>
+
+          <h2 style={{ fontFamily: 'Georgia, serif', color: theme.textPrimary, fontSize: '1.3rem', marginBottom: '6px' }}>
+            Vos informations
+          </h2>
+          <p style={{ color: theme.textSecondary, fontSize: '0.8rem', marginBottom: '24px' }}>
+            Ce lien vous a été transmis directement — renseignez vos informations pour activer votre espace
+          </p>
+
+          {error && (
+            <div style={{ background: '#fff0f0', border: '1px solid #ffcccc', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+              <p style={{ color: '#cc0000', fontSize: '0.82rem', margin: 0 }}>{error}</p>
+            </div>
+          )}
+
+          <Field label="Nom du restaurant" theme={theme}>
+            <input
+              type="text"
+              placeholder="Votre établissement"
+              value={restaurantName}
+              onChange={e => setRestaurantName(e.target.value)}
+              style={inputStyle(theme)}
+              onFocus={e => e.target.style.borderColor = theme.primary}
+              onBlur={e => e.target.style.borderColor = theme.borderLight}
+            />
+          </Field>
+
+          <Field label="Email" theme={theme}>
+            <input
+              type="email"
+              placeholder="votre@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              style={inputStyle(theme)}
+              onFocus={e => e.target.style.borderColor = theme.primary}
+              onBlur={e => e.target.style.borderColor = theme.borderLight}
+            />
+          </Field>
+
+          <Field label="Mot de passe" theme={theme}>
+            <input
+              type="password"
+              placeholder="8 caractères minimum"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              style={inputStyle(theme)}
+              onFocus={e => e.target.style.borderColor = theme.primary}
+              onBlur={e => e.target.style.borderColor = theme.borderLight}
+            />
+          </Field>
+
+          <Field label="Confirmer le mot de passe" theme={theme} marginBottom="20px">
+            <input
+              type="password"
+              placeholder="Retapez le mot de passe"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              style={inputStyle(theme)}
+              onFocus={e => e.target.style.borderColor = theme.primary}
+              onBlur={e => e.target.style.borderColor = theme.borderLight}
+            />
+          </Field>
+
+          <button
+            onClick={handleSubmit}
+            disabled={!restaurantName || !email || !password || !confirmPassword || loading}
+            style={{
+              width: '100%', background: theme.primary, color: '#fff', border: 'none',
+              borderRadius: '12px', padding: '14px', fontWeight: 'bold',
+              fontSize: '0.95rem', cursor: 'pointer', marginBottom: '14px',
+              opacity: (!restaurantName || !email || !password || !confirmPassword || loading) ? 0.6 : 1,
+              transition: 'opacity 0.2s'
+            }}
+          >
+            {loading ? 'Création en cours...' : 'Créer mon compte'}
+          </button>
+
+          <p style={{ textAlign: 'center', color: theme.textSecondary, fontSize: '0.82rem' }}>
+            Déjà un compte ?{' '}
+            <Link to="/login" style={{ color: theme.primary, fontWeight: '600', textDecoration: 'none' }}>
+              Se connecter
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, theme, children, marginBottom = '14px' }) {
+  return (
+    <div style={{ marginBottom }}>
+      <label style={{ display: 'block', fontSize: '0.78rem', color: theme.textPrimary, marginBottom: '6px', fontWeight: '600' }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+function inputStyle(theme) {
+  return {
+    width: '100%', border: `2px solid ${theme.borderLight}`, borderRadius: '10px',
+    padding: '12px 14px', fontSize: '0.9rem', background: theme.cardBackground,
+    color: theme.textPrimary, outline: 'none', boxSizing: 'border-box',
+    transition: 'border-color 0.2s'
+  }
 }
