@@ -1,7 +1,7 @@
 {
   "regions": ["cdg1"],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
     {
