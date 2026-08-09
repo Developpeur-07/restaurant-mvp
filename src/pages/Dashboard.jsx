@@ -42,6 +42,15 @@ const NEXT_LABEL = {
   cancelled: null,
 };
 
+// ── Réception paiement abonnement — Mobile Money, confirmation manuelle.
+// Phase 2 révisée (08 août 2026) : pas de compte bancaire ni d'agrégateur,
+// juste deux numéros de réception + override manuel côté SuperAdmin.jsx.
+const PAYMENT_INFO = {
+  holder: 'Jésus-Net',
+  mtn: '065991104',
+  airtel: '050406599',
+};
+
 function playNotification() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -83,6 +92,62 @@ function playNotification() {
   }
 }
 
+// ── Bloc réutilisable — affiché dans les bannières trial (J-3) et suspended.
+// Copie presse-papier par numéro, ton visuel adapté à l'urgence (trial vs suspended).
+function PaymentInstructions({ theme, brand, copiedNumber, onCopy, tone = 'trial' }) {
+  const isUrgent = tone === 'suspended';
+  const textColor = isUrgent ? '#92400E' : '#7B6000';
+
+  return (
+    <div style={{
+      marginTop: '14px',
+      paddingTop: '14px',
+      borderTop: `1px dashed ${isUrgent ? '#F59E0B' : '#F0C93D'}`,
+    }}>
+      <p style={{ margin: '0 0 10px', fontSize: '0.78rem', fontWeight: '600', color: textColor }}>
+        Pour réactiver — Mobile Money, réf. « {brand.name} »
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {[
+          { label: 'MTN Mobile Money', number: PAYMENT_INFO.mtn },
+          { label: 'Airtel Money', number: PAYMENT_INFO.airtel },
+        ].map((line) => (
+          <div
+            key={line.number}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'rgba(255,255,255,0.6)', borderRadius: '10px', padding: '8px 12px',
+            }}
+          >
+            <div>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: textColor, opacity: 0.75 }}>{line.label}</p>
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: textColor, fontFamily: 'monospace' }}>
+                {line.number}
+              </p>
+            </div>
+            <button
+              onClick={() => onCopy(line.number)}
+              style={{
+                background: 'transparent', border: `1.5px solid ${textColor}55`,
+                borderRadius: '8px', padding: '6px 10px', cursor: 'pointer',
+                fontSize: '0.7rem', fontWeight: '600', color: textColor,
+                display: 'flex', alignItems: 'center', gap: '5px',
+              }}
+            >
+              <Clipboard size={12} />
+              {copiedNumber === line.number ? 'Copié !' : 'Copier'}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p style={{ margin: '10px 0 0', fontSize: '0.7rem', color: textColor, opacity: 0.8, lineHeight: 1.5 }}>
+        Titulaire : {PAYMENT_INFO.holder}. Une fois le transfert effectué, contactez-nous
+        (WhatsApp/email) pour confirmation — la réactivation est faite manuellement sous peu.
+      </p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -95,6 +160,14 @@ export default function Dashboard() {
   // ── Clôture de session en cours (spinner bouton) + reçu à afficher après succès ──
   const [closingSessionId, setClosingSessionId] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  // ── Copie presse-papier des numéros Mobile Money (bannières trial/suspended) ──
+  const [copiedNumber, setCopiedNumber] = useState(null);
+
+  function copyNumber(number) {
+    navigator.clipboard.writeText(number);
+    setCopiedNumber(number);
+    setTimeout(() => setCopiedNumber(null), 2000);
+  }
 
   // ── ABONNEMENT + RESTAURANT — vient du SubscriptionProvider posé par AdminRoute.
   // Résout owner OU réception, source unique — Dashboard.jsx ne fait plus sa
@@ -511,7 +584,9 @@ export default function Dashboard() {
 
         {/* BANNIÈRE ABONNEMENT — visible seulement si accès dégradé.
             Responsive : passe en colonne sous ~420px (bouton pleine largeur)
-            au lieu de wrap brut qui écrasait le texte contre le bouton. */}
+            au lieu de wrap brut qui écrasait le texte contre le bouton.
+            Instructions de paiement Mobile Money intégrées ci-dessous
+            (Phase 2 révisée — réception manuelle, pas d'agrégateur). */}
         {subscriptionStatus === 'suspended' && (
           <div style={{
             background: '#FEF3C7',
@@ -519,37 +594,33 @@ export default function Dashboard() {
             borderRadius: '18px',
             padding: '18px 20px',
             marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-            flexWrap: 'wrap',
           }}>
-            <div style={{ flex: '1 1 220px', minWidth: '220px' }}>
-              <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <AlertTriangle size={16} /> Abonnement suspendu — mode limité
-              </p>
-              <p style={{ margin: '6px 0 0', color: '#92400E', fontSize: '0.8rem', lineHeight: 1.5 }}>
-                Vos commandes en cours continuent normalement. Certaines fonctionnalités (stats, branding) sont désactivées.
-              </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 220px', minWidth: '220px' }}>
+                <p style={{ margin: 0, fontWeight: 'bold', color: '#92400E', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <AlertTriangle size={16} /> Abonnement suspendu — mode limité
+                </p>
+                <p style={{ margin: '6px 0 0', color: '#92400E', fontSize: '0.8rem', lineHeight: 1.5 }}>
+                  Vos commandes en cours continuent normalement. Certaines fonctionnalités (stats, branding) sont désactivées.
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/settings')}
-              style={{
-                background: '#F59E0B', color: '#fff', border: 'none',
-                borderRadius: '10px', padding: '10px 18px', fontWeight: '600',
-                fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap',
-                display: isOwner ? 'inline-block' : 'none',
-                flex: '1 1 auto',
-                minWidth: '140px',
-              }}
-            >
-              Réactiver
-            </button>
+
+            {isOwner && (
+              <PaymentInstructions
+                theme={theme}
+                brand={brand}
+                copiedNumber={copiedNumber}
+                onCopy={copyNumber}
+                tone="suspended"
+              />
+            )}
           </div>
         )}
 
-        {/* Rappel discret pendant l'essai — permanent, avec urgence accrue à J-3 */}
+        {/* Rappel discret pendant l'essai — permanent, avec urgence accrue à J-3.
+            Instructions de paiement affichées seulement à J-3 pour ne pas
+            surcharger l'écran pendant le reste de l'essai. */}
         {subscriptionStatus === 'trial' && trialDaysLeft !== null && (
           <div style={{
             background: trialDaysLeft <= 3 ? '#FFF9C4' : theme.cardBackground,
@@ -562,8 +633,18 @@ export default function Dashboard() {
             color: trialDaysLeft <= 3 ? '#7B6000' : theme.textSecondary,
           }}>
             {trialDaysLeft <= 3
-              ? <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Hourglass size={14} /> Votre essai se termine dans {trialDaysLeft} jour{trialDaysLeft > 1 ? 's' : ''} — un lien de paiement vous sera envoyé.</span>
+              ? <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Hourglass size={14} /> Votre essai se termine dans {trialDaysLeft} jour{trialDaysLeft > 1 ? 's' : ''}.</span>
               : <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><Gift size={14} /> Vous êtes en période d'essai — toutes les fonctionnalités sont actives ({trialDaysLeft} jours restants).</span>}
+
+            {trialDaysLeft <= 3 && isOwner && (
+              <PaymentInstructions
+                theme={theme}
+                brand={brand}
+                copiedNumber={copiedNumber}
+                onCopy={copyNumber}
+                tone="trial"
+              />
+            )}
           </div>
         )}
 
