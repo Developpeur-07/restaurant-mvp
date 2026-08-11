@@ -1,4 +1,4 @@
-```javascript
+
 // api/webhooks/yabetoo-debug.js
 //
 // Webhook Yabetoo — production
@@ -759,4 +759,3 @@ export default async function handler(req, res) {
     });
   }
 }
-```
