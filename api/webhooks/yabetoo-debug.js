@@ -24,6 +24,11 @@
 //
 // IMPORTANT :
 // Le service_role_key doit rester uniquement côté serveur.
+//
+// NOTE (11 août 2026) :
+// triggered_by est contraint en base à ('webhook' | 'cron' | 'manual')
+// via subscription_events_triggered_by_check. Ne jamais utiliser une
+// valeur type "yabetoo_webhook" — le détail du provider va dans `reason`.
 
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -579,6 +584,9 @@ export default async function handler(req, res) {
     // -----------------------------------------------------
     // 21. HISTORIQUE ABONNEMENT
     // -----------------------------------------------------
+    //
+    // triggered_by est contraint en base (subscription_events_triggered_by_check)
+    // à 'webhook' | 'cron' | 'manual'. Le détail Yabetoo (intent id) va dans reason.
 
     const { error: eventInsertError } = await supabaseAdmin
       .from("subscription_events")
@@ -586,8 +594,8 @@ export default async function handler(req, res) {
         restaurant_id: restaurant.id,
         previous_status: previousStatus,
         new_status: "active",
-        triggered_by: "yabetoo_webhook",
-        reason: "Paiement Yabetoo PRO confirmé",
+        triggered_by: "webhook",
+        reason: `Paiement Yabetoo PRO confirmé (intent ${intentId})`,
         actor_id: restaurant.owner_id || null,
       });
 
