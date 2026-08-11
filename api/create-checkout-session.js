@@ -18,10 +18,9 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const YABETOO_SESSIONS_URL =
-  "https://buy.api.yabetoopay.com/v1/sessions";
+const YABETOO_SESSIONS_URL = "https://buy.api.yabetoopay.com/v1/sessions";
 
-const PRO_PRICE = 35000;
+const PRO_PRICE = process.env.YABETOO_TEST_MODE === "true" ? 500 : 35000;
 const PRO_PLAN = "pro";
 
 const APP_URL =
@@ -42,12 +41,9 @@ export default async function handler(req, res) {
   // 2. Vérification variables serveur
   // ---------------------------------------------------------
 
-  if (
-    !process.env.SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error(
-      "[YABETOO CREATE SESSION] Configuration Supabase serveur manquante."
+      "[YABETOO CREATE SESSION] Configuration Supabase serveur manquante.",
     );
 
     return res.status(500).json({
@@ -55,13 +51,8 @@ export default async function handler(req, res) {
     });
   }
 
-  if (
-    !process.env.YABETOO_SECRET_KEY ||
-    !process.env.YABETOO_ACCOUNT_ID
-  ) {
-    console.error(
-      "[YABETOO CREATE SESSION] Configuration Yabetoo manquante."
-    );
+  if (!process.env.YABETOO_SECRET_KEY || !process.env.YABETOO_ACCOUNT_ID) {
+    console.error("[YABETOO CREATE SESSION] Configuration Yabetoo manquante.");
 
     return res.status(500).json({
       error: "Configuration Yabetoo manquante.",
@@ -83,10 +74,7 @@ export default async function handler(req, res) {
 
     const [scheme, accessToken] = authorization.split(" ");
 
-    if (
-      scheme !== "Bearer" ||
-      !accessToken
-    ) {
+    if (scheme !== "Bearer" || !accessToken) {
       return res.status(401).json({
         error: "Token d'authentification invalide.",
       });
@@ -104,7 +92,7 @@ export default async function handler(req, res) {
           autoRefreshToken: false,
           persistSession: false,
         },
-      }
+      },
     );
 
     // -------------------------------------------------------
@@ -119,7 +107,7 @@ export default async function handler(req, res) {
     if (authError || !user) {
       console.error(
         "[YABETOO CREATE SESSION] Utilisateur non authentifié:",
-        authError?.message
+        authError?.message,
       );
 
       return res.status(401).json({
@@ -127,10 +115,7 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(
-      "[YABETOO CREATE SESSION] Utilisateur authentifié:",
-      user.id
-    );
+    console.log("[YABETOO CREATE SESSION] Utilisateur authentifié:", user.id);
 
     // -------------------------------------------------------
     // 6. Récupération du restaurantId
@@ -149,14 +134,9 @@ export default async function handler(req, res) {
     //    réellement à l'utilisateur connecté
     // -------------------------------------------------------
 
-    const {
-      data: restaurant,
-      error: restaurantError,
-    } = await supabaseAdmin
+    const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from("restaurants")
-      .select(
-        "id, owner_id, name, plan, subscription_status"
-      )
+      .select("id, owner_id, name, plan, subscription_status")
       .eq("id", restaurantId)
       .eq("owner_id", user.id)
       .maybeSingle();
@@ -164,7 +144,7 @@ export default async function handler(req, res) {
     if (restaurantError) {
       console.error(
         "[YABETOO CREATE SESSION] Erreur vérification restaurant:",
-        restaurantError
+        restaurantError,
       );
 
       return res.status(500).json({
@@ -173,28 +153,21 @@ export default async function handler(req, res) {
     }
 
     if (!restaurant) {
-      console.warn(
-        "[YABETOO CREATE SESSION] Accès restaurant refusé:",
-        {
-          userId: user.id,
-          restaurantId,
-        }
-      );
+      console.warn("[YABETOO CREATE SESSION] Accès restaurant refusé:", {
+        userId: user.id,
+        restaurantId,
+      });
 
       return res.status(403).json({
-        error:
-          "Vous n'êtes pas propriétaire de ce restaurant.",
+        error: "Vous n'êtes pas propriétaire de ce restaurant.",
       });
     }
 
-    console.log(
-      "[YABETOO CREATE SESSION] Restaurant vérifié:",
-      {
-        restaurantId: restaurant.id,
-        ownerId: restaurant.owner_id,
-        restaurantName: restaurant.name,
-      }
-    );
+    console.log("[YABETOO CREATE SESSION] Restaurant vérifié:", {
+      restaurantId: restaurant.id,
+      ownerId: restaurant.owner_id,
+      restaurantName: restaurant.name,
+    });
 
     // -------------------------------------------------------
     // 8. Création session Yabetoo
@@ -215,18 +188,15 @@ export default async function handler(req, res) {
 
         accountId: process.env.YABETOO_ACCOUNT_ID,
 
-        successUrl:
-          `${APP_URL}/settings?payment=success`,
+        successUrl: `${APP_URL}/settings?payment=success`,
 
-        cancelUrl:
-          `${APP_URL}/settings?payment=cancelled`,
+        cancelUrl: `${APP_URL}/settings?payment=cancelled`,
 
         items: [
           {
             productId: "prod_abonnement_pro",
 
-            productName:
-              "Abonnement PRO Le Resto-HUB",
+            productName: "Abonnement PRO Le Resto-HUB",
 
             quantity: 1,
 
@@ -257,15 +227,9 @@ export default async function handler(req, res) {
       };
     }
 
-    console.log(
-      "[YABETOO CREATE SESSION] Status HTTP:",
-      response.status
-    );
+    console.log("[YABETOO CREATE SESSION] Status HTTP:", response.status);
 
-    console.log(
-      "[YABETOO CREATE SESSION] Session ID:",
-      data?.id || null
-    );
+    console.log("[YABETOO CREATE SESSION] Session ID:", data?.id || null);
 
     // -------------------------------------------------------
     // 10. Vérification création session
@@ -274,12 +238,11 @@ export default async function handler(req, res) {
     if (!response.ok || !data?.id) {
       console.error(
         "[YABETOO CREATE SESSION] Création session échouée:",
-        JSON.stringify(data, null, 2)
+        JSON.stringify(data, null, 2),
       );
 
       return res.status(502).json({
-        error:
-          "Yabetoo n'a pas créé la session de paiement.",
+        error: "Yabetoo n'a pas créé la session de paiement.",
         httpStatus: response.status,
         reponseYabetoo: data,
       });
@@ -291,9 +254,7 @@ export default async function handler(req, res) {
     // 11. Enregistrement du paiement
     // -------------------------------------------------------
 
-    const {
-      error: paymentError,
-    } = await supabaseAdmin
+    const { error: paymentError } = await supabaseAdmin
       .from("subscription_payments")
       .insert({
         restaurant_id: restaurant.id,
@@ -306,7 +267,7 @@ export default async function handler(req, res) {
     if (paymentError) {
       console.error(
         "[YABETOO CREATE SESSION] Erreur enregistrement paiement:",
-        paymentError
+        paymentError,
       );
 
       return res.status(500).json({
@@ -316,15 +277,12 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(
-      "[YABETOO CREATE SESSION] Paiement pending créé:",
-      {
-        restaurantId: restaurant.id,
-        transactionId: sessionId,
-        amount: PRO_PRICE,
-        provider: "yabetoo",
-      }
-    );
+    console.log("[YABETOO CREATE SESSION] Paiement pending créé:", {
+      restaurantId: restaurant.id,
+      transactionId: sessionId,
+      amount: PRO_PRICE,
+      provider: "yabetoo",
+    });
 
     // -------------------------------------------------------
     // 12. Réponse frontend
@@ -344,10 +302,7 @@ export default async function handler(req, res) {
       plan: PRO_PLAN,
     });
   } catch (error) {
-    console.error(
-      "[YABETOO CREATE SESSION] Erreur serveur:",
-      error
-    );
+    console.error("[YABETOO CREATE SESSION] Erreur serveur:", error);
 
     return res.status(500).json({
       error: "Erreur interne lors de la création du paiement.",

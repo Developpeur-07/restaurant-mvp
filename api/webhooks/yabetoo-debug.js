@@ -1,4 +1,3 @@
-
 // api/webhooks/yabetoo-debug.js
 //
 // Webhook Yabetoo — production
@@ -39,7 +38,7 @@ export const config = {
 // CONSTANTES
 // ---------------------------------------------------------
 
-const PRO_PRICE = 35000;
+const PRO_PRICE = process.env.YABETOO_TEST_MODE === "true" ? 500 : 35000;
 const PRO_PLAN = "pro";
 const PROVIDER = "yabetoo";
 
@@ -126,13 +125,8 @@ export default async function handler(req, res) {
   // 2. VARIABLES D'ENVIRONNEMENT
   // -------------------------------------------------------
 
-  if (
-    !process.env.SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
-    console.error(
-      "[YABETOO WEBHOOK] Configuration Supabase manquante."
-    );
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("[YABETOO WEBHOOK] Configuration Supabase manquante.");
 
     return res.status(500).json({
       error: "Configuration Supabase serveur manquante.",
@@ -142,9 +136,7 @@ export default async function handler(req, res) {
   const webhookSecret = process.env.YABETOO_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
-    console.error(
-      "[YABETOO WEBHOOK] YABETOO_WEBHOOK_SECRET manquante."
-    );
+    console.error("[YABETOO WEBHOOK] YABETOO_WEBHOOK_SECRET manquante.");
 
     return res.status(500).json({
       error: "Configuration webhook manquante.",
@@ -168,17 +160,13 @@ export default async function handler(req, res) {
     // 4. HEADERS YABETOO
     // -----------------------------------------------------
 
-    const signature =
-      req.headers["x-yabetoo-webhook-signature"];
+    const signature = req.headers["x-yabetoo-webhook-signature"];
 
-    const timestamp =
-      req.headers["x-yabetoo-webhook-timestamp"];
+    const timestamp = req.headers["x-yabetoo-webhook-timestamp"];
 
-    const event =
-      req.headers["x-yabetoo-webhook-event"];
+    const event = req.headers["x-yabetoo-webhook-event"];
 
-    const webhookId =
-      req.headers["x-yabetoo-webhook-id"];
+    const webhookId = req.headers["x-yabetoo-webhook-id"];
 
     console.log("========== WEBHOOK YABETOO ==========");
 
@@ -191,9 +179,7 @@ export default async function handler(req, res) {
     // -----------------------------------------------------
 
     if (!signature || !timestamp) {
-      console.error(
-        "[YABETOO WEBHOOK] Signature ou timestamp manquant."
-      );
+      console.error("[YABETOO WEBHOOK] Signature ou timestamp manquant.");
 
       return res.status(401).json({
         error: "Signature webhook manquante.",
@@ -207,9 +193,7 @@ export default async function handler(req, res) {
     const timestampSeconds = Number(timestamp);
 
     if (!Number.isFinite(timestampSeconds)) {
-      console.error(
-        "[YABETOO WEBHOOK] Timestamp invalide."
-      );
+      console.error("[YABETOO WEBHOOK] Timestamp invalide.");
 
       return res.status(401).json({
         error: "Timestamp webhook invalide.",
@@ -218,13 +202,8 @@ export default async function handler(req, res) {
 
     const nowSeconds = Math.floor(Date.now() / 1000);
 
-    if (
-      Math.abs(nowSeconds - timestampSeconds) >
-      WEBHOOK_TOLERANCE_SECONDS
-    ) {
-      console.error(
-        "[YABETOO WEBHOOK] Timestamp expiré."
-      );
+    if (Math.abs(nowSeconds - timestampSeconds) > WEBHOOK_TOLERANCE_SECONDS) {
+      console.error("[YABETOO WEBHOOK] Timestamp expiré.");
 
       return res.status(401).json({
         error: "Timestamp webhook expiré.",
@@ -238,23 +217,15 @@ export default async function handler(req, res) {
     const expectedSignature = calculateSignature(
       timestamp,
       rawBody,
-      webhookSecret
+      webhookSecret,
     );
 
-    const signatureValid = timingSafeEqualHex(
-      signature,
-      expectedSignature
-    );
+    const signatureValid = timingSafeEqualHex(signature, expectedSignature);
 
-    console.log(
-      "[YABETOO WEBHOOK] Signature valide:",
-      signatureValid
-    );
+    console.log("[YABETOO WEBHOOK] Signature valide:", signatureValid);
 
     if (!signatureValid) {
-      console.error(
-        "[YABETOO WEBHOOK] SIGNATURE INVALIDE."
-      );
+      console.error("[YABETOO WEBHOOK] SIGNATURE INVALIDE.");
 
       return res.status(401).json({
         error: "Signature webhook invalide.",
@@ -270,10 +241,7 @@ export default async function handler(req, res) {
     try {
       payload = JSON.parse(rawBody);
     } catch (error) {
-      console.error(
-        "[YABETOO WEBHOOK] JSON invalide:",
-        error.message
-      );
+      console.error("[YABETOO WEBHOOK] JSON invalide:", error.message);
 
       return res.status(400).json({
         error: "Payload JSON invalide.",
@@ -292,31 +260,21 @@ export default async function handler(req, res) {
 
     const amount = Number(intent?.amount || 0);
 
-    const currency = String(
-      intent?.currency || ""
-    ).toLowerCase();
+    const currency = String(intent?.currency || "").toLowerCase();
 
-    const metadata =
-      intent?.metadata || {};
+    const metadata = intent?.metadata || {};
 
-    const restaurantId =
-      metadata.restaurant_id || null;
+    const restaurantId = metadata.restaurant_id || null;
 
     const checkoutSessionId =
-      metadata.checkout_session_id ||
-      metadata.checkoutSessionId ||
-      null;
+      metadata.checkout_session_id || metadata.checkoutSessionId || null;
 
     const subscriptionId =
-      metadata.subscriptionId ||
-      metadata.subscription_id ||
-      null;
+      metadata.subscriptionId || metadata.subscription_id || null;
 
-    const chargeId =
-      charge?.id || null;
+    const chargeId = charge?.id || null;
 
-    const chargeStatus =
-      charge?.status || null;
+    const chargeStatus = charge?.status || null;
 
     console.log(
       "[YABETOO WEBHOOK] Paiement:",
@@ -335,8 +293,8 @@ export default async function handler(req, res) {
           chargeStatus,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
 
     // -----------------------------------------------------
@@ -346,7 +304,7 @@ export default async function handler(req, res) {
     if (event !== "intent.succeeded") {
       console.log(
         "[YABETOO WEBHOOK] Événement vérifié mais non traité:",
-        event
+        event,
       );
 
       return res.status(200).json({
@@ -362,9 +320,7 @@ export default async function handler(req, res) {
     // -----------------------------------------------------
 
     if (!intentId) {
-      console.error(
-        "[YABETOO WEBHOOK] intent.id manquant."
-      );
+      console.error("[YABETOO WEBHOOK] intent.id manquant.");
 
       return res.status(400).json({
         error: "Identifiant du paiement manquant.",
@@ -372,9 +328,7 @@ export default async function handler(req, res) {
     }
 
     if (!restaurantId) {
-      console.error(
-        "[YABETOO WEBHOOK] restaurant_id manquant dans metadata."
-      );
+      console.error("[YABETOO WEBHOOK] restaurant_id manquant dans metadata.");
 
       return res.status(400).json({
         error: "restaurant_id manquant.",
@@ -386,10 +340,7 @@ export default async function handler(req, res) {
     // -----------------------------------------------------
 
     if (amount !== PRO_PRICE) {
-      console.error(
-        "[YABETOO WEBHOOK] Montant inattendu:",
-        amount
-      );
+      console.error("[YABETOO WEBHOOK] Montant inattendu:", amount);
 
       return res.status(400).json({
         error: "Montant du paiement invalide.",
@@ -401,10 +352,7 @@ export default async function handler(req, res) {
     // -----------------------------------------------------
 
     if (currency !== "xaf") {
-      console.error(
-        "[YABETOO WEBHOOK] Devise inattendue:",
-        currency
-      );
+      console.error("[YABETOO WEBHOOK] Devise inattendue:", currency);
 
       return res.status(400).json({
         error: "Devise du paiement invalide.",
@@ -423,7 +371,7 @@ export default async function handler(req, res) {
           autoRefreshToken: false,
           persistSession: false,
         },
-      }
+      },
     );
 
     // -----------------------------------------------------
@@ -448,16 +396,10 @@ export default async function handler(req, res) {
       .eq("status", "pending");
 
     if (checkoutSessionId) {
-      paymentQuery = paymentQuery.eq(
-        "transaction_id",
-        checkoutSessionId
-      );
+      paymentQuery = paymentQuery.eq("transaction_id", checkoutSessionId);
     }
 
-    const {
-      data: payment,
-      error: paymentFindError,
-    } = await paymentQuery
+    const { data: payment, error: paymentFindError } = await paymentQuery
       .order("created_at", {
         ascending: false,
       })
@@ -467,7 +409,7 @@ export default async function handler(req, res) {
     if (paymentFindError) {
       console.error(
         "[YABETOO WEBHOOK] Erreur recherche paiement:",
-        paymentFindError
+        paymentFindError,
       );
 
       return res.status(500).json({
@@ -481,28 +423,24 @@ export default async function handler(req, res) {
       // On recherche donc une transaction déjà réussie.
       // ---------------------------------------------------
 
-      const {
-        data: alreadyProcessed,
-        error: alreadyProcessedError,
-      } = await supabaseAdmin
-        .from("subscription_payments")
-        .select(
-          "id, restaurant_id, transaction_id, status"
-        )
-        .eq("restaurant_id", restaurantId)
-        .eq("provider", PROVIDER)
-        .eq("amount", PRO_PRICE)
-        .eq("status", "succeeded")
-        .order("created_at", {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle();
+      const { data: alreadyProcessed, error: alreadyProcessedError } =
+        await supabaseAdmin
+          .from("subscription_payments")
+          .select("id, restaurant_id, transaction_id, status")
+          .eq("restaurant_id", restaurantId)
+          .eq("provider", PROVIDER)
+          .eq("amount", PRO_PRICE)
+          .eq("status", "succeeded")
+          .order("created_at", {
+            ascending: false,
+          })
+          .limit(1)
+          .maybeSingle();
 
       if (alreadyProcessedError) {
         console.error(
           "[YABETOO WEBHOOK] Erreur vérification idempotence:",
-          alreadyProcessedError
+          alreadyProcessedError,
         );
 
         return res.status(500).json({
@@ -511,9 +449,7 @@ export default async function handler(req, res) {
       }
 
       if (alreadyProcessed) {
-        console.log(
-          "[YABETOO WEBHOOK] Paiement déjà traité."
-        );
+        console.log("[YABETOO WEBHOOK] Paiement déjà traité.");
 
         return res.status(200).json({
           received: true,
@@ -523,9 +459,7 @@ export default async function handler(req, res) {
         });
       }
 
-      console.error(
-        "[YABETOO WEBHOOK] Aucun paiement pending correspondant."
-      );
+      console.error("[YABETOO WEBHOOK] Aucun paiement pending correspondant.");
 
       return res.status(404).json({
         error: "Paiement pending introuvable.",
@@ -536,22 +470,16 @@ export default async function handler(req, res) {
     // 16. RETROUVER LE RESTAURANT
     // -----------------------------------------------------
 
-    const {
-      data: restaurant,
-      error: restaurantError,
-    } = await supabaseAdmin
+    const { data: restaurant, error: restaurantError } = await supabaseAdmin
       .from("restaurants")
       .select(
-        "id, name, owner_id, plan, subscription_status, next_billing_date"
+        "id, name, owner_id, plan, subscription_status, next_billing_date",
       )
       .eq("id", restaurantId)
       .maybeSingle();
 
     if (restaurantError) {
-      console.error(
-        "[YABETOO WEBHOOK] Erreur restaurant:",
-        restaurantError
-      );
+      console.error("[YABETOO WEBHOOK] Erreur restaurant:", restaurantError);
 
       return res.status(500).json({
         error: "Impossible de retrouver le restaurant.",
@@ -559,10 +487,7 @@ export default async function handler(req, res) {
     }
 
     if (!restaurant) {
-      console.error(
-        "[YABETOO WEBHOOK] Restaurant introuvable:",
-        restaurantId
-      );
+      console.error("[YABETOO WEBHOOK] Restaurant introuvable:", restaurantId);
 
       return res.status(404).json({
         error: "Restaurant introuvable.",
@@ -575,35 +500,29 @@ export default async function handler(req, res) {
 
     const billingStart = new Date();
 
-    const billingEnd = addOneMonth(
-      billingStart
-    );
+    const billingEnd = addOneMonth(billingStart);
 
     // -----------------------------------------------------
     // 18. MISE À JOUR DU PAIEMENT
     // -----------------------------------------------------
 
-    const {
-      data: updatedPayment,
-      error: paymentUpdateError,
-    } = await supabaseAdmin
-      .from("subscription_payments")
-      .update({
-        status: "succeeded",
-        billing_period_start:
-          billingStart.toISOString(),
-        billing_period_end:
-          billingEnd.toISOString(),
-      })
-      .eq("id", payment.id)
-      .eq("status", "pending")
-      .select()
-      .maybeSingle();
+    const { data: updatedPayment, error: paymentUpdateError } =
+      await supabaseAdmin
+        .from("subscription_payments")
+        .update({
+          status: "succeeded",
+          billing_period_start: billingStart.toISOString(),
+          billing_period_end: billingEnd.toISOString(),
+        })
+        .eq("id", payment.id)
+        .eq("status", "pending")
+        .select()
+        .maybeSingle();
 
     if (paymentUpdateError) {
       console.error(
         "[YABETOO WEBHOOK] Erreur mise à jour paiement:",
-        paymentUpdateError
+        paymentUpdateError,
       );
 
       return res.status(500).json({
@@ -617,7 +536,7 @@ export default async function handler(req, res) {
 
     if (!updatedPayment) {
       console.log(
-        "[YABETOO WEBHOOK] Paiement déjà traité par une autre requête."
+        "[YABETOO WEBHOOK] Paiement déjà traité par une autre requête.",
       );
 
       return res.status(200).json({
@@ -631,25 +550,21 @@ export default async function handler(req, res) {
     // 20. ACTIVATION DU RESTAURANT
     // -----------------------------------------------------
 
-    const previousStatus =
-      restaurant.subscription_status;
+    const previousStatus = restaurant.subscription_status;
 
-    const {
-      error: restaurantUpdateError,
-    } = await supabaseAdmin
+    const { error: restaurantUpdateError } = await supabaseAdmin
       .from("restaurants")
       .update({
         plan: PRO_PLAN,
         subscription_status: "active",
-        next_billing_date:
-          billingEnd.toISOString(),
+        next_billing_date: billingEnd.toISOString(),
       })
       .eq("id", restaurant.id);
 
     if (restaurantUpdateError) {
       console.error(
         "[YABETOO WEBHOOK] Erreur activation restaurant:",
-        restaurantUpdateError
+        restaurantUpdateError,
       );
 
       // Le paiement est déjà marqué succeeded.
@@ -657,8 +572,7 @@ export default async function handler(req, res) {
       // retenter le webhook.
 
       return res.status(500).json({
-        error:
-          "Paiement confirmé mais activation du restaurant échouée.",
+        error: "Paiement confirmé mais activation du restaurant échouée.",
       });
     }
 
@@ -666,24 +580,21 @@ export default async function handler(req, res) {
     // 21. HISTORIQUE ABONNEMENT
     // -----------------------------------------------------
 
-    const {
-      error: eventInsertError,
-    } = await supabaseAdmin
+    const { error: eventInsertError } = await supabaseAdmin
       .from("subscription_events")
       .insert({
         restaurant_id: restaurant.id,
         previous_status: previousStatus,
         new_status: "active",
         triggered_by: "yabetoo_webhook",
-        reason:
-          "Paiement Yabetoo PRO confirmé",
+        reason: "Paiement Yabetoo PRO confirmé",
         actor_id: restaurant.owner_id || null,
       });
 
     if (eventInsertError) {
       console.error(
         "[YABETOO WEBHOOK] Erreur historique abonnement:",
-        eventInsertError
+        eventInsertError,
       );
 
       // Le paiement et l'abonnement sont déjà activés.
@@ -705,18 +616,13 @@ export default async function handler(req, res) {
     // 22. SUCCÈS FINAL
     // -----------------------------------------------------
 
-    console.log(
-      "[YABETOO WEBHOOK] ✅ PAIEMENT TRAITÉ AVEC SUCCÈS"
-    );
+    console.log("[YABETOO WEBHOOK] ✅ PAIEMENT TRAITÉ AVEC SUCCÈS");
 
-    console.log(
-      "[YABETOO WEBHOOK] Restaurant activé:",
-      restaurant.id
-    );
+    console.log("[YABETOO WEBHOOK] Restaurant activé:", restaurant.id);
 
     console.log(
       "[YABETOO WEBHOOK] Prochaine échéance:",
-      billingEnd.toISOString()
+      billingEnd.toISOString(),
     );
 
     return res.status(200).json({
@@ -742,17 +648,12 @@ export default async function handler(req, res) {
         plan: PRO_PLAN,
         previousStatus,
         status: "active",
-        billingPeriodStart:
-          billingStart.toISOString(),
-        billingPeriodEnd:
-          billingEnd.toISOString(),
+        billingPeriodStart: billingStart.toISOString(),
+        billingPeriodEnd: billingEnd.toISOString(),
       },
     });
   } catch (error) {
-    console.error(
-      "[YABETOO WEBHOOK] ERREUR SERVEUR:",
-      error
-    );
+    console.error("[YABETOO WEBHOOK] ERREUR SERVEUR:", error);
 
     return res.status(500).json({
       error: "Erreur interne du webhook Yabetoo.",
