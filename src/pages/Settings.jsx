@@ -153,14 +153,23 @@ export default function Settings() {
     setMessage(null);
 
     try {
+      // Récupérer la session Supabase actuelle
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("Session expirée. Veuillez vous reconnecter.");
+      }
+
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           restaurantId,
-          plan: "pro",
         }),
       });
 
@@ -172,6 +181,7 @@ export default function Settings() {
         );
       }
 
+      // Redirection vers Yabetoo
       window.location.href = data.checkoutUrl;
     } catch (error) {
       console.error("Erreur paiement Pro:", error);
