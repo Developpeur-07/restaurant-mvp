@@ -140,6 +140,51 @@ export default function Settings() {
     setTimeout(() => setMessage(null), 3000);
   }
 
+  async function handleProSubscription() {
+    if (!isOwner || !restaurantId) {
+      setMessage({
+        type: "error",
+        text: "Seul le propriétaire du restaurant peut souscrire.",
+      });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantId,
+          plan: "pro",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.checkoutUrl) {
+        throw new Error(
+          data.error || "Impossible de créer la session de paiement."
+        );
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      console.error("Erreur paiement Pro:", error);
+
+      setMessage({
+        type: "error",
+        text: error.message || "Une erreur est survenue.",
+      });
+
+      setLoading(false);
+    }
+  }
+
   async function handleBrandSave() {
     if (!isOwner) return;
     setBrandLoading(true);
@@ -359,15 +404,23 @@ export default function Settings() {
                 Vos commandes en cours continuent normalement. Réactivez pour retrouver stats, branding et Realtime.
               </p>
               <button
-                disabled
-                title="Le paiement en ligne arrive bientôt"
+                onClick={handleProSubscription}
+                disabled={loading}
+                title="Souscrire au plan Pro — 35 000 XAF"
                 style={{
-                  width: "100%", background: theme.borderLight, color: theme.textSecondary,
-                  border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold",
-                  fontSize: "0.88rem", cursor: "not-allowed",
+                  width: "100%",
+                  background: loading ? theme.borderLight : brand.primary_color,
+                  color: loading ? theme.textSecondary : "#fff",
+                  border: "none",
+                  borderRadius: "12px",
+                  padding: "13px",
+                  fontWeight: "bold",
+                  fontSize: "0.88rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  transition: "opacity 0.2s ease",
                 }}
               >
-                Réactiver — bientôt disponible
+                {loading ? "Préparation du paiement..." : "Réactiver — 35 000 XAF"}
               </button>
             </>
           )}
