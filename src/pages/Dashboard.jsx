@@ -94,7 +94,7 @@ function playNotification() {
 
 // ── Bloc réutilisable — affiché dans les bannières trial (J-3) et suspended.
 // Copie presse-papier par numéro, ton visuel adapté à l'urgence (trial vs suspended).
-function PaymentInstructions({ theme, brand, copiedNumber, onCopy, tone = 'trial' }) {
+function PaymentInstructions({ brand, copiedNumber, onCopy, tone = 'trial' }) {
   const isUrgent = tone === 'suspended';
   const textColor = isUrgent ? '#92400E' : '#7B6000';
 
