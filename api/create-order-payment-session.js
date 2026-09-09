@@ -114,27 +114,14 @@ export default async function handler(req, res) {
     // 6. Vérifications métier
     // -------------------------------------------------------
 
-    if (order.order_type !== "emporter") {
+    if (order.status === "paid" || order.status === "cancelled") {
       console.warn(
-        "[YABETOO ORDER SESSION] Type de commande non payable en ligne:",
-        order.order_type,
-      );
-
-      return res.status(400).json({
-        error: "Cette commande ne nécessite pas de paiement en ligne.",
-      });
-    }
-
-    if (order.status !== "pending_payment") {
-      // Déjà payée, ou dans un autre état — on n'ouvre pas de nouvelle
-      // session pour éviter un double paiement.
-      console.warn(
-        "[YABETOO ORDER SESSION] Commande pas en attente de paiement:",
+        "[YABETOO ORDER SESSION] Commande déjà payée ou annulée:",
         order.status,
       );
 
       return res.status(409).json({
-        error: "Cette commande n'est plus en attente de paiement.",
+        error: "Cette commande a déjà été payée ou annulée.",
         status: order.status,
       });
     }

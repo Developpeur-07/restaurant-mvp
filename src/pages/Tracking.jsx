@@ -63,6 +63,58 @@ export default function Tracking() {
   const [loading, setLoading] = useState(true);
   const [restaurant, setRestaurant] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
+  const [payMessage, setPayMessage] = useState(null);
+
+  // ── GESTION RETOUR PAIEMENT YABETOO COMMANDE (?payment=success / ?payment=cancelled) ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get("payment");
+
+    if (paymentResult === "success") {
+      setTimeout(() => {
+        setPayMessage({
+          type: "success",
+          text: "Paiement en ligne enregistré avec succès ! Confirmation en cours...",
+        });
+      }, 0);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentResult === "cancelled") {
+      setTimeout(() => {
+        setPayMessage({
+          type: "error",
+          text: "Le paiement en ligne a été annulé. Vous pourrez payer au comptoir ou réessayer.",
+        });
+      }, 0);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  async function handleOnlinePayment() {
+    if (payLoading || !orderId) return;
+    setPayLoading(true);
+    setPayMessage(null);
+
+    try {
+      const response = await fetch("/api/create-order-payment-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.checkoutUrl) {
+        throw new Error(data.error || "Impossible de créer la session de paiement.");
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      console.error("Erreur paiement commande:", err);
+      setPayMessage({ type: "error", text: err.message || "Erreur de paiement" });
+      setPayLoading(false);
+    }
+  }
 
   useEffect(() => {
     let channel;
@@ -183,7 +235,7 @@ export default function Tracking() {
   const total = order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   const isReady = order.status === "ready";
   const isCancelled = order.status === "cancelled";
-  const now = Date.now();
+  const now = new Date().getTime();
 
   const orderAge = order ? now - new Date(order.created_at).getTime() : 0;
   const canCancel = order && order.status === "received" && orderAge < 5 * 60 * 1000;
@@ -442,6 +494,72 @@ export default function Tracking() {
               }}
             >
               {cancelling ? "Annulation..." : "Annuler la commande"}
+            </button>
+          </div>
+        )}
+
+        {/* MESSAGE DE PAIEMENT */}
+        {payMessage && (
+          <div
+            style={{
+              padding: "12px 16px",
+              borderRadius: "14px",
+              marginBottom: "20px",
+              fontSize: "0.85rem",
+              fontWeight: "600",
+              background: payMessage.type === "success" ? "#DCFCE7" : "#FEE2E2",
+              color: payMessage.type === "success" ? "#166534" : "#991B1B",
+              border: `1px solid ${payMessage.type === "success" ? "#86EFAC" : "#FCA5A5"}`,
+            }}
+          >
+            {payMessage.text}
+          </div>
+        )}
+
+        {/* SECTION PAIEMENT MOBILE MONEY (Si la commande n'est pas encore payée ni annulée) */}
+        {order.status !== "paid" && order.status !== "cancelled" && (
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: "20px",
+              padding: "20px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              marginBottom: "20px",
+              border: `2px solid ${theme.primary}33`,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: theme.textPrimary, fontFamily: "Georgia, serif" }}>
+                Paiement Mobile Money
+              </span>
+              <span style={{ fontSize: "0.72rem", background: `${theme.primary}1A`, color: theme.primary, padding: "3px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                Sécurisé Yabetoo
+              </span>
+            </div>
+            <p style={{ margin: "0 0 14px", fontSize: "0.78rem", color: theme.textSecondary, lineHeight: "1.4" }}>
+              Payez instantanément par MTN Mobile Money ou Airtel Money.
+            </p>
+            <button
+              disabled={payLoading}
+              onClick={handleOnlinePayment}
+              style={{
+                width: "100%",
+                background: theme.primary,
+                color: "#fff",
+                border: "none",
+                borderRadius: "14px",
+                padding: "14px",
+                fontWeight: "bold",
+                fontSize: "0.9rem",
+                cursor: payLoading ? "not-allowed" : "pointer",
+                opacity: payLoading ? 0.7 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+              }}
+            >
+              {payLoading ? "Initialisation du paiement..." : `Payer ${total.toLocaleString()} FCFA par Mobile Money`}
             </button>
           </div>
         )}

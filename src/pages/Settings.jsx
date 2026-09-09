@@ -46,13 +46,41 @@ export default function Settings() {
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color);
 
   // ── ABONNEMENT — restaurantId résout owner OU reception (SubscriptionProvider) ──
-  const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features, restaurantId, isOwner } = useSubscription();
+  const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features, restaurantId, isOwner, refreshSubscription } = useSubscription();
 
   const trialDaysLeft = trialEndAt
     ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
     : null;
 
   const statusDisplay = STATUS_DISPLAY[subscriptionStatus];
+
+  // ── GESTION RETOUR PAIEMENT YABETOO (?payment=success / ?payment=cancelled) ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get("payment");
+
+    if (paymentResult === "success") {
+      setTimeout(() => {
+        setMessage({
+          type: "success",
+          text: "Paiement effectué avec succès ! Activation de votre abonnement PRO en cours...",
+        });
+      }, 0);
+      if (typeof refreshSubscription === "function") {
+        refreshSubscription();
+      }
+      // Nettoyer l'URL sans recharger la page
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (paymentResult === "cancelled") {
+      setTimeout(() => {
+        setMessage({
+          type: "error",
+          text: "Le paiement a été annulé. Aucun montant n'a été débité.",
+        });
+      }, 0);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [refreshSubscription]);
 
   useEffect(() => {
     async function init() {

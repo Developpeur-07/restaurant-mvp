@@ -73,3 +73,26 @@ agrégateur.
 **Reste à vérifier (prérequis Phase 2 révisée)** : confirmer avec la banque si
 un compte professionnel pour recevoir les virements nécessite un RCCM, ou si un
 compte plus simple suffit en attendant la régularisation de la structure propre.
+
+---
+
+## 💳 Intégration Paiement Automatisé Yabetoo & Webhooks (09 septembre 2026)
+
+**Problème résolu :**
+- Correction intégrale du bug de statut du restaurant qui ne basculait pas à `active` après un paiement Yabetoo réussi.
+
+**Réalisations Backend & Serverless API :**
+- `api/webhooks/yabetoo-subscription.js` — Webhook officiel de souscription SaaS. Validation HMAC-SHA256, recherche résiliente de transaction pending par `restaurant_id`, mise à jour de `subscription_payments` (`succeeded`), activation de `restaurants` (`subscription_status = 'active'`, `plan = 'pro'`, `next_billing_date = +1 mois`) et audit trail dans `subscription_events`.
+- `api/webhooks/yabetoo-order.js` — Webhook de paiement des commandes client final (emporter & sur place). Validation HMAC, passage de `payments` à `succeeded` et de `orders.status` à `paid`.
+- `api/webhooks/yabetoo-debug.js` — Alias/proxy vers `yabetoo-subscription.js` pour la rétrocompatibilité des webhooks Yabetoo déjà configurés.
+- `api/create-order-payment-session.js` — Prise en charge universelle des commandes clients finaux (`emporter` et `sur_place`).
+
+**Réalisations Frontend & UX :**
+- `SubscriptionProvider.jsx` — Ecouteur Supabase Realtime sur la table `restaurants` pour la mise à jour instantanée du statut et des fonctionnalités du restaurant sans rechargement de page.
+- `Settings.jsx` — Prise en charge des query params d'URL `?payment=success` et `?payment=cancelled` avec toast d'information et nettoyage d'URL.
+- `Tracking.jsx` — Ajout du composant de paiement Mobile Money (MTN / Airtel via Yabetoo) pour le client final, notification de paiement et synchronisation Realtime.
+
+**Documentation d'Architecture (`docs/`) :**
+- `docs/ARCHITECTURE_PAIEMENT.md` — Modèle d'architecture des abonnements et commandes, signatures HMAC-SHA256, diagramme de séquence et réconciliation.
+- `docs/CORRECTIONS_BUGS.md` — Analyse exhaustive des vulnérabilités et correctifs.
+- `docs/GUIDE_DEPLOIEMENT_WEBHOOKS.md` — Guide de configuration Vercel & Yabetoo Dashboard.

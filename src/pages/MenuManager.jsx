@@ -210,7 +210,7 @@ export default function MenuManager() {
     setUploadingCategory(label)
 
     const ext = file.name.split('.').pop()
-    const path = `${user.id}/${slugify(label)}-${Date.now()}.${ext}`
+    const path = `${user.id}/${slugify(label)}-${new Date().getTime()}.${ext}`
 
     const { error: upErr } = await supabase.storage
       .from('category-images')
