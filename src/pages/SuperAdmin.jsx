@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
     ShieldCheck, Search, Building2, Calendar, AlertCircle,
-    CheckCircle2, Clock, PauseCircle, X, Loader2,
+    CheckCircle2, Clock, PauseCircle, X, Loader2, TrendingUp, Receipt,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -27,7 +27,9 @@ export default function SuperAdmin() {
     const [submitting, setSubmitting] = useState(false);
     const [toast, setToast] = useState(null);
 
-
+    // ── Ventes du jour — clé = restaurant.id ──
+    const [salesData, setSalesData] = useState({});
+    const [salesLoading, setSalesLoading] = useState({});
 
     async function fetchRestaurants() {
         setLoading(true);
@@ -78,6 +80,25 @@ export default function SuperAdmin() {
 
         setSubmitting(false);
         setTimeout(() => setToast(null), 4000);
+    }
+
+    // ── Ventes du jour — appelée à la demande, un clic par restaurant ──
+    async function fetchDailySales(restaurantId) {
+        setSalesLoading((prev) => ({ ...prev, [restaurantId]: true }));
+
+        const { data, error } = await supabase.rpc("get_daily_sales_by_restaurant", {
+            p_restaurant_id: restaurantId,
+        });
+
+        if (error) {
+            setToast({ type: "error", text: "Erreur ventes : " + error.message });
+            setTimeout(() => setToast(null), 4000);
+        } else {
+            const row = Array.isArray(data) ? data[0] : data;
+            setSalesData((prev) => ({ ...prev, [restaurantId]: row }));
+        }
+
+        setSalesLoading((prev) => ({ ...prev, [restaurantId]: false }));
     }
 
     return (
@@ -148,6 +169,8 @@ export default function SuperAdmin() {
                         {filtered.map((r) => {
                             const status = STATUS_CONFIG[r.subscription_status] || STATUS_CONFIG.trial;
                             const StatusIcon = status.icon;
+                            const sales = salesData[r.id];
+                            const isSalesLoading = salesLoading[r.id];
                             return (
                                 <div
                                     key={r.id}
@@ -208,7 +231,56 @@ export default function SuperAdmin() {
                                                     {opt.label}
                                                 </button>
                                             ))}
+
+                                        <button
+                                            onClick={() => fetchDailySales(r.id)}
+                                            disabled={isSalesLoading}
+                                            style={{
+                                                background: "#1F2A44",
+                                                border: "1.5px solid #1F2A44",
+                                                borderRadius: "10px",
+                                                padding: "8px 16px",
+                                                fontSize: "0.78rem",
+                                                fontWeight: "600",
+                                                color: "#fff",
+                                                cursor: isSalesLoading ? "not-allowed" : "pointer",
+                                                opacity: isSalesLoading ? 0.6 : 1,
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "6px",
+                                            }}
+                                        >
+                                            {isSalesLoading
+                                                ? <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                                                : <TrendingUp size={13} />}
+                                            Ventes du jour
+                                        </button>
                                     </div>
+
+                                    {/* Résultat ventes — n'apparaît qu'après le clic, pour ce restaurant */}
+                                    {sales && (
+                                        <div style={{
+                                            marginTop: "16px",
+                                            background: "#FAF8F4",
+                                            borderRadius: "12px",
+                                            padding: "14px 18px",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                            flexWrap: "wrap",
+                                            gap: "10px",
+                                        }}>
+                                            <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.82rem", color: "#4B5563" }}>
+                                                <Receipt size={14} />
+                                                {sales.transaction_count} transaction{sales.transaction_count !== 1 ? "s" : ""} Mobile Money
+                                                {" · "}
+                                                {new Date(sales.sales_date).toLocaleDateString("fr-FR")}
+                                            </span>
+                                            <span style={{ fontWeight: "bold", color: "#1F2A44", fontSize: "1rem" }}>
+                                                {Number(sales.total_amount).toLocaleString()} FCFA
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
