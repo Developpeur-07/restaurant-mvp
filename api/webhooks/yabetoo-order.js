@@ -2,6 +2,13 @@
 //
 // Webhook Yabetoo pour la confirmation des paiements de commandes client final (order_type = 'emporter').
 //
+// IMPORTANT — le paiement en ligne n'est jamais bloquant pour le cycle de vie de la
+// commande : orders.status suit son cours normal (received -> preparing -> ready)
+// indépendamment de ce webhook. Ce dernier ne fait que confirmer côté paiements
+// (table `payments`) qu'un règlement Mobile Money a bien été reçu — l'affichage
+// "Payé ✓ / En attente" côté dashboard/tracking se fait par jointure orders + payments,
+// pas par un statut sur orders lui-même (qui n'a d'ailleurs pas de valeur 'paid' légale
+// tant que la commande n'est pas archivée via transition_order_status).
 
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -160,6 +167,9 @@ export default async function handler(req, res) {
     }
 
     // 2. Mise à jour de payments -> succeeded
+    // C'est l'UNIQUE mise à jour nécessaire : orders.status n'est jamais touché
+    // par ce webhook (voir note en tête de fichier). Le badge "Payé ✓" côté UI
+    // se calcule en joignant orders + payments, jamais via orders.status.
     const { data: updatedPayment, error: paymentUpdateError } = await supabaseAdmin
       .from("payments")
       .update({
@@ -176,20 +186,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ received: true, verified: true, alreadyProcessed: true });
     }
 
-    // 3. Mise à jour de orders -> status = 'paid' (ou transition statut)
-    const { error: orderUpdateError } = await supabaseAdmin
-      .from("orders")
-      .update({
-        status: "paid",
-      })
-      .eq("id", orderId);
-
-    if (orderUpdateError) {
-      console.error("[YABETOO ORDER WEBHOOK] Erreur mise à jour commande:", orderUpdateError);
-      return res.status(500).json({ error: "Paiement enregistré mais échec mise à jour commande." });
-    }
-
-    console.log("[YABETOO ORDER WEBHOOK] ✅ COMMANDE CONFIRMÉE PAYÉE:", orderId);
+    console.log("[YABETOO ORDER WEBHOOK] ✅ PAIEMENT COMMANDE CONFIRMÉ:", orderId);
 
     return res.status(200).json({
       received: true,
