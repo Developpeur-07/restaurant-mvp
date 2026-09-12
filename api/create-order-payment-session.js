@@ -156,7 +156,7 @@ export default async function handler(req, res) {
     // (au lieu du montant réel) pour rester bien en dessous du solde
     // disponible et ne jamais être bloquant côté fonds pendant les tests.
     const amount =
-      process.env.YABETOO_TEST_MODE === "true" ? 50 : realAmount;
+      process.env.YABETOO_TEST_MODE === "true" ? 100 : realAmount;
 
     console.log("[YABETOO ORDER SESSION] Montant réel:", realAmount, "| Montant envoyé:", amount);
 
