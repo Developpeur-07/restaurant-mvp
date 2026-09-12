@@ -11,6 +11,7 @@ import {
   CircleCheckBig,
   Receipt,
   Check,
+  BadgeCheck,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -66,6 +67,12 @@ export default function Tracking() {
   const [payLoading, setPayLoading] = useState(false);
   const [payMessage, setPayMessage] = useState(null);
 
+  // ── Paiement Mobile Money (commande emporter) — indépendant de orders.status,
+  // puisque orders.status ne devient jamais 'paid' pour ce flux (voir
+  // transition_order_status : 'paid' n'existe que via l'archivage dine-in).
+  // Le badge "Payé ✓" se base uniquement sur cette donnée.
+  const [payment, setPayment] = useState(null);
+
   // ── GESTION RETOUR PAIEMENT YABETOO COMMANDE (?payment=success / ?payment=cancelled) ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -117,7 +124,8 @@ export default function Tracking() {
   }
 
   useEffect(() => {
-    let channel;
+    let orderChannel;
+    let paymentChannel;
     let cancelled = false;
 
     async function init() {
@@ -151,16 +159,26 @@ export default function Tracking() {
         if (!cancelled) setSiblingOrders(siblings || []);
       }
 
-      // ── Realtime : scope session si dispo, sinon commande seule (emporter) ──
-      const filter = data.session_id
+      // ── Paiement Mobile Money existant pour cette commande (le cas échéant) ──
+      const { data: paymentRow } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setPayment(paymentRow || null);
+
+      // ── Realtime commande : scope session si dispo, sinon commande seule (emporter) ──
+      const orderFilter = data.session_id
         ? `session_id=eq.${data.session_id}`
         : `id=eq.${orderId}`;
 
-      channel = supabase
-        .channel("tracking-" + (data.session_id || orderId))
+      orderChannel = supabase
+        .channel("tracking-orders-" + (data.session_id || orderId))
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "orders", filter },
+          { event: "*", schema: "public", table: "orders", filter: orderFilter },
           (payload) => {
             if (payload.eventType === "DELETE") {
               setSiblingOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
@@ -180,13 +198,28 @@ export default function Tracking() {
           },
         )
         .subscribe();
+
+      // ── Realtime paiement : canal séparé, scope commande uniquement.
+      // Se déclenche dès que le webhook Yabetoo confirme, sans refresh manuel.
+      paymentChannel = supabase
+        .channel("tracking-payment-" + orderId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "payments", filter: `order_id=eq.${orderId}` },
+          (payload) => {
+            if (payload.eventType === "DELETE") return;
+            setPayment(payload.new);
+          },
+        )
+        .subscribe();
     }
 
     init();
 
     return () => {
       cancelled = true;
-      if (channel) supabase.removeChannel(channel);
+      if (orderChannel) supabase.removeChannel(orderChannel);
+      if (paymentChannel) supabase.removeChannel(paymentChannel);
     };
   }, [orderId]);
 
@@ -239,6 +272,9 @@ export default function Tracking() {
 
   const orderAge = order ? now - new Date(order.created_at).getTime() : 0;
   const canCancel = order && order.status === "received" && orderAge < 5 * 60 * 1000;
+
+  // ── Paiement en ligne confirmé — indépendant de orders.status ──
+  const isPaidOnline = payment?.status === "succeeded";
 
   // ── Total de session (commande courante + commandes sœurs, hors annulées) ──
   const hasSession = siblingOrders.length > 0;
@@ -342,6 +378,26 @@ export default function Tracking() {
             <UtensilsCrossed size={15} color={theme.textSecondary} />
             <p style={{ margin: 0, fontSize: "0.78rem", color: theme.textSecondary }}>
               Table {order.table_number} · {siblingOrders.length + 1} commande{siblingOrders.length + 1 > 1 ? "s" : ""} sur cette session
+            </p>
+          </div>
+        )}
+
+        {/* BADGE PAIEMENT EN LIGNE — indépendant du statut de préparation,
+            n'apparaît que si un paiement Mobile Money a été confirmé */}
+        {isPaidOnline && (
+          <div style={{
+            background: "#F0FDF4",
+            border: "1px solid #BBF7D0",
+            borderRadius: "16px",
+            padding: "12px 16px",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "9px",
+          }}>
+            <BadgeCheck size={17} color="#166534" />
+            <p style={{ margin: 0, fontSize: "0.8rem", color: "#166534", fontWeight: "600" }}>
+              Payé en ligne via Mobile Money
             </p>
           </div>
         )}
@@ -516,8 +572,9 @@ export default function Tracking() {
           </div>
         )}
 
-        {/* SECTION PAIEMENT MOBILE MONEY (Si la commande n'est pas encore payée ni annulée) */}
-        {order.status !== "paid" && order.status !== "cancelled" && (
+        {/* SECTION PAIEMENT MOBILE MONEY — masquée une fois le paiement en ligne
+            confirmé (isPaidOnline), en plus des cas commande payée/annulée existants */}
+        {order.status !== "paid" && order.status !== "cancelled" && !isPaidOnline && (
           <div
             style={{
               background: theme.cardBackground,

@@ -20,7 +20,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const YABETOO_SESSIONS_URL = "https://buy.api.yabetoopay.com/v1/sessions";
 
-const PRO_PRICE = process.env.YABETOO_TEST_MODE === "true" ? 500 : 35000;
+const PRO_PRICE = process.env.YABETOO_TEST_MODE === "true" ? 50 : 35000;
 const PRO_PLAN = "pro";
 
 const APP_URL =

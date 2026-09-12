@@ -7,6 +7,9 @@
 // recalcul du montant côté serveur à partir des items réellement enregistrés
 // en base, jamais sur un montant transmis par le frontend.
 //
+// ⚠️ VERSION TEST — vise à isoler la cause du 500 Yabetoo générique.
+// Changements marqués // TEST, à retirer une fois la cause confirmée.
+//
 // POST /api/create-order-payment-session
 //
 // Body :
@@ -133,12 +136,12 @@ export default async function handler(req, res) {
 
     const items = Array.isArray(order.items) ? order.items : [];
 
-    const amount = items.reduce(
+    const realAmount = items.reduce(
       (sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0),
       0,
     );
 
-    if (!amount || amount <= 0) {
+    if (!realAmount || realAmount <= 0) {
       console.error(
         "[YABETOO ORDER SESSION] Montant invalide calculé pour la commande:",
         orderId,
@@ -148,6 +151,14 @@ export default async function handler(req, res) {
         error: "Impossible de calculer le montant de la commande.",
       });
     }
+
+    // TEST — on isole la variable montant : en mode test on force 50 XAF
+    // (au lieu du montant réel) pour rester bien en dessous du solde
+    // disponible et ne jamais être bloquant côté fonds pendant les tests.
+    const amount =
+      process.env.YABETOO_TEST_MODE === "true" ? 50 : realAmount;
+
+    console.log("[YABETOO ORDER SESSION] Montant réel:", realAmount, "| Montant envoyé:", amount);
 
     // -------------------------------------------------------
     // 8. Création session Yabetoo
@@ -174,7 +185,10 @@ export default async function handler(req, res) {
 
         items: [
           {
-            productId: "order_emporter",
+            // TEST — productId aligné sur celui qui fonctionne déjà
+            // (create-checkout-session.js) en attendant l'enregistrement
+            // d'un productId dédié côté dashboard Yabetoo.
+            productId: "prod_abonnement_pro",
             productName: `Commande à emporter${order.customer_name ? " — " + order.customer_name : ""}`,
             quantity: 1,
             price: amount,
