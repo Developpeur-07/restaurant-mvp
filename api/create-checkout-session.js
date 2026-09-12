@@ -24,7 +24,7 @@ const PRO_PRICE = process.env.YABETOO_TEST_MODE === "true" ? 100 : 35000;
 const PRO_PLAN = "pro";
 
 const APP_URL =
-  "https://restaurant-mvp-git-main-jesus-net-s-projects.vercel.app";
+  "https://restaurant-mvp-jesus-net-s-projects.vercel.app";
 
 export default async function handler(req, res) {
   // ---------------------------------------------------------

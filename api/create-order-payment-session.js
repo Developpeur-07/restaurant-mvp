@@ -22,7 +22,7 @@ import { createClient } from "@supabase/supabase-js";
 const YABETOO_SESSIONS_URL = "https://buy.api.yabetoopay.com/v1/sessions";
 
 const APP_URL =
-  "https://restaurant-mvp-git-main-jesus-net-s-projects.vercel.app";
+  "https://restaurant-mvp-jesus-net-s-projects.vercel.app";
 
 export default async function handler(req, res) {
   // ---------------------------------------------------------
