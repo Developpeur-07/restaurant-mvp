@@ -22,7 +22,7 @@ import StaffOnboarding from "./pages/StaffOnboarding";
 export default function App() {
   return (
     <Routes>
-      
+
       <Route path="/menu/:restaurantId" element={<Menu />} />
       <Route path="/menu/:restaurantId/:category" element={<Menu />} />
       <Route path="/tracking/:orderId" element={<Tracking />} />
