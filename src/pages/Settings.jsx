@@ -58,19 +58,50 @@ export default function Settings() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentResult = params.get("payment");
+    const sessionId = params.get("sessionId");
 
     if (paymentResult === "success") {
-      setTimeout(() => {
-        setMessage({
-          type: "success",
-          text: "Paiement effectué avec succès ! Activation de votre abonnement PRO en cours...",
-        });
-      }, 0);
-      if (typeof refreshSubscription === "function") {
-        refreshSubscription();
+      setLoadingCheckout(true);
+      setMessage({
+        type: "success",
+        text: "Paiement effectué avec succès ! Vérification et activation de votre abonnement PRO en cours...",
+      });
+
+      async function verifyAndActivate() {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const res = await fetch("/api/verify-subscription-payment", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                restaurantId,
+                ...(sessionId ? { sessionId } : {}),
+              }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              setMessage({
+                type: "success",
+                text: "Votre abonnement PRO a bien été activé ! Merci pour votre confiance.",
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Erreur vérification abonnement:", err);
+        } finally {
+          if (typeof refreshSubscription === "function") {
+            await refreshSubscription();
+          }
+          setLoadingCheckout(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       }
-      // Nettoyer l'URL sans recharger la page
-      window.history.replaceState({}, document.title, window.location.pathname);
+
+      verifyAndActivate();
     } else if (paymentResult === "cancelled") {
       setTimeout(() => {
         setMessage({
@@ -80,7 +111,7 @@ export default function Settings() {
       }, 0);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [refreshSubscription]);
+  }, [refreshSubscription, restaurantId]);
 
   useEffect(() => {
     async function init() {

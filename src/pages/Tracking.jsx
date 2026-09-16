@@ -99,6 +99,14 @@ export default function Tracking() {
 
   async function handleOnlinePayment() {
     if (payLoading || !orderId) return;
+    if (isPaidOnline) {
+      setPayMessage({ type: "success", text: "Cette commande ou session a déjà été réglée." });
+      return;
+    }
+    if (order?.status === "cancelled") {
+      setPayMessage({ type: "error", text: "Impossible de payer une commande annulée." });
+      return;
+    }
     setPayLoading(true);
     setPayMessage(null);
 
@@ -106,7 +114,10 @@ export default function Tracking() {
       const response = await fetch("/api/create-order-payment-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({
+          orderId,
+          ...(order?.session_id ? { sessionId: order.session_id } : {})
+        }),
       });
 
       const data = await response.json();
@@ -159,14 +170,19 @@ export default function Tracking() {
         if (!cancelled) setSiblingOrders(siblings || []);
       }
 
-      // ── Paiement Mobile Money existant pour cette commande (le cas échéant) ──
-      const { data: paymentRow } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("order_id", orderId)
+      // ── Paiement Mobile Money existant pour cette commande ou sa session ──
+      let paymentQuery = supabase.from("payments").select("*");
+      if (data.session_id) {
+        paymentQuery = paymentQuery.or(`order_id.eq.${orderId},session_id.eq.${data.session_id}`);
+      } else {
+        paymentQuery = paymentQuery.eq("order_id", orderId);
+      }
+
+      const { data: paymentRow } = await paymentQuery
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
       if (!cancelled) setPayment(paymentRow || null);
 
       // ── Realtime commande : scope session si dispo, sinon commande seule (emporter) ──
@@ -199,13 +215,17 @@ export default function Tracking() {
         )
         .subscribe();
 
-      // ── Realtime paiement : canal séparé, scope commande uniquement.
-      // Se déclenche dès que le webhook Yabetoo confirme, sans refresh manuel.
+      // ── Realtime paiement : scope session_id si présent, sinon order_id.
+      // Permet d'afficher le badge Payé ✓ en direct sur toutes les commandes de la table.
+      const paymentFilter = data.session_id
+        ? `session_id=eq.${data.session_id}`
+        : `order_id=eq.${orderId}`;
+
       paymentChannel = supabase
-        .channel("tracking-payment-" + orderId)
+        .channel("tracking-payment-" + (data.session_id || orderId))
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "payments", filter: `order_id=eq.${orderId}` },
+          { event: "*", schema: "public", table: "payments", filter: paymentFilter },
           (payload) => {
             if (payload.eventType === "DELETE") return;
             setPayment(payload.new);
@@ -616,7 +636,9 @@ export default function Tracking() {
                 gap: "8px",
               }}
             >
-              {payLoading ? "Initialisation du paiement..." : `Payer ${total.toLocaleString()} FCFA par Mobile Money`}
+              {payLoading
+                ? "Initialisation du paiement..."
+                : `Payer ${(hasSession ? sessionTotal : total).toLocaleString()} FCFA par Mobile Money`}
             </button>
           </div>
         )}

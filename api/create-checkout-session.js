@@ -23,8 +23,15 @@ const YABETOO_SESSIONS_URL = "https://buy.api.yabetoopay.com/v1/sessions";
 const PRO_PRICE = process.env.YABETOO_TEST_MODE === "true" ? 100 : 35000;
 const PRO_PLAN = "pro";
 
-const APP_URL =
-  "https://restaurant-mvp-jesus-net-s-projects.vercel.app";
+const getAppUrl = () => {
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "https://restaurant-mvp-jesus-net-s-projects.vercel.app";
+};
 
 export default async function handler(req, res) {
   // ---------------------------------------------------------
@@ -163,6 +170,17 @@ export default async function handler(req, res) {
       });
     }
 
+    if (restaurant.subscription_status === "active") {
+      console.warn("[YABETOO CREATE SESSION] Restaurant a déjà un abonnement actif:", {
+        restaurantId: restaurant.id,
+      });
+
+      return res.status(409).json({
+        error: "Ce restaurant bénéficie déjà d'un abonnement actif.",
+        subscriptionStatus: "active",
+      });
+    }
+
     console.log("[YABETOO CREATE SESSION] Restaurant vérifié:", {
       restaurantId: restaurant.id,
       ownerId: restaurant.owner_id,
@@ -172,6 +190,8 @@ export default async function handler(req, res) {
     // -------------------------------------------------------
     // 8. Création session Yabetoo
     // -------------------------------------------------------
+
+    const appUrl = getAppUrl();
 
     const response = await fetch(YABETOO_SESSIONS_URL, {
       method: "POST",
@@ -188,9 +208,9 @@ export default async function handler(req, res) {
 
         accountId: process.env.YABETOO_ACCOUNT_ID,
 
-        successUrl: `${APP_URL}/settings?payment=success`,
+        successUrl: `${appUrl}/settings?payment=success`,
 
-        cancelUrl: `${APP_URL}/settings?payment=cancelled`,
+        cancelUrl: `${appUrl}/settings?payment=cancelled`,
 
         items: [
           {

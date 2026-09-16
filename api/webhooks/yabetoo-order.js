@@ -111,18 +111,19 @@ export default async function handler(req, res) {
     const metadata = intent?.metadata || {};
 
     const orderId = metadata.order_id || null;
+    const sessionId = metadata.session_id || null;
     const restaurantId = metadata.restaurant_id || null;
 
-    console.log("[YABETOO ORDER WEBHOOK] Metadata reçues:", { orderId, restaurantId, intentId, amount });
+    console.log("[YABETOO ORDER WEBHOOK] Metadata reçues:", { orderId, sessionId, restaurantId, intentId, amount });
 
     if (event !== "intent.succeeded") {
       console.log("[YABETOO ORDER WEBHOOK] Événement ignoré:", event);
       return res.status(200).json({ received: true, verified: true, event, handled: false });
     }
 
-    if (!orderId) {
-      console.error("[YABETOO ORDER WEBHOOK] order_id manquant dans metadata.");
-      return res.status(400).json({ error: "order_id manquant dans metadata." });
+    if (!orderId && !sessionId) {
+      console.error("[YABETOO ORDER WEBHOOK] order_id et session_id manquants dans metadata.");
+      return res.status(400).json({ error: "order_id ou session_id manquant dans metadata." });
     }
 
     const supabaseAdmin = createClient(
@@ -131,13 +132,20 @@ export default async function handler(req, res) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // 1. Recherche du paiement de la commande
-    const { data: payment, error: paymentError } = await supabaseAdmin
+    // 1. Recherche du paiement (par session_id en priorité si présent, sinon par order_id)
+    let paymentQuery = supabaseAdmin
       .from("payments")
       .select("*")
-      .eq("order_id", orderId)
       .eq("provider", PROVIDER)
-      .eq("status", "pending")
+      .eq("status", "pending");
+
+    if (sessionId) {
+      paymentQuery = paymentQuery.eq("session_id", sessionId);
+    } else {
+      paymentQuery = paymentQuery.eq("order_id", orderId);
+    }
+
+    const { data: payment, error: paymentError } = await paymentQuery
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -149,20 +157,27 @@ export default async function handler(req, res) {
 
     if (!payment) {
       // Vérifier si le paiement est déjà validé
-      const { data: alreadyDone } = await supabaseAdmin
+      let alreadyDoneQuery = supabaseAdmin
         .from("payments")
         .select("id, status")
-        .eq("order_id", orderId)
-        .eq("status", "succeeded")
+        .eq("status", "succeeded");
+
+      if (sessionId) {
+        alreadyDoneQuery = alreadyDoneQuery.eq("session_id", sessionId);
+      } else {
+        alreadyDoneQuery = alreadyDoneQuery.eq("order_id", orderId);
+      }
+
+      const { data: alreadyDone } = await alreadyDoneQuery
         .limit(1)
         .maybeSingle();
 
       if (alreadyDone) {
-        console.log("[YABETOO ORDER WEBHOOK] Commande déjà marquée payée.");
+        console.log("[YABETOO ORDER WEBHOOK] Commande/Session déjà marquée payée.");
         return res.status(200).json({ received: true, verified: true, alreadyProcessed: true });
       }
 
-      console.error("[YABETOO ORDER WEBHOOK] Aucun paiement pending trouvé pour order:", orderId);
+      console.error("[YABETOO ORDER WEBHOOK] Aucun paiement pending trouvé pour order:", orderId, "session:", sessionId);
       return res.status(404).json({ error: "Paiement commande en attente introuvable." });
     }
 

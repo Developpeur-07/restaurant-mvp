@@ -95,4 +95,21 @@ compte plus simple suffit en attendant la régularisation de la structure propre
 **Documentation d'Architecture (`docs/`) :**
 - `docs/ARCHITECTURE_PAIEMENT.md` — Modèle d'architecture des abonnements et commandes, signatures HMAC-SHA256, diagramme de séquence et réconciliation.
 - `docs/CORRECTIONS_BUGS.md` — Analyse exhaustive des vulnérabilités et correctifs.
-- `docs/GUIDE_DEPLOIEMENT_WEBHOOKS.md` — Guide de configuration Vercel & Yabetoo Dashboard.
+- `docs/GUIDE_DEPLOIEMENT_WEBHOOKS.md` — Guide de configuration Vercel & Yabetoo Dashboard.
+
+---
+
+## 🛠️ Résolution session Yabetoo & Activation synchrone PRO (16 septembre 2026)
+
+**Problèmes résolus :**
+- Correction de l'erreur Yabetoo `Session is not open (status: complete)` et du crash React `#418` causés par des tentatives d'ouverture ou de recréation de sessions Yabetoo déjà fermées.
+- Résolution du problème d'inactivation d'abonnement lors du retour de paiement (`?payment=success`), où le statut restait affiché "Suspendu".
+
+**Réalisations Backend :**
+- `api/verify-subscription-payment.js` — Endpoint de vérification synchrone du paiement d'abonnement SaaS post-redirection. Interroge directement l'API Yabetoo (`GET /v1/sessions/:id`), active immédiatement le restaurant (`subscription_status = 'active'`, `plan = 'pro'`) et enregistre l'événement d'audit.
+- `api/create-order-payment-session.js` — Ajout d'un contrôle préalable sur la table `payments` (`status = 'succeeded'`) renvoyant un statut `409` pour empêcher les doublons de session Yabetoo. Correction du retour `sessionId` vers `yabetooSessionId`.
+- `api/create-checkout-session.js` — Refus des demandes de session pour les abonnements déjà actifs (`409`).
+
+**Réalisations Frontend & UX :**
+- `Settings.jsx` — Invocateur synchrone de `/api/verify-subscription-payment` lors de la réception de `?payment=success` pour basculer instantanément l'affichage vers **Actif (Pro)** sans dépendre uniquement des webhooks.
+- `Tracking.jsx` — Gardes empêchant d'initier un paiement sur une commande déjà réglée en ligne (`isPaidOnline`) ou annulée.
