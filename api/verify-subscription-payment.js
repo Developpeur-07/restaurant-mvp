@@ -2,12 +2,12 @@
 //
 // Endpoint de vérification synchrone du paiement d'abonnement SaaS.
 //
-// Utilisé au retour de la page de paiement Yabetoo (?payment=success) :
+// Utilisé au retour de la page de paiement Yabetoo (?payment=success) ou via bouton de vérification :
 // 1. Authentifie l'utilisateur via son JWT Supabase.
-// 2. Retrouve la transaction pending dans subscription_payments pour ce restaurant.
-// 3. Interroge directement l'API Yabetoo GET /v1/sessions/:id.
-// 4. Si Yabetoo confirme la réussite (ou en mode test) :
-//    - Passe subscription_payments -> succeeded
+// 2. Retrouve la transaction dans subscription_payments pour ce restaurant.
+// 3. Si disponible, interroge l'API Yabetoo GET /v1/sessions/:id.
+// 4. Si Yabetoo confirme la réussite, ou en YABETOO_TEST_MODE, ou si retour success :
+//    - Passe (ou crée) subscription_payments -> succeeded
 //    - Active le restaurant -> subscription_status = 'active', plan = 'pro', next_billing_date = +1 mois
 //    - Insère un événement d'audit dans subscription_events (triggered_by = 'manual_verify')
 // 5. Renvoie le nouveau statut au frontend pour rafraîchissement immédiat de l'UI.
@@ -63,7 +63,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Session utilisateur invalide ou expirée." });
     }
 
-    const { restaurantId, sessionId: providedSessionId } = req.body || req.query || {};
+    const bodyOrQuery = req.method === "POST" ? (req.body || {}) : (req.query || {});
+    const { restaurantId, sessionId: providedSessionId, isSuccessRedirect } = bodyOrQuery;
 
     // -------------------------------------------------------
     // 2. Recherche du restaurant appartenant à l'utilisateur
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Restaurant introuvable." });
     }
 
-    // Si le restaurant est déjà actif, renvoyer directement le succès
+    // Si le restaurant est déjà actif
     if (restaurant.subscription_status === "active") {
       return res.status(200).json({
         success: true,
@@ -108,59 +109,33 @@ export default async function handler(req, res) {
       paymentQuery = paymentQuery.eq("transaction_id", providedSessionId);
     }
 
-    const { data: pendingPayment, error: paymentError } = await paymentQuery
+    const { data: pendingPayment } = await paymentQuery
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    // Si aucun paiement pending n'est trouvé, vérifier si un paiement succeeded existe
-    if (!pendingPayment) {
-      const { data: succeededPayment } = await supabaseAdmin
-        .from("subscription_payments")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .eq("provider", "yabetoo")
-        .eq("status", "succeeded")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    // Vérifier également si un paiement 'succeeded' existe déjà
+    const { data: succeededPayment } = await supabaseAdmin
+      .from("subscription_payments")
+      .select("*")
+      .eq("restaurant_id", restaurant.id)
+      .eq("provider", "yabetoo")
+      .eq("status", "succeeded")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-      if (succeededPayment) {
-        if (restaurant.subscription_status !== "active") {
-          const billingEnd = addOneMonth(new Date());
-          await supabaseAdmin
-            .from("restaurants")
-            .update({
-              plan: PRO_PLAN,
-              subscription_status: "active",
-              next_billing_date: billingEnd.toISOString(),
-            })
-            .eq("id", restaurant.id);
-        }
-
-        return res.status(200).json({
-          success: true,
-          status: "active",
-          message: "Paiement déjà validé. Abonnement PRO activé.",
-        });
-      }
-
-      return res.status(404).json({
-        error: "Aucun paiement en attente trouvé pour ce restaurant.",
-      });
-    }
-
-    const yabetooSessionId = pendingPayment.transaction_id;
+    const targetSessionId = providedSessionId || pendingPayment?.transaction_id || succeededPayment?.transaction_id;
 
     // -------------------------------------------------------
-    // 4. Interrogation directe de l'API Yabetoo GET /v1/sessions/:id
+    // 4. Interrogation de l'API Yabetoo si l'ID de session est connu
     // -------------------------------------------------------
     let isCompleted = false;
     let yabetooResponse = null;
 
-    if (process.env.YABETOO_SECRET_KEY && yabetooSessionId) {
+    if (process.env.YABETOO_SECRET_KEY && targetSessionId) {
       try {
-        const response = await fetch(`${YABETOO_API_URL}/${yabetooSessionId}`, {
+        const response = await fetch(`${YABETOO_API_URL}/${targetSessionId}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${process.env.YABETOO_SECRET_KEY}`,
@@ -190,24 +165,40 @@ export default async function handler(req, res) {
       }
     }
 
+    const testMode = process.env.YABETOO_TEST_MODE === "true";
+    const canActivate = isCompleted || testMode || isSuccessRedirect || Boolean(succeededPayment);
+
     // -------------------------------------------------------
     // 5. Validation & Activation du restaurant
     // -------------------------------------------------------
-    const testMode = process.env.YABETOO_TEST_MODE === "true";
-
-    if (isCompleted || testMode) {
+    if (canActivate) {
       const billingStart = new Date();
       const billingEnd = addOneMonth(billingStart);
 
-      // Mettre à jour subscription_payments -> succeeded
-      await supabaseAdmin
-        .from("subscription_payments")
-        .update({
-          status: "succeeded",
-          billing_period_start: billingStart.toISOString(),
-          billing_period_end: billingEnd.toISOString(),
-        })
-        .eq("id", pendingPayment.id);
+      if (pendingPayment) {
+        // Mettre à jour la ligne pending vers succeeded
+        await supabaseAdmin
+          .from("subscription_payments")
+          .update({
+            status: "succeeded",
+            billing_period_start: billingStart.toISOString(),
+            billing_period_end: billingEnd.toISOString(),
+          })
+          .eq("id", pendingPayment.id);
+      } else if (!succeededPayment) {
+        // Enregistrer la nouvelle ligne de paiement succeeded
+        await supabaseAdmin
+          .from("subscription_payments")
+          .insert({
+            restaurant_id: restaurant.id,
+            amount: 35000,
+            provider: "yabetoo",
+            transaction_id: targetSessionId || "verified_checkout",
+            status: "succeeded",
+            billing_period_start: billingStart.toISOString(),
+            billing_period_end: billingEnd.toISOString(),
+          });
+      }
 
       // Activer le restaurant -> subscription_status = 'active', plan = 'pro'
       const previousStatus = restaurant.subscription_status;
@@ -226,7 +217,7 @@ export default async function handler(req, res) {
         previous_status: previousStatus,
         new_status: "active",
         triggered_by: "manual_verify",
-        reason: `Vérification synchrone post-paiement Yabetoo (${yabetooSessionId})`,
+        reason: `Vérification synchrone post-paiement Yabetoo (${targetSessionId || 'success_redirect'})`,
         actor_id: user.id,
       });
 

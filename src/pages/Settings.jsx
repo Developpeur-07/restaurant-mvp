@@ -55,53 +55,61 @@ export default function Settings() {
   const statusDisplay = STATUS_DISPLAY[subscriptionStatus];
 
   // ── GESTION RETOUR PAIEMENT YABETOO (?payment=success / ?payment=cancelled) ──
+  const verifyAndActivate = useCallback(async (isRedirect = false) => {
+    try {
+      setLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("sessionId");
+
+      const res = await fetch("/api/verify-subscription-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          restaurantId,
+          ...(sessionId ? { sessionId } : {}),
+          ...(isRedirect ? { isSuccessRedirect: true } : {}),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMessage({
+          type: "success",
+          text: "Votre abonnement PRO a bien été activé ! Merci pour votre confiance.",
+        });
+      } else if (data.message) {
+        setMessage({
+          type: "error",
+          text: data.message,
+        });
+      }
+    } catch (err) {
+      console.error("Erreur vérification abonnement:", err);
+    } finally {
+      if (typeof refreshSubscription === "function") {
+        await refreshSubscription();
+      }
+      setLoading(false);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [refreshSubscription, restaurantId]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentResult = params.get("payment");
-    const sessionId = params.get("sessionId");
 
     if (paymentResult === "success") {
-      setLoadingCheckout(true);
       setMessage({
         type: "success",
         text: "Paiement effectué avec succès ! Vérification et activation de votre abonnement PRO en cours...",
       });
-
-      async function verifyAndActivate() {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            const res = await fetch("/api/verify-subscription-payment", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                restaurantId,
-                ...(sessionId ? { sessionId } : {}),
-              }),
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-              setMessage({
-                type: "success",
-                text: "Votre abonnement PRO a bien été activé ! Merci pour votre confiance.",
-              });
-            }
-          }
-        } catch (err) {
-          console.error("Erreur vérification abonnement:", err);
-        } finally {
-          if (typeof refreshSubscription === "function") {
-            await refreshSubscription();
-          }
-          setLoadingCheckout(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      }
-
-      verifyAndActivate();
+      verifyAndActivate(true);
     } else if (paymentResult === "cancelled") {
       setTimeout(() => {
         setMessage({
@@ -111,7 +119,7 @@ export default function Settings() {
       }, 0);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [refreshSubscription, restaurantId]);
+  }, [verifyAndActivate]);
 
   useEffect(() => {
     async function init() {
