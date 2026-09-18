@@ -64,7 +64,7 @@ export default function MenuManager() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [restaurantId, setRestaurantId] = useState(null)
-  const [brand, setBrand] = useState({ name: '', primary_color: '#8B0000', secondary_color: '#C9A84C', logo_url: '' })
+  const [brand, setBrand] = useState({ name: '', primary_color: '#1F2A44', secondary_color: '#C9A84C', logo_url: '' })
   const [activeCategory, setActiveCategory] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editItem, setEditItem] = useState(null)

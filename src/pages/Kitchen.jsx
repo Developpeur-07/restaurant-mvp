@@ -30,7 +30,7 @@ export default function Kitchen() {
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const [processingOrderId, setProcessingOrderId] = useState(null);
 
-  const primaryColor = restaurantBrand?.primary_color || '#8B0000';
+  const primaryColor = restaurantBrand?.primary_color || '#1F2A44';
   const { theme, darkMode, toggleDarkMode } = useTheme(primaryColor);
 
   // ─── INIT + Realtime, dépend de restaurantId (résolu via restaurant_staff) ───

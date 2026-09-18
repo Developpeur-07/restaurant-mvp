@@ -10,7 +10,7 @@ export function useTheme(primaryColor) {
     localStorage.setItem('theme_mode', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
-  const theme = getTheme(primaryColor || '#8B0000', darkMode)
+  const theme = getTheme(primaryColor || '#1F2A44', darkMode)
 
   function toggleDarkMode() {
     setDarkMode(prev => !prev)

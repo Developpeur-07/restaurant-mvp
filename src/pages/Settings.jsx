@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
@@ -248,8 +248,9 @@ export default function Settings() {
         );
       }
 
-      // Redirection vers Yabetoo
-      window.location.href = data.checkoutUrl;
+      // Redirection vers Yabetoo (avec fallback de domaine pay.yabetoo.com)
+      const sanitizedUrl = data.checkoutUrl.replace("pay.yabetoopay.com", "pay.yabetoo.com");
+      window.location.href = sanitizedUrl;
     } catch (error) {
       console.error("Erreur paiement Pro:", error);
 

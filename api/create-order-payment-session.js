@@ -333,10 +333,15 @@ export default async function handler(req, res) {
     // 11. Réponse frontend
     // -------------------------------------------------------
 
+    const rawCheckoutUrl = data.url || data.checkoutUrl || null;
+    const checkoutUrl = rawCheckoutUrl
+      ? rawCheckoutUrl.replace("pay.yabetoopay.com", "pay.yabetoo.com")
+      : null;
+
     return res.status(200).json({
       success: true,
       sessionId: yabetooSessionId,
-      checkoutUrl: data.url || null,
+      checkoutUrl,
       amount,
       currency: "xaf",
     });

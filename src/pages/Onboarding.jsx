@@ -21,7 +21,7 @@ export default function Onboarding() {
   // Étape 2 — identité
   const [restaurantId, setRestaurantId] = useState(null)
   const [brand, setBrand] = useState({
-    name: '', primary_color: '#8B0000', secondary_color: '#C9A84C', slogan: '', address: ''
+    name: '', primary_color: '#1F2A44', secondary_color: '#C9A84C', slogan: '', address: ''
   })
   const [savingBrand, setSavingBrand] = useState(false)
 

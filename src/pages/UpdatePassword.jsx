@@ -86,7 +86,7 @@ export default function UpdatePassword() {
             onClick={handleUpdate}
             disabled={!password || !confirm || loading}
             style={{
-              width: '100%', background: '#8B0000', color: '#fff', border: 'none',
+              width: '100%', background: '#1F2A44', color: '#fff', border: 'none',
               borderRadius: '12px', padding: '14px', fontWeight: 'bold',
               fontSize: '0.95rem', cursor: 'pointer',
               opacity: (!password || !confirm || loading) ? 0.6 : 1
