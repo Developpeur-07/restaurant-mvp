@@ -204,7 +204,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         total: PRO_PRICE,
 
-        currency: "xaf",
+        currency: "XAF",
 
         accountId: process.env.YABETOO_ACCOUNT_ID,
 
@@ -322,7 +322,7 @@ export default async function handler(req, res) {
 
       amount: PRO_PRICE,
 
-      currency: "xaf",
+      currency: "XAF",
 
       plan: PRO_PLAN,
     });

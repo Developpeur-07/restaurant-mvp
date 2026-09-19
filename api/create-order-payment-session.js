@@ -233,7 +233,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         total: amount,
 
-        currency: "xaf",
+        currency: "XAF",
 
         accountId: process.env.YABETOO_ACCOUNT_ID,
 
@@ -343,7 +343,7 @@ export default async function handler(req, res) {
       sessionId: yabetooSessionId,
       checkoutUrl,
       amount,
-      currency: "xaf",
+      currency: "XAF",
     });
   } catch (error) {
     console.error("[YABETOO ORDER SESSION] Erreur serveur:", error);
