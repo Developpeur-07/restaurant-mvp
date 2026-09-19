@@ -308,7 +308,10 @@ export default async function handler(req, res) {
     // 12. Réponse frontend
     // -------------------------------------------------------
 
-    const checkoutUrl = data.url || data.checkoutUrl || null;
+    const rawCheckoutUrl = data.url || data.checkoutUrl || null;
+    const checkoutUrl = rawCheckoutUrl
+      ? rawCheckoutUrl.replace("pay.yabetoopay.com", "pay.yabetoo.com")
+      : null;
 
     return res.status(200).json({
       success: true,
