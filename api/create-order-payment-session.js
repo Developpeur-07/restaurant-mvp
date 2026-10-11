@@ -139,18 +139,42 @@ export default async function handler(req, res) {
     const activeSessionId = sessionId || order.session_id || null;
 
     // ── Vérification si un paiement a déjà été validé pour cette commande ou sa session ──
-    let existingPaymentQuery = supabaseAdmin
-      .from("payments")
-      .select("id, status")
-      .eq("status", "succeeded");
+    let existingPaidPayment = null;
 
     if (activeSessionId) {
-      existingPaymentQuery = existingPaymentQuery.or(`order_id.eq.${order.id},session_id.eq.${activeSessionId}`);
-    } else {
-      existingPaymentQuery = existingPaymentQuery.eq("order_id", order.id);
-    }
+      const { data, error } = await supabaseAdmin
+        .from("payments")
+        .select("id, status")
+        .eq("status", "succeeded")
+        .or(`order_id.eq.${order.id},session_id.eq.${activeSessionId}`)
+        .limit(1)
+        .maybeSingle();
 
-    const { data: existingPaidPayment } = await existingPaymentQuery.limit(1).maybeSingle();
+      if (!error) {
+        existingPaidPayment = data;
+      } else {
+        // En cas d'erreur (ex: colonne session_id manquante), repli sur order_id seul
+        const { data: fallbackPaid } = await supabaseAdmin
+          .from("payments")
+          .select("id, status")
+          .eq("status", "succeeded")
+          .eq("order_id", order.id)
+          .limit(1)
+          .maybeSingle();
+
+        existingPaidPayment = fallbackPaid;
+      }
+    } else {
+      const { data } = await supabaseAdmin
+        .from("payments")
+        .select("id, status")
+        .eq("status", "succeeded")
+        .eq("order_id", order.id)
+        .limit(1)
+        .maybeSingle();
+
+      existingPaidPayment = data;
+    }
 
     if (existingPaidPayment) {
       console.warn(
@@ -306,9 +330,32 @@ export default async function handler(req, res) {
       ...(activeSessionId ? { session_id: activeSessionId } : {}),
     };
 
-    const { error: paymentError } = await supabaseAdmin
+    let { error: paymentError } = await supabaseAdmin
       .from("payments")
       .insert(paymentPayload);
+
+    // Repli immédiat : si l'insertion avec session_id échoue (ex: migration 019 non encore exécutée),
+    // on tente l'insertion sans session_id pour enregistrer le paiement pending et débloquer le client.
+    if (paymentError && paymentPayload.session_id) {
+      console.warn(
+        "[YABETOO ORDER SESSION] Échec insertion avec session_id, tentative de repli sans session_id:",
+        paymentError.message
+      );
+
+      const { session_id, ...fallbackPayload } = paymentPayload;
+      const { error: fallbackError } = await supabaseAdmin
+        .from("payments")
+        .insert(fallbackPayload);
+
+      if (!fallbackError) {
+        console.log(
+          "[YABETOO ORDER SESSION] Paiement pending enregistré avec succès en mode repli (sans session_id)."
+        );
+        paymentError = null;
+      } else {
+        paymentError = fallbackError;
+      }
+    }
 
     if (paymentError) {
       console.error(
@@ -320,6 +367,8 @@ export default async function handler(req, res) {
         error:
           "Session Yabetoo créée, mais impossible d'enregistrer le paiement.",
         sessionId: yabetooSessionId,
+        details: paymentError.message || String(paymentError),
+        code: paymentError.code || null,
       });
     }
 

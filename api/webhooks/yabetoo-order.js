@@ -132,53 +132,124 @@ export default async function handler(req, res) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // 1. Recherche du paiement (par session_id en priorité si présent, sinon par order_id)
-    let paymentQuery = supabaseAdmin
-      .from("payments")
-      .select("*")
-      .eq("provider", PROVIDER)
-      .eq("status", "pending");
+    // 1. Recherche du paiement (par intentId, session_id ou order_id avec tolérance)
+    let payment = null;
 
-    if (sessionId) {
-      paymentQuery = paymentQuery.eq("session_id", sessionId);
-    } else {
-      paymentQuery = paymentQuery.eq("order_id", orderId);
+    if (intentId) {
+      const { data } = await supabaseAdmin
+        .from("payments")
+        .select("*")
+        .eq("provider", PROVIDER)
+        .eq("status", "pending")
+        .eq("transaction_id", intentId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) payment = data;
     }
 
-    const { data: payment, error: paymentError } = await paymentQuery
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    if (!payment && sessionId) {
+      const { data, error } = await supabaseAdmin
+        .from("payments")
+        .select("*")
+        .eq("provider", PROVIDER)
+        .eq("status", "pending")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (paymentError) {
-      console.error("[YABETOO ORDER WEBHOOK] Erreur recherche paiement:", paymentError);
-      return res.status(500).json({ error: "Erreur recherche paiement." });
+      if (!error && data) payment = data;
+    }
+
+    if (!payment && orderId) {
+      const { data } = await supabaseAdmin
+        .from("payments")
+        .select("*")
+        .eq("provider", PROVIDER)
+        .eq("status", "pending")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) payment = data;
     }
 
     if (!payment) {
       // Vérifier si le paiement est déjà validé
-      let alreadyDoneQuery = supabaseAdmin
-        .from("payments")
-        .select("id, status")
-        .eq("status", "succeeded");
+      let alreadyDone = null;
 
       if (sessionId) {
-        alreadyDoneQuery = alreadyDoneQuery.eq("session_id", sessionId);
-      } else {
-        alreadyDoneQuery = alreadyDoneQuery.eq("order_id", orderId);
+        const { data, error } = await supabaseAdmin
+          .from("payments")
+          .select("id, status")
+          .eq("status", "succeeded")
+          .eq("session_id", sessionId)
+          .limit(1)
+          .maybeSingle();
+
+        if (!error && data) alreadyDone = data;
       }
 
-      const { data: alreadyDone } = await alreadyDoneQuery
-        .limit(1)
-        .maybeSingle();
+      if (!alreadyDone && orderId) {
+        const { data } = await supabaseAdmin
+          .from("payments")
+          .select("id, status")
+          .eq("status", "succeeded")
+          .eq("order_id", orderId)
+          .limit(1)
+          .maybeSingle();
+
+        if (data) alreadyDone = data;
+      }
 
       if (alreadyDone) {
         console.log("[YABETOO ORDER WEBHOOK] Commande/Session déjà marquée payée.");
         return res.status(200).json({ received: true, verified: true, alreadyProcessed: true });
       }
 
-      console.error("[YABETOO ORDER WEBHOOK] Aucun paiement pending trouvé pour order:", orderId, "session:", sessionId);
-      return res.status(404).json({ error: "Paiement commande en attente introuvable." });
+      // Si aucun pending n'a été trouvé (ex: erreur lors de la création de session),
+      // auto-récupération : on crée directement le paiement en succeeded pour ne pas bloquer le client !
+      console.warn("[YABETOO ORDER WEBHOOK] Aucun paiement pending trouvé, création directe en succeeded.");
+      const directPayload = {
+        order_id: orderId,
+        restaurant_id: restaurantId,
+        provider: PROVIDER,
+        transaction_id: intentId || `intent_${Date.now()}`,
+        status: "succeeded",
+        amount,
+        paid_at: new Date().toISOString(),
+        ...(sessionId ? { session_id: sessionId } : {}),
+      };
+
+      let { data: newPayment, error: createError } = await supabaseAdmin
+        .from("payments")
+        .insert(directPayload)
+        .select()
+        .maybeSingle();
+
+      if (createError && directPayload.session_id) {
+        console.warn("[YABETOO ORDER WEBHOOK] Échec insertion avec session_id, tentative repli sans session_id:", createError.message);
+        const { session_id, ...fallbackPayload } = directPayload;
+        const { data: retryPayment, error: retryError } = await supabaseAdmin
+          .from("payments")
+          .insert(fallbackPayload)
+          .select()
+          .maybeSingle();
+
+        newPayment = retryPayment;
+        createError = retryError;
+      }
+
+      if (createError) {
+        console.error("[YABETOO ORDER WEBHOOK] Échec création de secours paiement:", createError);
+        return res.status(500).json({ error: "Erreur enregistrement paiement de secours." });
+      }
+
+      console.log("[YABETOO ORDER WEBHOOK] ✅ PAIEMENT COMMANDE CRÉÉ DIRECTEMENT EN SUCCEEDED:", orderId);
+      return res.status(200).json({ received: true, verified: true, processed: true, orderId });
     }
 
     // 2. Mise à jour de payments -> succeeded

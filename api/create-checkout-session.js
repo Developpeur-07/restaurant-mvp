@@ -294,6 +294,8 @@ export default async function handler(req, res) {
         error:
           "Session Yabetoo créée, mais impossible d'enregistrer le paiement.",
         sessionId,
+        details: paymentError.message || String(paymentError),
+        code: paymentError.code || null,
       });
     }
 

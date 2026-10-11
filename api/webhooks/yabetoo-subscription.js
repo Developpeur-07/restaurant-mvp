@@ -180,8 +180,8 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true, verified: true, alreadyProcessed: true });
       }
 
-      console.error("[YABETOO SUBSCRIPTION WEBHOOK] Aucun paiement pending trouvé pour restaurant:", restaurantId);
-      return res.status(404).json({ error: "Paiement en attente introuvable." });
+      // Si aucun pending n'a été trouvé, on continue avec la création directe du paiement
+      console.warn("[YABETOO SUBSCRIPTION WEBHOOK] Aucun paiement pending trouvé pour restaurant, création directe en succeeded:", restaurantId);
     }
 
     // 2. Recherche du restaurant
@@ -199,22 +199,36 @@ export default async function handler(req, res) {
     const billingStart = new Date();
     const billingEnd = addOneMonth(billingStart);
 
-    // 3. Mise à jour subscription_payments -> succeeded
-    const { data: updatedPayment, error: paymentUpdateError } = await supabaseAdmin
-      .from("subscription_payments")
-      .update({
-        status: "succeeded",
-        billing_period_start: billingStart.toISOString(),
-        billing_period_end: billingEnd.toISOString(),
-      })
-      .eq("id", payment.id)
-      .eq("status", "pending")
-      .select()
-      .maybeSingle();
+    // 3. Mise à jour ou insertion subscription_payments -> succeeded
+    if (payment) {
+      const { data: updatedPayment, error: paymentUpdateError } = await supabaseAdmin
+        .from("subscription_payments")
+        .update({
+          status: "succeeded",
+          billing_period_start: billingStart.toISOString(),
+          billing_period_end: billingEnd.toISOString(),
+        })
+        .eq("id", payment.id)
+        .eq("status", "pending")
+        .select()
+        .maybeSingle();
 
-    if (paymentUpdateError || !updatedPayment) {
-      console.log("[YABETOO SUBSCRIPTION WEBHOOK] Paiement déjà traité ou échec mise à jour.");
-      return res.status(200).json({ received: true, verified: true, alreadyProcessed: true });
+      if (paymentUpdateError || !updatedPayment) {
+        console.log("[YABETOO SUBSCRIPTION WEBHOOK] Paiement déjà traité ou échec mise à jour.");
+        return res.status(200).json({ received: true, verified: true, alreadyProcessed: true });
+      }
+    } else {
+      await supabaseAdmin
+        .from("subscription_payments")
+        .insert({
+          restaurant_id: restaurant.id,
+          amount: amount || PRO_PRICE,
+          provider: PROVIDER,
+          transaction_id: checkoutSessionId || `sub_${Date.now()}`,
+          status: "succeeded",
+          billing_period_start: billingStart.toISOString(),
+          billing_period_end: billingEnd.toISOString(),
+        });
     }
 
     // 4. Activation du restaurant
