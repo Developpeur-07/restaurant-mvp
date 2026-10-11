@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
-import { ArrowLeft, Sun, Moon, BarChart3, ShoppingBag, UtensilsCrossed } from 'lucide-react'
+import { ArrowLeft, Sun, Moon, BarChart3, ShoppingBag, UtensilsCrossed, Receipt } from 'lucide-react'
+import ReceiptModal from '../components/ReceiptModal'
 
 export default function History() {
   const navigate = useNavigate()
@@ -15,9 +16,11 @@ export default function History() {
   // History.jsx ne fait plus sa propre requête owner_id en doublon (c'était
   // la cause du blocage/406 pour un compte réception).
   const {
-    restaurantId, restaurantBrand,
+    restaurantId, restaurantName, restaurantBrand,
     loading: contextLoading,
   } = useSubscription()
+
+  const [selectedReceipt, setSelectedReceipt] = useState(null)
 
   const primaryColor = restaurantBrand?.primary_color || '#1F2A44'
   const { theme, darkMode, toggleDarkMode } = useTheme(primaryColor)
@@ -69,7 +72,11 @@ export default function History() {
   )
 
   return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh' }}>
+    <>
+      <div
+        className={selectedReceipt ? 'dashboard-print-hide' : ''}
+        style={{ background: theme.pageBackground, minHeight: '100vh' }}
+      >
 
       {/* HEADER */}
       <div style={{
@@ -148,6 +155,33 @@ export default function History() {
                       </div>
                     ))}
                   </div>
+
+                  <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: `1px dashed ${theme.borderLight}`, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setSelectedReceipt({
+                        tableNumber: order.table_number,
+                        sessionNumber: order.session_id ? String(order.session_id).slice(-4) : null,
+                        items: order.items,
+                        total: orderTotal,
+                        closedAt: order.created_at,
+                      })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'transparent',
+                        border: `1px solid ${theme.borderLight}`,
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        fontSize: '0.78rem',
+                        fontWeight: '600',
+                        color: theme.textPrimary,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Receipt size={14} /> Imprimer reçu
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -155,5 +189,21 @@ export default function History() {
         )}
       </div>
     </div>
+
+      {/* REÇU HISTORIQUE RESPONSIVE & IMPRIMABLE */}
+      {selectedReceipt && (
+        <ReceiptModal
+          receipt={selectedReceipt}
+          brand={{
+            name: restaurantName || 'Restaurant',
+            primary_color: primaryColor,
+            secondary_color: restaurantBrand?.secondary_color || '#C9A84C',
+            logo_url: restaurantBrand?.logo_url || '',
+          }}
+          theme={theme}
+          onClose={() => setSelectedReceipt(null)}
+        />
+      )}
+    </>
   )
 }

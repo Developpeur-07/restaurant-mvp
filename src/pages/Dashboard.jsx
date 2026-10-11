@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import HeaderActions from '../components/HeaderActions'
 import { useSubscription } from '../hooks/useSubscription'
+import ReceiptModal from '../components/ReceiptModal'
 import {
   Bell,
   BellRing,
@@ -503,7 +504,11 @@ export default function Dashboard() {
   const activeGroups = groupBySession(activeOrders);
 
   return (
-    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+    <>
+      <div
+        className={receipt ? "dashboard-print-hide" : ""}
+        style={{ background: theme.pageBackground, minHeight: "100vh" }}
+      >
 
       {/* HEADER */}
       <div style={{
@@ -997,52 +1002,17 @@ export default function Dashboard() {
           <BarChart3 size={16} /> Voir l'historique des ventes
         </button>
       </div>
-
-      {/* REÇU — affiché après "Clôturer & encaisser", fond blanc fixe (imprimable) */}
-      {receipt && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "20px" }}>
-          <div style={{ background: "#fff", borderRadius: "22px", padding: "28px", width: "100%", maxWidth: "360px" }}>
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-              <p style={{ margin: 0, fontWeight: "normal", fontSize: "1.1rem", color: "#111", fontFamily: "Georgia, serif" }}>{brand.name}</p>
-              <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "#666", fontFamily: "monospace" }}>
-                Table {receipt.tableNumber}{receipt.sessionNumber ? ` · Session #${receipt.sessionNumber}` : ""}
-              </p>
-              <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: "#999", fontFamily: "monospace" }}>
-                {new Date(receipt.closedAt).toLocaleString("fr-FR")}
-              </p>
-            </div>
-
-            <div style={{ borderTop: "1px dashed #ccc", borderBottom: "1px dashed #ccc", padding: "16px 0", marginBottom: "16px" }}>
-              {receipt.items.map((item, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", marginBottom: "8px", color: "#111", fontFamily: "monospace" }}>
-                  <span>{item.qty}× {item.name}</span>
-                  <span>{(item.price * item.qty).toLocaleString()} FCFA</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "0.95rem", marginBottom: "24px", color: "#111", fontFamily: "monospace" }}>
-              <span>TOTAL</span>
-              <span>{receipt.total.toLocaleString()} FCFA</span>
-            </div>
-
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button
-                onClick={() => window.print()}
-                style={{ flex: 1, background: theme.primary, color: "#fff", border: "none", borderRadius: "12px", padding: "13px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "7px" }}
-              >
-                <Printer size={15} /> Imprimer
-              </button>
-              <button
-                onClick={() => setReceipt(null)}
-                style={{ flex: 1, background: "transparent", border: "2px solid #ddd", borderRadius: "12px", padding: "13px", fontWeight: "bold", cursor: "pointer", color: "#333" }}
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
+
+    {/* REÇU RESPONSIVE & IMPRIMABLE (OCCUPE TOUTE LA PAGE) */}
+    {receipt && (
+      <ReceiptModal
+        receipt={receipt}
+        brand={brand}
+        theme={theme}
+        onClose={() => setReceipt(null)}
+      />
+    )}
+  </>
   );
 }

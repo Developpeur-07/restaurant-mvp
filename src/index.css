@@ -3,3 +3,86 @@
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0.7; transform: scale(1.05); }
 }
+
+/* ==========================================================================
+   STYLES D'IMPRESSION (PRINT MEDIA)
+   Optimisé pour un reçu responsive occupant toute la page à l'impression,
+   avec typographie nette, masquage de l'arrière-plan et des boutons.
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 12mm 15mm;
+    size: auto;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Masquer tous les éléments d'interface non imprimables */
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  /* Masquer le dashboard principal quand le reçu est affiché */
+  .dashboard-print-hide {
+    display: none !important;
+  }
+
+  /* Désactiver le fond sombre et le centrage rigide de l'overlay */
+  .receipt-modal-overlay {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* La carte du reçu occupe 100% de la page imprimable */
+  .receipt-printable-card {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .receipt-body {
+    padding: 0 !important;
+  }
+
+  .receipt-printable-card * {
+    color: #000000 !important;
+  }
+
+  .receipt-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .receipt-table th,
+  .receipt-table td {
+    padding: 10px 4px !important;
+  }
+}
