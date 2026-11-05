@@ -18,6 +18,52 @@
 
 
 -- ---------------------------------------------------------------------------
+-- 0. CONTRÔLE PRÉALABLE — à lire avant toute chose
+--
+-- Ce bloc s'arrête net (RAISE EXCEPTION) si tu n'es pas dans le projet de
+-- l'application. Il s'exécute AVANT la moindre création, donc un échec ici ne
+-- laisse rien derrière lui.
+--
+-- Lis aussi le NOTICE : il affiche les restaurants présents dans le projet
+-- courant. Si tu ne reconnais pas « Rêve Voilé », c'est que tu n'es pas au
+-- bon endroit.
+--
+-- Le bon projet a pour URL d'API :
+--   https://vtgflrwctsqgntmuguvf.supabase.co
+-- (Dashboard Supabase → Project Settings → API → Project URL)
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  names text;
+begin
+  if not exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'restaurants'
+  ) then
+    raise exception
+      'ARRET : la table public.restaurants est introuvable ici. Tu n''es pas dans le projet de l''application (URL d''API attendue : https://vtgflrwctsqgntmuguvf.supabase.co). Aucune modification n''a ete appliquee.';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'restaurants' and column_name = 'owner_id'
+  ) then
+    raise exception
+      'ARRET : public.restaurants n''a pas de colonne owner_id ici. Tu n''es probablement pas dans le bon projet. Aucune modification n''a ete appliquee.';
+  end if;
+
+  -- Tri sur `name` et non `created_at` : seule l'existence de `name` est
+  -- garantie par le code de l'application. Un tri sur une colonne absente
+  -- ferait échouer tout le script pour une simple question d'affichage.
+  select string_agg(name, ', ') into names
+  from (select name from public.restaurants order by name limit 5) t;
+
+  raise notice 'Projet courant — restaurants visibles : %. Si tu ne reconnais pas ton etablissement, arrete-toi maintenant.', coalesce(names, '(aucun restaurant)');
+end $$;
+
+
+-- ---------------------------------------------------------------------------
 -- 1. CODES DE SECOURS 2FA
 --
 -- Un code de secours permet de récupérer l'accès au compte quand le téléphone
@@ -216,6 +262,29 @@ end $$;
 --   c'est un problème de privilèges et non de RLS : vérifier que service_role
 --   dispose bien de INSERT sur la table. Aucune policy RLS ne s'applique à lui.
 -- ============================================================================
+
+
+-- ============================================================================
+-- 4. VÉRIFICATION — à exécuter juste après ce fichier
+--
+-- Décommente et lance : tu dois obtenir 2 tables, 3 index au total,
+-- 3 contraintes de clé étrangère et 1 policy de lecture.
+-- ============================================================================
+
+-- select tablename, indexname
+-- from pg_indexes
+-- where schemaname = 'public'
+--   and tablename in ('admin_audit_log', 'admin_recovery_codes')
+-- order by tablename, indexname;
+
+-- select conname, pg_get_constraintdef(oid) as definition
+-- from pg_constraint
+-- where conrelid = 'public.admin_audit_log'::regclass
+-- order by conname;
+
+-- select policyname, cmd
+-- from pg_policies
+-- where schemaname = 'public' and tablename = 'admin_audit_log';
 
 
 -- ============================================================================

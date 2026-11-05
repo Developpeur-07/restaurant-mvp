@@ -260,3 +260,28 @@ Points écartés, et pourquoi :
   par défaut.
 - Pas de `grant select` sur `restaurants` : l'application l'interroge déjà
   depuis le client, le privilège existe.
+
+
+---
+
+## 🧭 Garde-fou « mauvais projet » sur les scripts SQL (05 novembre 2026)
+
+`021_admin_security.sql` a été exécuté par erreur dans un projet Supabase qui
+n'est pas celui de l'application. Aucune donnée existante n'a été touchée (les
+deux tables créées étaient vides), mais rien n'empêchait la récidive.
+
+- **`021` : contrôle préalable en tête de fichier.** Un bloc `RAISE EXCEPTION`
+  vérifie la présence de `public.restaurants` et de sa colonne `owner_id` AVANT
+  toute création : dans un mauvais projet, le script s'arrête net en indiquant
+  l'URL d'API attendue, sans rien laisser derrière lui. Un `NOTICE` affiche la
+  liste des restaurants du projet courant pour confirmation visuelle.
+- **Tri sur `name` et non `created_at`** dans ce contrôle : seule l'existence de
+  `name` est garantie par le code. Un tri sur une colonne absente aurait fait
+  échouer tout le script pour une question d'affichage.
+- **`021` : section de vérification** commentée en fin de fichier (tables,
+  indexes, contraintes, policy attendus).
+- **`docs/023_annuler_projet_errone.sql`** : nettoyage du projet erroné, avec
+  un rappel de l'URL d'API du bon projet et un contrôle d'identité avant toute
+  suppression.
+- **`docs/ADMIN_SECURITE.md`** : l'étape 1 commence désormais par « être sûr
+  d'être dans le bon projet ».

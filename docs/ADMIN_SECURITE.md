@@ -76,8 +76,23 @@ Chaîne de contrôle :
 
 ### Étape 1 — Base de données
 
-Exécuter `docs/021_admin_security.sql` dans le **SQL Editor** du dashboard
-Supabase. Crée `admin_recovery_codes` et `admin_audit_log`.
+**D'abord, être sûr d'être dans le bon projet.** Dashboard Supabase →
+*Project Settings* → *API* → **Project URL** doit être
+`https://vtgflrwctsqgntmuguvf.supabase.co`. C'est celui que l'application
+utilise en production.
+
+Exécuter ensuite `docs/021_admin_security.sql` dans le **SQL Editor**. Crée
+`admin_recovery_codes` et `admin_audit_log`.
+
+Le fichier commence par un **contrôle préalable** : il s'arrête net si
+`public.restaurants` ou sa colonne `owner_id` sont absents, donc il ne peut pas
+créer les tables dans un projet qui n'est pas celui de l'application. Il
+affiche aussi la liste des restaurants présents — si tu ne reconnais pas ton
+établissement, arrête-toi.
+
+> Si tu l'as déjà lancé dans le mauvais projet : exécute
+> `docs/023_annuler_projet_errone.sql` là-bas pour faire le ménage. Les deux
+> tables sont vides et rien d'existant n'a été modifié.
 
 ### Étape 2 — Variable d'environnement Vercel
 
