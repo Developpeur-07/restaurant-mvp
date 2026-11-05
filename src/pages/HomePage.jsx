@@ -63,11 +63,11 @@ const STEPS = [
 ];
 
 const CARDS = [
-  { cls: 'w-3', key: 'illus-espace',   Icon: ShieldCheck,     t: 'Un espace par restaurant', p: 'Vos données restent isolées, propres à votre établissement.' },
-  { cls: 'w-3', key: 'illus-equipe',   Icon: Users,           t: 'Inviter votre équipe',     p: 'Chaque membre reçoit les accès de son rôle.' },
-  { cls: 'w-2', key: 'illus-menu',     Icon: UtensilsCrossed, t: 'Gérer votre menu',         p: 'Plats, prix et disponibilité, modifiables en direct.' },
-  { cls: 'w-2', key: 'illus-qr',       Icon: QrCode,          t: 'Commande par QR code',     p: 'Le client scanne sa table et commande.' },
-  { cls: 'w-2', key: 'illus-pilotage', Icon: BarChart3,       t: 'Suivi et tableau de bord', p: 'Chaque commande suivie, du reçu au service.' },
+  { cls: 'bento-wide', key: 'illus-espace',   Icon: ShieldCheck,     t: 'Un espace par restaurant', p: 'Vos données restent isolées, propres à votre établissement.' },
+  { cls: 'bento-wide', key: 'illus-equipe',   Icon: Users,           t: 'Inviter votre équipe',     p: 'Chaque membre reçoit les accès de son rôle.' },
+  { cls: 'bento-narrow', key: 'illus-menu',     Icon: UtensilsCrossed, t: 'Gérer votre menu',         p: 'Plats, prix et disponibilité, modifiables en direct.' },
+  { cls: 'bento-narrow', key: 'illus-qr',       Icon: QrCode,          t: 'Commande par QR code',     p: 'Le client scanne sa table et commande.' },
+  { cls: 'bento-narrow', key: 'illus-pilotage', Icon: BarChart3,       t: 'Suivi et tableau de bord', p: 'Chaque commande suivie, du reçu au service.' },
 ];
 
 const DELIV = [
@@ -431,15 +431,15 @@ h1.display{
   margin-bottom:52px;flex-wrap:wrap}
 /* mobile-first : une seule colonne par defaut, on ajoute des colonnes en grandissant */
 .bento-grid{display:grid;grid-template-columns:1fr;gap:16px}
-.w-3,.w-2{grid-column:span 1}
+.bento-wide,.bento-narrow{grid-column:span 1}
 @media(min-width:600px){
   .bento-grid{grid-template-columns:repeat(2,1fr);gap:18px}
-  .w-3:first-child{grid-column:span 2}
+  .bento-wide:first-child{grid-column:span 2}
 }
 @media(min-width:940px){
   .bento-grid{grid-template-columns:repeat(6,1fr)}
-  .w-3{grid-column:span 3}.w-2{grid-column:span 2}
-  .w-3:first-child{grid-column:span 3}
+  .bento-wide{grid-column:span 3}.bento-narrow{grid-column:span 2}
+  .bento-wide:first-child{grid-column:span 3}
 }
 .card{
   position:relative;background:#fff;border:1px solid var(--line-2);border-radius:var(--r-lg);
@@ -902,7 +902,7 @@ function Features() {
               style={{ transitionDelay: `${i * 0.06}s` }}>
               <div className="ph">
                 <img src={file(c.key, CARD_MAX, CARD_MAX)} srcSet={cardSrcSet(c.key)}
-                  sizes={c.cls === 'w-2' ? '(min-width:940px) 365px, (min-width:600px) 45vw, calc(100vw - 48px)' : '(min-width:940px) 560px, (min-width:600px) 45vw, calc(100vw - 48px)'}
+                  sizes={c.cls === 'bento-narrow' ? '(min-width:940px) 365px, (min-width:600px) 45vw, calc(100vw - 48px)' : '(min-width:940px) 560px, (min-width:600px) 45vw, calc(100vw - 48px)'}
                   alt={c.t} width="1100" height="684" loading="lazy" decoding="async" />
               </div>
               <div className="body">

@@ -381,3 +381,30 @@ le premier octet au lieu de la plus grande.
 
 39 variantes au total ; `public/images` passe de 168 Ko à 700 Ko sur le disque,
 mais aucun appareil ne télécharge plus de 336 Ko.
+
+## Correction : les cartes de la grille faisaient 12 px de large
+
+Symptôme : illustrations écrasées dans les cartes « Tout est inclus », en mobile
+comme en bureau. Toutes les optimisations d'images n'y changeaient rien, et
+pour cause — le problème ne venait pas des fichiers mais du CSS.
+
+**Cause.** Les articles de la grille portaient les classes `w-3` et `w-2`. Or le
+projet charge Tailwind (`@import "tailwindcss"` dans `src/index.css`), qui
+scanne les fichiers JSX et génère ses utilitaires à la volée. `w-3` et `w-2`
+sont des utilitaires Tailwind :
+
+    .w-3 { width: calc(var(--spacing) * 3) }   -> 12 px
+    .w-2 { width: calc(var(--spacing) * 2) }   ->  8 px
+
+Ces règles générées s'appliquaient aux articles en plus de `grid-column`, dont
+elles annulaient l'effet : chaque carte occupait bien sa place dans la grille,
+mais ne mesurait plus que **12 px de large**, avec l'illustration compressée
+dedans. La page utilisait donc des images de 1100 px pour les afficher sur
+12 px.
+
+**Correctif.** Renommage en `bento-wide` / `bento-narrow` : un préfixe explicite
+qu'aucun utilitaire Tailwind ne peut produire. Un commentaire dans le CSS
+documente le piège à l'endroit exact où il se trouve.
+
+**Vérification.** Après reconstruction, plus aucune des 78 classes employées par
+la page n'entre en collision avec une règle générée par Tailwind.
