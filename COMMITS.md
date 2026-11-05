@@ -408,3 +408,42 @@ documente le piège à l'endroit exact où il se trouve.
 
 **Vérification.** Après reconstruction, plus aucune des 78 classes employées par
 la page n'entre en collision avec une règle générée par Tailwind.
+
+## Correction : hero et Pilotage decentres sur mobile
+
+Deux sections sortaient de l'ecran sur telephone. Mesure relevee dans un
+navigateur headless, viewport 390 px (contenu utile : 24 a 366).
+
+**Le hero.** La piste de la grille etait ecrite `1fr`. Or `1fr` vaut
+`minmax(auto, 1fr)` : la piste ne peut jamais descendre sous la largeur
+min-content de son contenu. Le titre contient « simplement maitrise. » en
+`white-space:nowrap` (c'est le mot barre d'un trait SVG anime), soit 396,3 px
+au corps de 38,4 px. La colonne entiere — texte **et** telephone — se calait
+donc sur 396,3 px et depassait de 30 px a droite a 390 px, de 60 px a 360 px.
+Le diaporama du telephone partait vers la droite et se faisait rogner.
+
+Deux corrections, complementary :
+- `minmax(0,…)` sur les pistes, pour qu'elles soient reellement libres ;
+- sous 560 px, corps du titre ramene a `min(2.4rem, 8vw)` pour que le bloc
+  nowrap tienne dans la colonne (297 px a 360, pour 312 px disponibles).
+
+**Pilotage.** Le tableau de bord etait, lui, bien centre, mais sa rangee de
+trois tuiles debordait : `repeat(3,1fr)` ne pouvait pas descendre sous la
+largeur du libelle « Commandes ». La rangee faisait 324,8 px pour 296 px de
+cadre, soit 29 px de depassement — d'ou l'impression de bloc de travers.
+Passe en `minmax(0,1fr)` et resserree sous 420 px (marge,padding et corps
+reduits).
+
+**Effets de bord corriges au passage**, trouves par le meme releve :
+- barre de navigation : a 390 px les deux boutons ne tenaient plus a cote de la
+  marque, « Demander une demo » sortait de 87 px. Le bouton est masque sous
+  560 px (le hero juste en dessous porte le meme) et « Se connecter » reste.
+  Entre 861 et 1024 px, ce sont les liens d'ancrage qui poussaient les boutons
+  dehors : masques sous 1024 px.
+- les pastilles volantes du hero, ancrees en `right:-48px`, etaient coupees net
+  entre 1101 et 1228 px : masquees sous 1280 px.
+
+**Verifie** en navigateur headless de 320 a 1440 px (13 largeurs) : plus aucun
+element ne depasse les bords de l'ecran, et sur toute la plage mobile
+(320 a 768) le hero comme Pilotage sont exactement a egale distance des deux
+bords.

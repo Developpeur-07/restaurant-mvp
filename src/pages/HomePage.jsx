@@ -246,7 +246,10 @@ h2.display{
   transition:width .4s var(--ease);
 }
 .nav-links a:hover::after{width:100%}
-@media(max-width:860px){.nav-links{display:none}}
+/* a 940 px la barre ne peut plus loger marque + 5 liens + 2 boutons :
+   les boutons sortaient de l'ecran. On masque les liens d'ancrage des
+   1024 px (la page defile de bout en bout, ils ne sont qu'un raccourci). */
+@media(max-width:1024px){.nav-links{display:none}}
 
 .btn{
   display:inline-flex;align-items:center;gap:9px;border:0;cursor:pointer;
@@ -277,10 +280,15 @@ h2.display{
   100%{transform:translate(-26px,34px) scale(.96)}
 }
 .hero-grid{
-  position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;
+  position:relative;z-index:1;display:grid;
+  /* minmax(0,…) et pas 1fr : une piste en 1fr ne peut pas descendre sous la
+     largeur min-content de son contenu. Le titre, dont le mot souligne est en
+     nowrap, forçait la colonne a 396 px — texte ET telephone etaient pousses
+     hors de l'ecran sur mobile. minmax(0,…) rend la piste réellement libre. */
+  grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
   gap:64px;align-items:center;
 }
-@media(max-width:940px){.hero-grid{grid-template-columns:1fr;gap:52px}}
+@media(max-width:940px){.hero-grid{grid-template-columns:minmax(0,1fr);gap:52px}}
 
 .badge{
   display:inline-flex;align-items:center;gap:9px;padding:7px 15px 7px 9px;border-radius:99px;
@@ -297,6 +305,11 @@ h1.display{
   font-family:var(--serif);font-weight:400;font-size:clamp(2.4rem,6.2vw,4.1rem);
   line-height:1.06;letter-spacing:-.02em;margin:0 0 20px;
 }
+/* « simplement maîtrisé. » est souligne par un trait SVG et ne doit donc pas
+   passer a la ligne. Sous 560 px on reduit le corps du titre pour que ce
+   seul bloc nowrap tienne dans la colonne sans deborder (mesure : 396 px a
+   38,4 px de fonte, pour 312 px disponibles sur un ecran de 360). */
+@media(max-width:560px){h1.display{font-size:min(2.4rem,8vw)}}
 .underlined{position:relative;display:inline-block;white-space:nowrap}
 .underlined svg{position:absolute;left:0;bottom:-.12em;width:100%;height:.2em;overflow:visible}
 .underlined path{
@@ -360,7 +373,10 @@ h1.display{
 .chip-1{top:12%;left:-54px;animation-delay:0s}
 .chip-2{bottom:20%;right:-48px;animation-delay:-3s}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-11px)}}
-@media(max-width:1100px){.chip{display:none}}
+/* les pastilles volantes sont ancres en dehors du telephone (right:-48px).
+   Elles ne sont donc entierement visibles qu'a partir de ~1228 px de large ;
+   en dessous on les masque plutot que de les laisser coupees net. */
+@media(max-width:1280px){.chip{display:none}}
 
 /* ============================================================
    MARQUEE
@@ -553,11 +569,20 @@ h1.display{
 .mock-bar span:first-child{background:rgba(201,168,76,.75)}
 .mock-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   color:rgba(255,255,255,.4);margin-left:auto;font-weight:600}
-.mock-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.mock-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:18px}
 .tile{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);
-  border-radius:13px;padding:14px}
+  border-radius:13px;padding:14px;min-width:0}
 .tile b{display:block;font-family:var(--serif);font-size:26px;font-weight:400;line-height:1}
 .tile span{font-size:10.5px;color:rgba(255,255,255,.45);letter-spacing:.06em}
+/* les trois tuiles ne peuvent pas descendre sous la largeur de leur libelle
+   (« Commandes »), ce qui faisait deborder la rangee hors du cadre du
+   tableau de bord sur les petits ecrans. On resserre pour qu'elle tienne. */
+@media(max-width:420px){
+  .mock-stats{gap:7px}
+  .tile{padding:12px 9px}
+  .tile b{font-size:22px}
+  .tile span{font-size:9.5px;letter-spacing:.02em}
+}
 .chart{display:flex;align-items:flex-end;gap:6px;height:82px;
   background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
   border-radius:13px;padding:14px 12px}
@@ -624,12 +649,23 @@ h1.display{
    AJOUTS PAGE REACT (nav a deux boutons)
    ============================================================ */
 .nav-actions{display:flex;gap:9px;align-items:center;flex:none}
-@media(max-width:520px){
+@media(max-width:620px){
   .nav-actions{gap:6px}
   .nav-actions .btn{padding:10px 14px;font-size:13px}
 }
-@media(max-width:380px){
-  .nav-actions .btn-ghost{display:none}
+/* Sous 560 px les deux boutons ne tiennent plus a cote de la marque : le
+   « Demander une démo » de l'entete sortait de l'ecran, coupe net. On le
+   masque — le hero juste en dessous porte exactement le meme bouton, donc
+   aucune conversion perdue — et on garde l'acces « Se connecter ». */
+@media(max-width:560px){
+  .nav-actions .btn-dark{display:none}
+}
+/* Dernier palier pour les ecrans etroits (320-360) : on resserre aussi la
+   marque pour que le bloc d'entete reste entierement dans le cadre. */
+@media(max-width:360px){
+  .brand-txt{font-size:14px}
+  .brand{gap:8px}
+  .nav-actions .btn{padding:9px 11px;font-size:12.5px}
 }
 `;
 
