@@ -285,3 +285,38 @@ deux tables créées étaient vides), mais rien n'empêchait la récidive.
   suppression.
 - **`docs/ADMIN_SECURITE.md`** : l'étape 1 commence désormais par « être sûr
   d'être dans le bon projet ».
+
+## Refonte de la page d'accueil (`src/pages/HomePage.jsx`)
+
+La page d'accueil est entièrement reconstruite à partir d'une maquette validée
+au préalable. Le design (navy #1F2A44 / or #C9A84C / crème #F7F3EB, Georgia +
+Outfit) et toutes les animations sont conservés à l'identique.
+
+- **Nouvelles illustrations.** Les anciennes captures d'écran brutes
+  (`guide-*.jpg`, `guide-menu1.png`) sont remplacées par 13 illustrations WebP
+  générées pour le besoin, dans le langage graphique des supports PDF de la
+  marque : aplats, pas de texte lisible, fond navy et accents or. Poids total
+  374 Ko contre 2,8 Mo avant.
+- **Écran du téléphone en 9:14 partout.** L'ancienne règle
+  `@media(max-width:940px){.screen{aspect-ratio:4/3}}` basculait le téléphone
+  en paysage sur mobile et rognait les captures portrait en une fine bande.
+  Le cadre épouse désormais exactement le format des images (aucun rognage) et
+  le téléphone est borné à 340 px pour rester raisonnable en pleine largeur.
+- **Cartes « Tout est inclus » centrées sur l'image** : visuel pleine largeur
+  en 4/3, icône déplacée à côté du titre (elle recouvrait l'image), texte
+  réduit à une seule ligne.
+- **Grilles en mobile-first** : la bento et la nouvelle section partent d'une
+  colonne, puis 2 ou 3 colonnes par `min-width` (au lieu de `max-width`).
+- **Nouvelle section « Livraison & stock »** (3 visuels) : gestion de stock,
+  côté restaurant, côté livreur. Un trait doré animé relie les deux cartes de
+  la relation quand elles sont côte à côte.
+- **Le sommaire est remplacé par « Le parcours »** (3 étapes reliées par un
+  trait qui se trace au scroll) et **le footer est supprimé** : la page se
+  termine sur l'appel à l'action.
+- **Le rôle Livreur n'est pas ajouté** aux rôles existants : il est annoncé
+  comme activable à la demande, pour les établissements qui livrent.
+- **Performances** : `loading="lazy"` et `decoding="async"` sur toutes les
+  images, attributs `width`/`height` sur les écrans du hero pour éviter les
+  décalages de mise en page, compteurs animés via `requestAnimationFrame`,
+  observateurs `IntersectionObserver` déconnectés après usage.
+- **Lint** : le fichier passe à 0 erreur (le total du dépôt passe de 11 à 10).
