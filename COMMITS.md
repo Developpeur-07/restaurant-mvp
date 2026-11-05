@@ -447,3 +447,39 @@ reduits).
 element ne depasse les bords de l'ecran, et sur toute la plage mobile
 (320 a 768) le hero comme Pilotage sont exactement a egale distance des deux
 bords.
+
+## Lisibilite du mode sombre : contraste garanti pour toutes les couleurs de marque
+
+Le mode sombre existait deja (useTheme + theme.js), mais sa lisibilite
+dependait de la couleur choisie par chaque restaurant. Deux defauts mesures.
+
+**1. La teinte des surfaces etait brouillee.** generateDarkTheme calculait
+`blendedHue = (230 + h * 13.01) % 360`. Ce coefficient agit comme une fonction
+de hachage : une variation minime de la couleur de marque donnait une teinte
+sans rapport. Un primaire magenta produisait une carte olive (#57603e), un
+primaire jaune une carte vert-jaune tres claire. Rien ne garantissait donc la
+luminosite des fonds.
+
+Remplace par une inflexion bornee vers le bleu-marine de reference :
+`230 + plusCourtEcart(h, 230) * 0.18`, soit au plus ~32 degres d'ecart. Les
+surfaces restent sombres et coherentes quelle que soit la marque.
+
+**2. Les fonds n'etaient jamais verifies.** Ajout de `contrastRatio` (WCAG) et
+de `ensureContrast`, qui assombrit une surface jusqu'a ce que les textes
+atteignent 4,5:1. Le contraste ne depend plus d'un reglage manuel : il est
+garanti par construction, pour n'importe quelle couleur.
+
+`textMuted` passe de #8B92A8 a #A8AFC4 : l'ancienne valeur plafonnait a 3,28:1
+sur fond de carte, sous le seuil AA de 4,5:1.
+
+**Mesures, sur fond de carte, en balayant 18 teintes de marque :**
+
+    avant : blanc 6,67 | secondaire 4,16 | discret 2,15   (7 teintes sur 18
+            faisaient tomber le texte secondaire sous 4,5:1 ; le texte discret
+            echouait systematiquement)
+    apres : blanc 9,92 | secondaire 6,19 | discret 4,53   (18/18 conformes)
+
+Les memes mesures sur le fond de page : 13,12 / 8,19 / 6,00.
+
+La cause restante — des couleurs codees en dur dans les pages plutot que le
+theme — n'est pas traitee ici : elle demande une passe par composant.
