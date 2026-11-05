@@ -483,3 +483,48 @@ Les memes mesures sur le fond de page : 13,12 / 8,19 / 6,00.
 
 La cause restante — des couleurs codees en dur dans les pages plutot que le
 theme — n'est pas traitee ici : elle demande une passe par composant.
+
+## Module inventaire / stock
+
+L'inventaire manquait, alors que la page d'accueil l'annonce : la section
+« Livraison & stock » promet « Suivez vos quantites en direct et soyez alerte
+avant la rupture ». C'etait donc une promesse non tenue — le premier ecart
+visible des le test en salle.
+
+**Base (docs/024_inventaire.sql, a executer dans Supabase).**
+
+- `stock_items` : un article par restaurant (nom, unite, quantite, seuil
+  d'alerte, cout, plat associe et quantite consommee par portion).
+- `stock_movements` : le journal de chaque entree et sortie, avec le motif
+  (commande, achat, ajustement, perte, stock initial).
+- `consume_stock_for_order()` : decremente le stock quand une commande est
+  servie, d'apres `orders.items` (JSON `[{id, name, price, qty}]`).
+- RLS : tout le personnel du restaurant consulte ; seuls admin, reception et
+  le proprietaire ecrivent. La cuisine consulte mais ne corrige pas les
+  quantites.
+
+Deux robustesses deliberées, parce qu'une erreur de stock ne doit jamais
+bloquer un service en cours : la consommation est **idempotente** (un index
+unique et une verification explicite empechent de decrementer deux fois la
+meme commande), et la fonction est enveloppee dans un bloc d'exception qui
+renvoie 0 sans propager l'erreur. L'identifiant du plat est de plus valide par
+une expression reguliere avant conversion : un ancien identifiant malforme ne
+peut pas faire echouer le declencheur, donc la mise a jour du statut.
+
+**Page (/inventaire, protegee par AdminRoute).**
+
+Ecrite contre deux travers du code existant :
+
+1. Styles en classes CSS avec media queries au lieu de `style={{...}}` en
+   ligne. Un style en ligne ne peut pas reagir a la largeur de l'ecran — c'est
+   pourquoi Dashboard, Settings et MenuManager ne sont pas responsives. Base
+   mobile, elargissement a partir de 700px.
+2. Aucune couleur en dur : tout vient de `useTheme`, donc le mode sombre reste
+   lisible quelle que soit la couleur de marque.
+
+Les classes sont prefixees `inv-` pour qu'aucune ne puisse entrer en collision
+avec un utilitaire Tailwind (les cartes de la page d'accueil etaient tombees a
+12px a cause de `w-3` / `w-2`).
+
+Si les tables n'existent pas encore, la page affiche une consigne expliquant
+d'executer le script SQL, au lieu de rester blanche.

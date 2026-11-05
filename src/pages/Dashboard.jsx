@@ -13,7 +13,7 @@ import {
   QrCode,
   Clipboard,
   Settings, AlertTriangle, Gift, Flame, Lock, UtensilsCrossed, ShoppingBag, Trash2, BarChart3, Wallet, Hourglass,
-  Receipt, Printer,
+  Receipt, Printer, Package,
 } from 'lucide-react'
 
 const STATUS_LABELS = {
@@ -577,6 +577,15 @@ export default function Dashboard() {
                   </>
                 ),
                 onClick: () => navigate("/menu-manager"),
+              },
+              {
+                label: (
+                  <>
+                    <Package size={16} />
+                    <span>Inventaire</span>
+                  </>
+                ),
+                onClick: () => navigate("/inventory"),
               },
               {
                 label: (
