@@ -222,3 +222,41 @@ Vercel (elle n'était définie qu'en Production).
 **Lint** : `eslint.config.js` étend l'override Node à `vite.config.js`
 (`process.env`). Aucune nouvelle erreur introduite ; les 11 restantes sont
 antérieures à cette passe.
+
+
+---
+
+## 🧪 Révision de `021_admin_security.sql` (05 novembre 2026)
+
+Suite à une relecture externe du fichier SQL. Un point bloquant annoncé —
+« `public.restaurants` et `public.admin_audit_log` absentes du schéma » — est un
+**faux positif** : l'instantané consulté provenait d'un compte Supabase sans
+aucun projet (`list_projects` → `items: []`, accès direct au projet refusé en
+403). `public.restaurants` est bien réelle, avec `id` et `owner_id` : 24 points
+d'appel dans le dépôt, lectures client incluses (`SubscriptionProvider.jsx`,
+`QRCode.jsx`) et écriture à la création d'un restaurant (`Onboarding.jsx`).
+
+Corrections retenues :
+- **Performance RLS** : `auth.uid()` → `(select auth.uid())` dans la policy de
+  `admin_audit_log`. Postgres évalue la fonction une fois par requête au lieu
+  d'une fois par ligne.
+- **Intégrité référentielle** : clés étrangères ajoutées sur `actor_user_id`,
+  `target_user_id` et `restaurant_id`, en `ON DELETE SET NULL` — une entrée
+  d'audit doit survivre à la suppression d'un compte staff, ce qui est
+  précisément l'intérêt d'un journal. Bloc idempotent.
+- **Index** : `restaurants.owner_id` indexé, mais seulement si aucun index
+  n'existe déjà sur cette colonne (la policy fait une sous-requête dessus à
+  chaque lecture du journal).
+- **`revoke all ... from anon`** ajouté sur `admin_audit_log` : un journal
+  d'audit ne doit même pas avoir de privilèges de table pour l'anonyme.
+
+Points écartés, et pourquoi :
+- La clause `actor_user_id = auth.uid()` n'est **pas** une faille : les actions
+  de sécurité (codes de secours) ont un `restaurant_id` NULL, sans elle leur
+  auteur ne verrait jamais ses propres entrées. Aucun compte cuisine ou
+  réception ne peut être `actor_user_id`.
+- Pas de `grant insert` à `service_role` : les `revoke` ne visent que
+  `anon` / `authenticated` / `PUBLIC`, `service_role` conserve ses privilèges
+  par défaut.
+- Pas de `grant select` sur `restaurants` : l'application l'interroge déjà
+  depuis le client, le privilège existe.
