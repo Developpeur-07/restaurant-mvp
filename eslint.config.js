@@ -19,10 +19,10 @@ export default defineConfig([
     },
   },
   {
-    // Override pour le dossier api/ — fonctions serverless Vercel (Node.js),
-    // pas du code navigateur. Évite que `process`, `Buffer`, etc. soient
-    // signalés comme non définis / auto-importés à tort par erreur.
-    files: ['api/**/*.js'],
+    // Override pour le dossier api/ et la config Vite — code Node.js exécuté
+    // au build côté serveur, pas du code navigateur. Évite que `process`,
+    // `Buffer`, etc. soient signalés comme non définis.
+    files: ['api/**/*.js', 'vite.config.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,

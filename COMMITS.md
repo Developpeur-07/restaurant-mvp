@@ -175,3 +175,50 @@ limites connues).
 **À faire côté ops :** exécuter `docs/021_admin_security.sql`, puis étendre
 `SUPABASE_SERVICE_ROLE_KEY` aux environnements Preview et Development dans
 Vercel (elle n'était définie qu'en Production).
+
+
+---
+
+## ⚡ Passe de performance — bundle, requêtes et fuites (05 novembre 2026)
+
+**Fuites de timers (cause n°1 de la RAM qui monte en service)**
+- `Dashboard.jsx` et `Kitchen.jsx` : chaque commande entrante empilait un
+  `setTimeout(..., 3000)` jamais annulé, qui faisait un `setState` sur un
+  composant potentiellement démonté. Timer désormais conservé dans une
+  `useRef`, réinitialisé à chaque commande et purgé au démontage.
+- Audit des canaux Supabase Realtime : `Dashboard`, `Kitchen`, `Tracking` et
+  `SubscriptionProvider` font tous leur `removeChannel` dans le cleanup —
+  aucune fuite de ce côté-là, rien à corriger.
+
+**Requêtes**
+- `Dashboard.jsx` : `select('*')` → colonnes explicites sur `orders` et
+  `orders_archive`. L'archive est interrogée toutes les 60 s : on ne rapatrie
+  plus que `items` et `created_at` au lieu de la ligne entière.
+- `Kitchen.jsx` : idem sur `orders`.
+- `Tracking.jsx` : le restaurant, les commandes sœurs et le paiement étaient
+  récupérés l'un après l'autre — les trois ne dépendent que de la commande,
+  ils passent en `Promise.all` (4 allers-retours → 2). Plus aucun `select('*')`
+  dans le fichier.
+
+**Bundle**
+- `vite.config.js` : découpage des dépendances stables (`react` 190 ko,
+  `supabase` 200 ko, `router` 41 ko) dans des chunks séparés. Elles changent
+  rarement → restent en cache d'un déploiement à l'autre, et se téléchargent
+  en parallèle du code applicatif. Rolldown (Vite 8) exige la forme fonction.
+- Chunk d'entrée : **498 ko → 59 ko**. `/menu` ne charge plus `Tracking`
+  (page désormais en `React.lazy`), soit ~17 ko de moins sur le parcours
+  critique client.
+- `Menu.jsx` et `Login.jsx` restent en import direct : un chunk supplémentaire
+  à récupérer avant affichage coûterait plus cher qu'il ne ferait gagner sur
+  le parcours scan QR → commande.
+
+**Index SQL**
+- `docs/022_performance_indexes.sql` : index sur les filtres réels
+  (`restaurant_id`, `status`, `created_at`, `session_id`, `order_id`…).
+  Le script vérifie l'existence de chaque table et colonne avant de créer :
+  une différence de schéma produit un NOTICE au lieu d'une erreur fatale.
+  Réexécutable.
+
+**Lint** : `eslint.config.js` étend l'override Node à `vite.config.js`
+(`process.env`). Aucune nouvelle erreur introduite ; les 11 restantes sont
+antérieures à cette passe.

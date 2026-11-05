@@ -142,7 +142,7 @@ export default function Tracking() {
     async function init() {
       const { data } = await supabase
         .from("orders")
-        .select("*")
+        .select("id, status, table_number, customer_name, order_type, items, session_id, restaurant_id, created_at, estimated_ready_at")
         .eq("id", orderId)
         .single();
 
@@ -152,38 +152,46 @@ export default function Tracking() {
 
       if (!data) return;
 
-      const { data: resto } = await supabase
-        .from("restaurants")
-        .select("name, primary_color, secondary_color, slogan, address, logo_url")
-        .eq("id", data.restaurant_id)
-        .single();
-      if (!cancelled) setRestaurant(resto);
+      // Les trois lectures suivantes ne dépendent QUE de la commande :
+      // on les lance en parallèle (3 allers-retours -> 1).
+      const paymentQuery = data.session_id
+        ? supabase
+            .from("payments")
+            .select("id, status, order_id, session_id, created_at")
+            .or(`order_id.eq.${orderId},session_id.eq.${data.session_id}`)
+        : supabase
+            .from("payments")
+            .select("id, status, order_id, session_id, created_at")
+            .eq("order_id", orderId);
 
-      // ── Commandes sœurs de la même session (table) ──
-      if (data.session_id) {
-        const { data: siblings } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("session_id", data.session_id)
-          .neq("id", orderId)
-          .order("created_at", { ascending: true });
-        if (!cancelled) setSiblingOrders(siblings || []);
-      }
+      const [restoRes, siblingsRes, paymentRes] = await Promise.all([
+        supabase
+          .from("restaurants")
+          .select("name, primary_color, secondary_color, slogan, address, logo_url")
+          .eq("id", data.restaurant_id)
+          .single(),
 
-      // ── Paiement Mobile Money existant pour cette commande ou sa session ──
-      let paymentQuery = supabase.from("payments").select("*");
-      if (data.session_id) {
-        paymentQuery = paymentQuery.or(`order_id.eq.${orderId},session_id.eq.${data.session_id}`);
-      } else {
-        paymentQuery = paymentQuery.eq("order_id", orderId);
-      }
+        // ── Commandes sœurs de la même session (table) ──
+        data.session_id
+          ? supabase
+              .from("orders")
+              .select("id, status, table_number, customer_name, order_type, items, created_at, estimated_ready_at")
+              .eq("session_id", data.session_id)
+              .neq("id", orderId)
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [] }),
 
-      const { data: paymentRow } = await paymentQuery
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        // ── Paiement Mobile Money existant pour cette commande ou sa session ──
+        paymentQuery
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      if (!cancelled) setPayment(paymentRow || null);
+      if (cancelled) return;
+      if (restoRes.data) setRestaurant(restoRes.data);
+      setSiblingOrders(siblingsRes.data || []);
+      setPayment(paymentRes.data || null);
 
       // ── Realtime commande : scope session si dispo, sinon commande seule (emporter) ──
       const orderFilter = data.session_id
