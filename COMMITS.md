@@ -113,3 +113,65 @@ compte plus simple suffit en attendant la régularisation de la structure propre
 **Réalisations Frontend & UX :**
 - `Settings.jsx` — Invocateur synchrone de `/api/verify-subscription-payment` lors de la réception de `?payment=success` pour basculer instantanément l'affichage vers **Actif (Pro)** sans dépendre uniquement des webhooks.
 - `Tracking.jsx` — Gardes empêchant d'initier un paiement sur une commande déjà réglée en ligne (`isPaidOnline`) ou annulée.
+
+---
+
+## 🔐 Sécurisation espace admin : rôles, 2FA et mots de passe équipe (05 novembre 2026)
+
+**Faille corrigée :** `AdminRoute` n'empilait que `ProtectedRoute`, lequel vérifie
+uniquement la présence d'une session. Un compte **cuisine** pouvait ouvrir
+`/dashboard` en tapant l'URL et consulter les stats et le chiffre d'affaires.
+Aucune 2FA n'existait nulle part.
+
+**Filtrage par rôle (`src/components/RoleGuard.jsx`)**
+- Propriétaire et réception accèdent à l'espace admin ; la cuisine est redirigée
+  vers `/kitchen`. Posé dans `AdminRoute` avant `SubscriptionProvider`.
+
+**Double authentification TOTP (`src/components/MfaGate.jsx`, `Settings.jsx`)**
+- TOTP (RFC 6238) via l'API MFA native Supabase : `enroll` → QR code
+  (`qrcode.react`) → `challengeAndVerify` → session `aal2`.
+- Règle : 2FA exigée **uniquement** si le compte possède un facteur vérifié.
+  Impossible de s'enfermer dehors tant qu'on n'a rien activé.
+- Posé sur `AdminRoute` et `SuperAdminRoute`.
+- Choix TOTP plutôt que SMS/WhatsApp : WhatsApp Business (Meta) et Twilio sont
+  payants, avec validation de templates ; le TOTP est gratuit, instantané et
+  fonctionne hors ligne — décisif pour une connexion depuis un restaurant.
+
+**Codes de secours (`api/admin/security/recovery-codes.js`)**
+- 10 codes à usage unique, générés une seule fois, stockés **hashés scrypt**
+  (sel aléatoire, `timingSafeEqual`) dans `admin_recovery_codes`.
+- Table sans aucune policy RLS : invisible pour `anon` et `authenticated`, seuls
+  les appels serveur y touchent.
+- Consommer un code supprime les facteurs TOTP via l'admin API : on récupère
+  l'accès, puis on ré-enrôle. Plafonné à 10 essais / heure.
+
+**Réinitialisation des mots de passe équipe (`api/admin/staff.js`)**
+- Impossible côté navigateur (`updateUserById` exige la `service_role`) →
+  fonction serverless Vercel.
+- Chaîne : JWT vérifié **côté serveur** → `aal2` exigé si 2FA activée →
+  appelant propriétaire du restaurant → cible membre de ce restaurant →
+  mot de passe ≥ 8 caractères et non trivial → journalisé + plafonné.
+- `GET` renvoie l'équipe avec les emails (résolus via l'admin API, `auth.users`
+  n'étant pas lisible par le client).
+- `Settings.jsx` : section *Mots de passe de l'équipe* — liste, générateur de
+  mot de passe fort, réinitialisation en 2 clics.
+
+**Schéma (`docs/021_admin_security.sql`)**
+- `admin_recovery_codes` et `admin_audit_log` (RLS, indexes, `revoke` explicite).
+- Bloc de durcissement RLS commenté : exiger `aal2` au niveau Postgres pour les
+  comptes ayant activé la 2FA. Volontairement non activé avant le test terrain.
+
+**Performance — `src/pages/Menu.jsx`**
+- Les 3 requêtes de chargement (restaurant, plats, catégories) passent en
+  `Promise.all` : 3 allers-retours séquentiels → 1.
+- `select('*')` → `select('id, name, price, image_url, estimated_minutes, description')`.
+- Debounce 250 ms sur la recherche, `useMemo` sur la catégorisation.
+- Squelette de chargement animé à la place du simple texte.
+- `loading="lazy" decoding="async"` sur les 3 images de la page.
+
+**Documentation :** `docs/ADMIN_SECURITE.md` (mise en route, modèle de menace,
+limites connues).
+
+**À faire côté ops :** exécuter `docs/021_admin_security.sql`, puis étendre
+`SUPABASE_SERVICE_ROLE_KEY` aux environnements Preview et Development dans
+Vercel (elle n'était définie qu'en Production).

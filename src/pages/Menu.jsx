@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/useTheme'
@@ -195,6 +195,7 @@ export default function Menu() {
   const [orderType, setOrderType] = useState('sur_place')
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [detailItem, setDetailItem] = useState(null)
   const [activeTab, setActiveTab] = useState(category ? decodeURIComponent(category) : null)
   const [burgerOpen, setBurgerOpen] = useState(false)
@@ -214,24 +215,30 @@ export default function Menu() {
       }
 
       try {
-        const { data: resto, error: restoError } = await supabase
-          .from('restaurants')
-          .select('name, primary_color, secondary_color, slogan, address, logo_url')
-          .eq('id', restaurantId)
-          .single();
-        if (restoError) throw restoError;
+        // Les 3 requêtes sont indépendantes : on les lance en parallèle
+        const [restoRes, menuRes, catRes] = await Promise.all([
+          supabase
+            .from('restaurants')
+            .select('name, primary_color, secondary_color, slogan, address, logo_url')
+            .eq('id', restaurantId)
+            .single(),
+          supabase
+            .from('menu_items')
+            .select('id, name, price, image_url, estimated_minutes, description')
+            .eq('restaurant_id', restaurantId)
+            .eq('available', true),
+          supabase
+            .from('menu_categories')
+            .select('label, image_url')
+            .eq('restaurant_id', restaurantId),
+        ]);
+        if (restoRes.error) throw restoRes.error;
+        if (menuRes.error) throw menuRes.error;
+        if (catRes.error) console.error('Menu: erreur catégories', catRes.error);
 
-        const { data: menuItems, error: menuError } = await supabase
-          .from('menu_items')
-          .select('*')
-          .eq('restaurant_id', restaurantId)
-          .eq('available', true);
-        if (menuError) throw menuError;
-
-        const { data: catRows } = await supabase
-          .from('menu_categories')
-          .select('label, image_url')
-          .eq('restaurant_id', restaurantId);
+        const resto = restoRes.data;
+        const menuItems = menuRes.data;
+        const catRows = catRes.data;
 
         if (!isMounted) return;
 
@@ -253,6 +260,12 @@ export default function Menu() {
     fetchMenu();
     return () => { isMounted = false; };
   }, [restaurantId]);
+
+  // Debounce : on ne filtre que 250 ms après la dernière frappe
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250)
+    return () => clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
     if (Object.keys(selection).length > 0) {
@@ -350,20 +363,31 @@ export default function Menu() {
   const total = selectedItems.reduce((sum, i) => sum + i.price * i.qty, 0)
   const totalQty = selectedItems.reduce((s, i) => s + i.qty, 0)
   const maxMinutes = selectedItems.length ? Math.max(...selectedItems.map(i => i.estimated_minutes)) : 0
-  const categorized = categorize(items)
+  const categorized = useMemo(() => categorize(items), [items])
   const categoryLabels = Object.keys(categorized)
 
   // Onglet actif par défaut = premier disponible (ou celui de l'URL s'il existe encore)
   const currentTab = (activeTab && categorized[activeTab]) ? activeTab : categoryLabels[0]
   const catData = categorized[currentTab]
   const catItems = catData?.items || []
-  const filteredItems = search.trim()
-    ? catItems.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+  const filteredItems = debouncedSearch.trim()
+    ? catItems.filter(i => i.name.toLowerCase().includes(debouncedSearch.toLowerCase()))
     : catItems
 
   if (loading) return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>Chargement du menu...</p>
+    <div style={{ background: theme.pageBackground, minHeight: '100vh', padding: '16px' }} aria-busy="true" aria-label="Chargement du menu">
+      <style>{`@keyframes sk{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}.sk{background:rgba(128,128,128,.22);border-radius:14px;animation:sk 1.2s ease-in-out infinite}`}</style>
+      <div className="sk" style={{ height: 48, width: '60%', marginBottom: 16 }} />
+      <div className="sk" style={{ height: 40, marginBottom: 20 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i}>
+            <div className="sk" style={{ aspectRatio: '4 / 3', marginBottom: 8 }} />
+            <div className="sk" style={{ height: 14, width: '80%', marginBottom: 6 }} />
+            <div className="sk" style={{ height: 14, width: '40%' }} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 
@@ -466,7 +490,7 @@ export default function Menu() {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: img ? 'transparent' : theme.pageBackground
                           }}>
-                            {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <CatIcon size={13} />}
+                            {img ? <img src={img} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <CatIcon size={13} />}
                           </span>
                           {label}
                         </button>
@@ -509,7 +533,7 @@ export default function Menu() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   background: img ? 'transparent' : 'rgba(0,0,0,0.08)'
                 }}>
-                  {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <CatIcon size={13} />}
+                  {img ? <img src={img} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <CatIcon size={13} />}
                 </span>
                 {label}
               </button>
@@ -565,7 +589,7 @@ export default function Menu() {
                 }}>
                   <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 3', background: 'linear-gradient(135deg, #FFF0E8, #FFE4D6)', overflow: 'hidden' }}>
                     {item.image_url
-                      ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
+                      ? <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }} />
                       : <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <ItemIcon size={42} color="#C9A84C" strokeWidth={1.4} />
                         </span>
