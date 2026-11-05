@@ -8,30 +8,31 @@ import {
 
 const GOLD = '#C9A84C';
 
-/* ── Illustrations (WebP optimisées) ─────────────────────────── */
-const IMAGES = {
-  heroQr:        '/images/hero-qr.webp',
-  heroMenu:      '/images/hero-menu.webp',
-  heroPanier:    '/images/hero-panier.webp',
-  heroSuivi:     '/images/hero-suivi.webp',
-  heroPilotage:  '/images/hero-pilotage.webp',
-  illusEspace:   '/images/illus-espace.webp',
-  illusEquipe:   '/images/illus-equipe.webp',
-  illusMenu:     '/images/illus-menu.webp',
-  illusQr:       '/images/illus-qr.webp',
-  illusPilotage: '/images/illus-pilotage.webp',
-  livStock:      '/images/liv-stock.webp',
-  livRestaurant: '/images/liv-restaurant.webp',
-  livLivreur:    '/images/liv-livreur.webp',
-};
+/* ── Illustrations responsives ───────────────────────────────────
+   Chaque illustration existe en trois largeurs. Le navigateur choisit
+   celle qui correspond a la taille d'affichage ET a la densite de l'ecran :
+   un telephone 3x recupere la grande (nette), un ecran 1x la petite (legere).
+   La plus grande variante porte le nom court, les autres un suffixe.        */
+const HERO_WIDTHS = [400, 560, 768];
+const CARD_WIDTHS = [400, 720, 1100];
+const HERO_MAX = 768;
+const CARD_MAX = 1100;
+
+const file = (key, w, max) => `/images/${key}${w === max ? '' : `-${w}`}.webp`;
+const heroSrcSet = (key) => HERO_WIDTHS.map((w) => `${file(key, w, HERO_MAX)} ${w}w`).join(', ');
+const cardSrcSet = (key) => CARD_WIDTHS.map((w) => `${file(key, w, CARD_MAX)} ${w}w`).join(', ');
+
+/* Largeur d'affichage des ecrans du hero : ~485 px en colonne de bureau,
+   318 px quand le telephone est borne a 340 px sur mobile. */
+const HERO_SIZES = '(min-width:941px) 480px, 318px';
 
 /* ── Contenu ─────────────────────────────────────────────────── */
 const HERO_SLIDES = [
-  { img: IMAGES.heroQr,       label: 'Le scan',         caption: 'Un QR code par table' },
-  { img: IMAGES.heroMenu,     label: 'Le menu digital', caption: 'Votre carte, toujours à jour' },
-  { img: IMAGES.heroPanier,   label: 'Le panier',       caption: 'Le client compose et valide' },
-  { img: IMAGES.heroSuivi,    label: 'Le suivi',        caption: "De la table jusqu'au service" },
-  { img: IMAGES.heroPilotage, label: 'Le pilotage',     caption: 'Vos chiffres, en temps réel' },
+  { key: 'hero-qr',       label: 'Le scan',         caption: 'Un QR code par table' },
+  { key: 'hero-menu',     label: 'Le menu digital', caption: 'Votre carte, toujours a jour' },
+  { key: 'hero-panier',   label: 'Le panier',       caption: 'Le client compose et valide' },
+  { key: 'hero-suivi',    label: 'Le suivi',        caption: "De la table jusqu'au service" },
+  { key: 'hero-pilotage', label: 'Le pilotage',     caption: 'Vos chiffres, en temps reel' },
 ];
 
 const MARQUEE_WORDS = [
@@ -62,17 +63,17 @@ const STEPS = [
 ];
 
 const CARDS = [
-  { cls: 'w-3', img: IMAGES.illusEspace,   Icon: ShieldCheck,     t: 'Un espace par restaurant', p: 'Vos données restent isolées, propres à votre établissement.' },
-  { cls: 'w-3', img: IMAGES.illusEquipe,   Icon: Users,           t: 'Inviter votre équipe',     p: 'Chaque membre reçoit les accès de son rôle.' },
-  { cls: 'w-2', img: IMAGES.illusMenu,     Icon: UtensilsCrossed, t: 'Gérer votre menu',         p: 'Plats, prix et disponibilité, modifiables en direct.' },
-  { cls: 'w-2', img: IMAGES.illusQr,       Icon: QrCode,          t: 'Commande par QR code',     p: 'Le client scanne sa table et commande.' },
-  { cls: 'w-2', img: IMAGES.illusPilotage, Icon: BarChart3,       t: 'Suivi et tableau de bord', p: 'Chaque commande suivie, du reçu au service.' },
+  { cls: 'w-3', key: 'illus-espace',   Icon: ShieldCheck,     t: 'Un espace par restaurant', p: 'Vos données restent isolées, propres à votre établissement.' },
+  { cls: 'w-3', key: 'illus-equipe',   Icon: Users,           t: 'Inviter votre équipe',     p: 'Chaque membre reçoit les accès de son rôle.' },
+  { cls: 'w-2', key: 'illus-menu',     Icon: UtensilsCrossed, t: 'Gérer votre menu',         p: 'Plats, prix et disponibilité, modifiables en direct.' },
+  { cls: 'w-2', key: 'illus-qr',       Icon: QrCode,          t: 'Commande par QR code',     p: 'Le client scanne sa table et commande.' },
+  { cls: 'w-2', key: 'illus-pilotage', Icon: BarChart3,       t: 'Suivi et tableau de bord', p: 'Chaque commande suivie, du reçu au service.' },
 ];
 
 const DELIV = [
-  { img: IMAGES.livStock,      Icon: Package, t: 'Gestion de stock', p: 'Suivez vos quantités en direct et soyez alerté avant la rupture.' },
-  { img: IMAGES.livRestaurant, Icon: Store,   t: 'Côté restaurant',  p: 'Vous préparez la commande, puis vous la confiez au livreur.', cls: 'link' },
-  { img: IMAGES.livLivreur,    Icon: Bike,    t: 'Côté livreur',     p: "Il reçoit l'adresse et l'itinéraire, vous suivez la course." },
+  { key: 'liv-stock',      Icon: Package, t: 'Gestion de stock', p: 'Suivez vos quantités en direct et soyez alerté avant la rupture.' },
+  { key: 'liv-restaurant', Icon: Store,   t: 'Côté restaurant',  p: 'Vous préparez la commande, puis vous la confiez au livreur.', cls: 'link' },
+  { key: 'liv-livreur',    Icon: Bike,    t: 'Côté livreur',     p: "Il reçoit l'adresse et l'itinéraire, vous suivez la course." },
 ];
 
 const ROLES = [
@@ -689,7 +690,10 @@ function HeroScreen() {
       const img = new Image();
       img.onload = finish;
       img.onerror = finish;
-      img.src = s.img;
+      // srcset + sizes : le navigateur telecharge la bonne largeur des le prechargement
+      img.sizes = HERO_SIZES;
+      img.srcset = heroSrcSet(s.key);
+      img.src = file(s.key, HERO_MAX, HERO_MAX);
       return img;
     });
     const bail = setTimeout(() => setReady(true), 4000);
@@ -710,12 +714,14 @@ function HeroScreen() {
   return (
     <div className="screen">
       {HERO_SLIDES.map((s, i) => (
-        <div key={s.img} className={'slide' + (i === cur ? ' on' : '')} aria-hidden={i !== cur}>
+        <div key={s.key} className={'slide' + (i === cur ? ' on' : '')} aria-hidden={i !== cur}>
           <img
-            src={s.img}
+            src={file(s.key, HERO_MAX, HERO_MAX)}
+            srcSet={heroSrcSet(s.key)}
+            sizes={HERO_SIZES}
             alt={`${s.label} — ${s.caption}`}
-            width="480"
-            height="746"
+            width="768"
+            height="1194"
             loading={i === 0 ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={i === 0 ? 'high' : 'auto'}
@@ -729,7 +735,7 @@ function HeroScreen() {
         <div className="dots">
           {HERO_SLIDES.map((s, i) => (
             <button
-              key={s.img}
+              key={s.key}
               className={'dot' + (i === cur ? ' on' : '')}
               onClick={() => go(i)}
               aria-label={s.label}
@@ -895,7 +901,9 @@ function Features() {
             <article className={'card ' + c.cls} key={c.t} data-reveal
               style={{ transitionDelay: `${i * 0.06}s` }}>
               <div className="ph">
-                <img src={c.img} alt={c.t} width="720" height="448" loading="lazy" decoding="async" />
+                <img src={file(c.key, CARD_MAX, CARD_MAX)} srcSet={cardSrcSet(c.key)}
+                  sizes={c.cls === 'w-2' ? '(min-width:940px) 365px, (min-width:600px) 45vw, calc(100vw - 48px)' : '(min-width:940px) 560px, (min-width:600px) 45vw, calc(100vw - 48px)'}
+                  alt={c.t} width="1100" height="684" loading="lazy" decoding="async" />
               </div>
               <div className="body">
                 <div className="head">
@@ -934,7 +942,9 @@ function Delivery() {
             <article className={'dcard ' + (d.cls || '')} key={d.t} data-reveal
               style={{ transitionDelay: `${i * 0.08}s` }}>
               <div className="ph">
-                <img src={d.img} alt={d.t} width="720" height="448" loading="lazy" decoding="async" />
+                <img src={file(d.key, CARD_MAX, CARD_MAX)} srcSet={cardSrcSet(d.key)}
+                  sizes="(min-width:640px) 365px, calc(100vw - 48px)"
+                  alt={d.t} width="1100" height="684" loading="lazy" decoding="async" />
               </div>
               <div className="body">
                 <div className="head">

@@ -8,7 +8,9 @@
     <meta name="description" content="Le Resto-HUB centralise les commandes, la cuisine, la réception, le menu et le suivi de votre établissement dans un seul espace unifié." />
     <!-- Le premier écran du hero est préchargé : il est visible dès le premier
          affichage, inutile d'attendre le téléchargement du JavaScript. -->
-    <link rel="preload" as="image" href="/images/hero-qr.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/hero-qr.webp"
+      imagesrcset="/images/hero-qr-400.webp 400w, /images/hero-qr-560.webp 560w, /images/hero-qr.webp 768w"
+      imagesizes="(min-width:941px) 480px, 318px" fetchpriority="high" />
   </head>
   <body>
     <div id="root"></div>

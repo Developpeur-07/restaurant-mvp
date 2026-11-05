@@ -347,3 +347,37 @@ n'apparaissaient pas du tout.
 - **Correctifs `index.html`** : `lang="fr"` au lieu de `lang="en"` sur une page
   française, et un titre/description réels (« restaurant-mvp » était le nom du
   dépôt, pas celui du produit).
+
+## Illustrations responsives (`srcset`) : netteté ET légèreté
+
+Retour terrain : après l'allègement, les illustrations paraissaient compressées.
+La cause est réelle — les images avaient été calées sur 1,5× leur taille
+d'affichage, ce qui est insuffisant sur un écran 3× comme celui du test.
+
+Plutôt que de choisir entre netteté et poids, chaque illustration existe
+désormais en **trois largeurs** et le navigateur choisit lui-même en fonction de
+la taille d'affichage **et** de la densité d'écran :
+
+- écrans du hero : 400 / 560 / 768 px
+- illustrations de cartes : 400 / 720 / 1100 px
+
+L'attribut `sizes` indique la largeur réelle d'affichage, calculée pour chaque
+disposition (bento 6 colonnes sur bureau, 2 colonnes dès 600 px, 1 colonne en
+dessous ; téléphone borné à 340 px sur mobile). Sans `sizes`, le navigateur
+suppose 100vw et télécharge systématiquement la plus grande variante.
+
+**Poids réellement téléchargé** (avant : 168 Ko pour tout le monde) :
+
+| Appareil | Hero | Cartes | Total |
+|---|---|---|---|
+| Mobile 3× (le cas du test) | 149 Ko | 187 Ko | 336 Ko |
+| Mobile 2× | 94 Ko | 108 Ko | 202 Ko |
+| Mobile 1× | 52 Ko | 53 Ko | **105 Ko** |
+| Bureau 1× | 95 Ko | 108 Ko | 203 Ko |
+
+Le préchargement du diaporama et le `<link rel="preload">` de `index.html`
+utilisent `srcset` + `sizes`, donc le navigateur récupère la bonne largeur dès
+le premier octet au lieu de la plus grande.
+
+39 variantes au total ; `public/images` passe de 168 Ko à 700 Ko sur le disque,
+mais aucun appareil ne télécharge plus de 336 Ko.
