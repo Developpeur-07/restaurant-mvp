@@ -676,11 +676,34 @@ function Navbar() {
 /* ── HERO ────────────────────────────────────────────────────── */
 function HeroScreen() {
   const [cur, setCur] = useState(0);
+  const [ready, setReady] = useState(false);
+
+  /* Sur une connexion lente, avancer à intervalles fixes faisait défiler des
+     écrans encore vides. On précharge les 5 écrans puis on ne lance la rotation
+     qu'une fois qu'ils sont décodés — avec un garde-fou de 4 s pour ne jamais
+     bloquer le diaporama si le réseau ne répond pas. */
+  useEffect(() => {
+    let done = 0;
+    const finish = () => { done += 1; if (done === HERO_SLIDES.length) setReady(true); };
+    const imgs = HERO_SLIDES.map((s) => {
+      const img = new Image();
+      img.onload = finish;
+      img.onerror = finish;
+      img.src = s.img;
+      return img;
+    });
+    const bail = setTimeout(() => setReady(true), 4000);
+    return () => {
+      clearTimeout(bail);
+      imgs.forEach((img) => { img.onload = null; img.onerror = null; });
+    };
+  }, []);
 
   useEffect(() => {
+    if (!ready) return;
     const t = setInterval(() => setCur((c) => (c + 1) % HERO_SLIDES.length), 3800);
     return () => clearInterval(t);
-  }, []);
+  }, [ready]);
 
   const go = (i) => setCur(((i % HERO_SLIDES.length) + HERO_SLIDES.length) % HERO_SLIDES.length);
 
@@ -691,8 +714,8 @@ function HeroScreen() {
           <img
             src={s.img}
             alt={`${s.label} — ${s.caption}`}
-            width="768"
-            height="1194"
+            width="480"
+            height="746"
             loading={i === 0 ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={i === 0 ? 'high' : 'auto'}
@@ -872,7 +895,7 @@ function Features() {
             <article className={'card ' + c.cls} key={c.t} data-reveal
               style={{ transitionDelay: `${i * 0.06}s` }}>
               <div className="ph">
-                <img src={c.img} alt={c.t} loading="lazy" decoding="async" />
+                <img src={c.img} alt={c.t} width="720" height="448" loading="lazy" decoding="async" />
               </div>
               <div className="body">
                 <div className="head">
@@ -911,7 +934,7 @@ function Delivery() {
             <article className={'dcard ' + (d.cls || '')} key={d.t} data-reveal
               style={{ transitionDelay: `${i * 0.08}s` }}>
               <div className="ph">
-                <img src={d.img} alt={d.t} loading="lazy" decoding="async" />
+                <img src={d.img} alt={d.t} width="720" height="448" loading="lazy" decoding="async" />
               </div>
               <div className="body">
                 <div className="head">

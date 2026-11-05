@@ -320,3 +320,30 @@ Outfit) et toutes les animations sont conservés à l'identique.
   décalages de mise en page, compteurs animés via `requestAnimationFrame`,
   observateurs `IntersectionObserver` déconnectés après usage.
 - **Lint** : le fichier passe à 0 erreur (le total du dépôt passe de 11 à 10).
+
+## Performances de l'accueil : images allégées et mises en cache
+
+Retour terrain : les illustrations se chargeaient lentement et certaines
+n'apparaissaient pas du tout.
+
+- **Images 2× trop grandes pour leur taille d'affichage.** Le téléphone du hero
+  s'affiche à ~320 px et recevait du 768 px ; les cartes, entre 340 et 560 px,
+  recevaient du 1100 px. Tout est redimensionné à ~1,5× la taille réelle
+  (hero 480 px, cartes 720 px) avec une qualité ajustée image par image :
+  **373 Ko -> 168 Ko (-55 %)**.
+- **Aucune en-tête de cache sur `/images/`.** Les fichiers sans hash reçoivent un
+  `must-revalidate` : chaque image faisait un aller-retour jusqu'à l'origine
+  (région `cdg1`, Paris) avant d'être servie. `vercel.json` pose désormais
+  `max-age=3600, stale-while-revalidate=86400` : le serveur périphérique répond
+  immédiatement et revalide en arrière-plan.
+- **Diaporama du hero.** La rotation avançait à intervalles fixes et tombait sur
+  des écrans pas encore téléchargés — d'où les diapositives vides. Les 5 écrans
+  sont maintenant préchargés et la rotation ne démarre qu'une fois décodés, avec
+  un garde-fou de 4 s si le réseau ne répond pas.
+- **Écran du hero préchargé** dans `index.html` (`<link rel="preload">`) : il est
+  visible au premier affichage, inutile d'attendre le JavaScript.
+- **Dimensions déclarées** sur toutes les images (`width`/`height`) pour
+  supprimer les décalages de mise en page.
+- **Correctifs `index.html`** : `lang="fr"` au lieu de `lang="en"` sur une page
+  française, et un titre/description réels (« restaurant-mvp » était le nom du
+  dépôt, pas celui du produit).
