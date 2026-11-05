@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import MfaGate from './MfaGate'
 
 export default function SuperAdminRoute({ children }) {
   const [isAuthorized, setIsAuthorized] = useState(undefined)
@@ -17,5 +18,8 @@ export default function SuperAdminRoute({ children }) {
     </div>
   )
   if (!isAuthorized) return <Navigate to="/dashboard" replace />
-  return children
+
+  // Le super-admin pilote tous les établissements : 2FA obligatoire s'il l'a
+  // activée, avant même de rendre la page.
+  return <MfaGate>{children}</MfaGate>
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
@@ -154,6 +154,10 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newOrderAlert, setNewOrderAlert] = useState(false);
+  // Timer de l'alerte "nouvelle commande" : sans ref, chaque commande
+  // entrante empile un setTimeout jamais annulé (fuite + setState sur un
+  // composant potentiellement démonté).
+  const alertTimerRef = useRef(null);
   const [todayStats, setTodayStats] = useState({ count: 0, revenue: 0, topItem: null });
   const [processingOrderId, setProcessingOrderId] = useState(null);
   // ── Sessions signalées "J'ai terminé" par le client, en attente de clôture réception ──
@@ -214,7 +218,7 @@ export default function Dashboard() {
     async function init() {
       const { data } = await supabase
         .from("orders")
-        .select("*")
+        .select("id, status, table_number, customer_name, order_type, items, session_id, created_at, estimated_ready_at")
         .eq("restaurant_id", restaurantId)
         .neq("status", "paid")
         .order("created_at", { ascending: true });
@@ -243,7 +247,8 @@ export default function Dashboard() {
           if (payload.eventType === "INSERT") {
             playNotification();
             setNewOrderAlert(true);
-            setTimeout(() => setNewOrderAlert(false), 3000);
+            clearTimeout(alertTimerRef.current);
+            alertTimerRef.current = setTimeout(() => setNewOrderAlert(false), 3000);
             setOrders((prev) => [...prev, payload.new]);
           }
           if (payload.eventType === "UPDATE") {
@@ -279,6 +284,7 @@ export default function Dashboard() {
 
     return () => {
       cancelled = true;
+      clearTimeout(alertTimerRef.current);
       if (channel) supabase.removeChannel(channel);
     };
   }, [contextLoading, restaurantId]);
@@ -290,9 +296,11 @@ export default function Dashboard() {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
+    // Seuls `items` et `created_at` servent au calcul — inutile de rapatrier
+    // toute la ligne (cette requête tourne toutes les 60 s).
     const { data: paidToday } = await supabase
       .from('orders_archive')
-      .select('*')
+      .select('items, created_at')
       .eq('restaurant_id', restaurantId)
       .eq('status', 'paid')
       .gte('created_at', startOfDay.toISOString());

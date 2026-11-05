@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../lib/useTheme";
 import { useStaff } from "../hooks/useStaff";
@@ -28,6 +28,9 @@ export default function Kitchen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newOrderAlert, setNewOrderAlert] = useState(false);
+  // Timer d'alerte conservé dans une ref : évite d'empiler un
+  // setTimeout par commande entrante (fuite mémoire en service).
+  const alertTimerRef = useRef(null);
   const [processingOrderId, setProcessingOrderId] = useState(null);
 
   const primaryColor = restaurantBrand?.primary_color || '#1F2A44';
@@ -42,7 +45,7 @@ export default function Kitchen() {
     async function init() {
       const { data } = await supabase
         .from("orders")
-        .select("*")
+        .select("id, status, table_number, customer_name, order_type, items, created_at, estimated_ready_at")
         .eq("restaurant_id", restaurantId)
         .eq("status", "preparing")
         .order("created_at", { ascending: true });
@@ -64,7 +67,8 @@ export default function Kitchen() {
                 if (!exists) {
                   playNotification();
                   setNewOrderAlert(true);
-                  setTimeout(() => setNewOrderAlert(false), 3000);
+                  clearTimeout(alertTimerRef.current);
+                  alertTimerRef.current = setTimeout(() => setNewOrderAlert(false), 3000);
                   return [...prev, order];
                 }
                 return prev.map((o) => (o.id === order.id ? order : o));
@@ -85,6 +89,7 @@ export default function Kitchen() {
     init();
 
     return () => {
+      clearTimeout(alertTimerRef.current);
       if (channel) supabase.removeChannel(channel);
     };
   }, [restaurantId]);

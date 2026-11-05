@@ -1,13 +1,16 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import Menu from "./pages/Menu";
-import Tracking from "./pages/Tracking";
 import Login from "./pages/Login";
 import AdminRoute from "./components/AdminRoute";
 import StaffRoute from "./components/StaffRoute";
 import SuperAdminRoute from './components/SuperAdminRoute';
 
 // Lazy loading des pages lourdes/admin pour un chargement client ultra-rapide
+// Menu et Login restent en import direct : ce sont les deux pages du parcours
+// critique client (scan QR -> commande), un chunk supplémentaire à récupérer
+// avant affichage coûterait plus cher qu'il ne ferait gagner.
+const Tracking = lazy(() => import("./pages/Tracking"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MenuManager = lazy(() => import("./pages/MenuManager"));
 const Settings = lazy(() => import("./pages/Settings"));

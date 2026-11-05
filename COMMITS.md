@@ -113,3 +113,175 @@ compte plus simple suffit en attendant la régularisation de la structure propre
 **Réalisations Frontend & UX :**
 - `Settings.jsx` — Invocateur synchrone de `/api/verify-subscription-payment` lors de la réception de `?payment=success` pour basculer instantanément l'affichage vers **Actif (Pro)** sans dépendre uniquement des webhooks.
 - `Tracking.jsx` — Gardes empêchant d'initier un paiement sur une commande déjà réglée en ligne (`isPaidOnline`) ou annulée.
+
+---
+
+## 🔐 Sécurisation espace admin : rôles, 2FA et mots de passe équipe (05 novembre 2026)
+
+**Faille corrigée :** `AdminRoute` n'empilait que `ProtectedRoute`, lequel vérifie
+uniquement la présence d'une session. Un compte **cuisine** pouvait ouvrir
+`/dashboard` en tapant l'URL et consulter les stats et le chiffre d'affaires.
+Aucune 2FA n'existait nulle part.
+
+**Filtrage par rôle (`src/components/RoleGuard.jsx`)**
+- Propriétaire et réception accèdent à l'espace admin ; la cuisine est redirigée
+  vers `/kitchen`. Posé dans `AdminRoute` avant `SubscriptionProvider`.
+
+**Double authentification TOTP (`src/components/MfaGate.jsx`, `Settings.jsx`)**
+- TOTP (RFC 6238) via l'API MFA native Supabase : `enroll` → QR code
+  (`qrcode.react`) → `challengeAndVerify` → session `aal2`.
+- Règle : 2FA exigée **uniquement** si le compte possède un facteur vérifié.
+  Impossible de s'enfermer dehors tant qu'on n'a rien activé.
+- Posé sur `AdminRoute` et `SuperAdminRoute`.
+- Choix TOTP plutôt que SMS/WhatsApp : WhatsApp Business (Meta) et Twilio sont
+  payants, avec validation de templates ; le TOTP est gratuit, instantané et
+  fonctionne hors ligne — décisif pour une connexion depuis un restaurant.
+
+**Codes de secours (`api/admin/security/recovery-codes.js`)**
+- 10 codes à usage unique, générés une seule fois, stockés **hashés scrypt**
+  (sel aléatoire, `timingSafeEqual`) dans `admin_recovery_codes`.
+- Table sans aucune policy RLS : invisible pour `anon` et `authenticated`, seuls
+  les appels serveur y touchent.
+- Consommer un code supprime les facteurs TOTP via l'admin API : on récupère
+  l'accès, puis on ré-enrôle. Plafonné à 10 essais / heure.
+
+**Réinitialisation des mots de passe équipe (`api/admin/staff.js`)**
+- Impossible côté navigateur (`updateUserById` exige la `service_role`) →
+  fonction serverless Vercel.
+- Chaîne : JWT vérifié **côté serveur** → `aal2` exigé si 2FA activée →
+  appelant propriétaire du restaurant → cible membre de ce restaurant →
+  mot de passe ≥ 8 caractères et non trivial → journalisé + plafonné.
+- `GET` renvoie l'équipe avec les emails (résolus via l'admin API, `auth.users`
+  n'étant pas lisible par le client).
+- `Settings.jsx` : section *Mots de passe de l'équipe* — liste, générateur de
+  mot de passe fort, réinitialisation en 2 clics.
+
+**Schéma (`docs/021_admin_security.sql`)**
+- `admin_recovery_codes` et `admin_audit_log` (RLS, indexes, `revoke` explicite).
+- Bloc de durcissement RLS commenté : exiger `aal2` au niveau Postgres pour les
+  comptes ayant activé la 2FA. Volontairement non activé avant le test terrain.
+
+**Performance — `src/pages/Menu.jsx`**
+- Les 3 requêtes de chargement (restaurant, plats, catégories) passent en
+  `Promise.all` : 3 allers-retours séquentiels → 1.
+- `select('*')` → `select('id, name, price, image_url, estimated_minutes, description')`.
+- Debounce 250 ms sur la recherche, `useMemo` sur la catégorisation.
+- Squelette de chargement animé à la place du simple texte.
+- `loading="lazy" decoding="async"` sur les 3 images de la page.
+
+**Documentation :** `docs/ADMIN_SECURITE.md` (mise en route, modèle de menace,
+limites connues).
+
+**À faire côté ops :** exécuter `docs/021_admin_security.sql`, puis étendre
+`SUPABASE_SERVICE_ROLE_KEY` aux environnements Preview et Development dans
+Vercel (elle n'était définie qu'en Production).
+
+
+---
+
+## ⚡ Passe de performance — bundle, requêtes et fuites (05 novembre 2026)
+
+**Fuites de timers (cause n°1 de la RAM qui monte en service)**
+- `Dashboard.jsx` et `Kitchen.jsx` : chaque commande entrante empilait un
+  `setTimeout(..., 3000)` jamais annulé, qui faisait un `setState` sur un
+  composant potentiellement démonté. Timer désormais conservé dans une
+  `useRef`, réinitialisé à chaque commande et purgé au démontage.
+- Audit des canaux Supabase Realtime : `Dashboard`, `Kitchen`, `Tracking` et
+  `SubscriptionProvider` font tous leur `removeChannel` dans le cleanup —
+  aucune fuite de ce côté-là, rien à corriger.
+
+**Requêtes**
+- `Dashboard.jsx` : `select('*')` → colonnes explicites sur `orders` et
+  `orders_archive`. L'archive est interrogée toutes les 60 s : on ne rapatrie
+  plus que `items` et `created_at` au lieu de la ligne entière.
+- `Kitchen.jsx` : idem sur `orders`.
+- `Tracking.jsx` : le restaurant, les commandes sœurs et le paiement étaient
+  récupérés l'un après l'autre — les trois ne dépendent que de la commande,
+  ils passent en `Promise.all` (4 allers-retours → 2). Plus aucun `select('*')`
+  dans le fichier.
+
+**Bundle**
+- `vite.config.js` : découpage des dépendances stables (`react` 190 ko,
+  `supabase` 200 ko, `router` 41 ko) dans des chunks séparés. Elles changent
+  rarement → restent en cache d'un déploiement à l'autre, et se téléchargent
+  en parallèle du code applicatif. Rolldown (Vite 8) exige la forme fonction.
+- Chunk d'entrée : **498 ko → 59 ko**. `/menu` ne charge plus `Tracking`
+  (page désormais en `React.lazy`), soit ~17 ko de moins sur le parcours
+  critique client.
+- `Menu.jsx` et `Login.jsx` restent en import direct : un chunk supplémentaire
+  à récupérer avant affichage coûterait plus cher qu'il ne ferait gagner sur
+  le parcours scan QR → commande.
+
+**Index SQL**
+- `docs/022_performance_indexes.sql` : index sur les filtres réels
+  (`restaurant_id`, `status`, `created_at`, `session_id`, `order_id`…).
+  Le script vérifie l'existence de chaque table et colonne avant de créer :
+  une différence de schéma produit un NOTICE au lieu d'une erreur fatale.
+  Réexécutable.
+
+**Lint** : `eslint.config.js` étend l'override Node à `vite.config.js`
+(`process.env`). Aucune nouvelle erreur introduite ; les 11 restantes sont
+antérieures à cette passe.
+
+
+---
+
+## 🧪 Révision de `021_admin_security.sql` (05 novembre 2026)
+
+Suite à une relecture externe du fichier SQL. Un point bloquant annoncé —
+« `public.restaurants` et `public.admin_audit_log` absentes du schéma » — est un
+**faux positif** : l'instantané consulté provenait d'un compte Supabase sans
+aucun projet (`list_projects` → `items: []`, accès direct au projet refusé en
+403). `public.restaurants` est bien réelle, avec `id` et `owner_id` : 24 points
+d'appel dans le dépôt, lectures client incluses (`SubscriptionProvider.jsx`,
+`QRCode.jsx`) et écriture à la création d'un restaurant (`Onboarding.jsx`).
+
+Corrections retenues :
+- **Performance RLS** : `auth.uid()` → `(select auth.uid())` dans la policy de
+  `admin_audit_log`. Postgres évalue la fonction une fois par requête au lieu
+  d'une fois par ligne.
+- **Intégrité référentielle** : clés étrangères ajoutées sur `actor_user_id`,
+  `target_user_id` et `restaurant_id`, en `ON DELETE SET NULL` — une entrée
+  d'audit doit survivre à la suppression d'un compte staff, ce qui est
+  précisément l'intérêt d'un journal. Bloc idempotent.
+- **Index** : `restaurants.owner_id` indexé, mais seulement si aucun index
+  n'existe déjà sur cette colonne (la policy fait une sous-requête dessus à
+  chaque lecture du journal).
+- **`revoke all ... from anon`** ajouté sur `admin_audit_log` : un journal
+  d'audit ne doit même pas avoir de privilèges de table pour l'anonyme.
+
+Points écartés, et pourquoi :
+- La clause `actor_user_id = auth.uid()` n'est **pas** une faille : les actions
+  de sécurité (codes de secours) ont un `restaurant_id` NULL, sans elle leur
+  auteur ne verrait jamais ses propres entrées. Aucun compte cuisine ou
+  réception ne peut être `actor_user_id`.
+- Pas de `grant insert` à `service_role` : les `revoke` ne visent que
+  `anon` / `authenticated` / `PUBLIC`, `service_role` conserve ses privilèges
+  par défaut.
+- Pas de `grant select` sur `restaurants` : l'application l'interroge déjà
+  depuis le client, le privilège existe.
+
+
+---
+
+## 🧭 Garde-fou « mauvais projet » sur les scripts SQL (05 novembre 2026)
+
+`021_admin_security.sql` a été exécuté par erreur dans un projet Supabase qui
+n'est pas celui de l'application. Aucune donnée existante n'a été touchée (les
+deux tables créées étaient vides), mais rien n'empêchait la récidive.
+
+- **`021` : contrôle préalable en tête de fichier.** Un bloc `RAISE EXCEPTION`
+  vérifie la présence de `public.restaurants` et de sa colonne `owner_id` AVANT
+  toute création : dans un mauvais projet, le script s'arrête net en indiquant
+  l'URL d'API attendue, sans rien laisser derrière lui. Un `NOTICE` affiche la
+  liste des restaurants du projet courant pour confirmation visuelle.
+- **Tri sur `name` et non `created_at`** dans ce contrôle : seule l'existence de
+  `name` est garantie par le code. Un tri sur une colonne absente aurait fait
+  échouer tout le script pour une question d'affichage.
+- **`021` : section de vérification** commentée en fin de fichier (tables,
+  indexes, contraintes, policy attendus).
+- **`docs/023_annuler_projet_errone.sql`** : nettoyage du projet erroné, avec
+  un rappel de l'URL d'API du bon projet et un contrôle d'identité avant toute
+  suppression.
+- **`docs/ADMIN_SECURITE.md`** : l'étape 1 commence désormais par « être sûr
+  d'être dans le bon projet ».
