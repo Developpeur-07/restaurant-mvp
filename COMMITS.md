@@ -615,3 +615,38 @@ que sa carte se coupe au lieu de deborder.
 Base mobile, deux colonnes a partir de 700px, plafond a 1120px.
 
 L'erreur de lint restante (setMessage dans un effect) est preexistante.
+
+## Parametres decoupes en sections selon le profil
+
+Reponse a « pourquoi ne pas le faire en section propre en fonction du role
+defini ? ». C'etait la bonne question, et pour une raison concrete : un compte
+reception ouvrait les memes reglages que le proprietaire, alors que le RLS lui
+refuse l'ecriture. Il voyait donc des sections qui echouent sans qu'il
+comprenne pourquoi.
+
+Deux faits ont borne la conception, decouverts en lisant le code :
+
+1. Deux profils seulement atteignent cette page. La cuisine est arretee en
+   amont par RoleGuard, et il n'existe pas de role staff « admin » dans ce
+   projet : STAFF_ROLES ne contient que reception et cuisine.
+2. Le provider n'expose pas le role, seulement isOwner.
+
+La matrice est donc reduite : proprietaire et reception. L'interet n'est pas
+dans une matrice complexe mais dans la lisibilite — une regle d'acces ecrite
+une fois, au lieu de isOwner && disperse a quatre endroits du JSX. Ajouter un
+profil futur (un role livreur, par exemple) se limite a une ligne du tableau.
+
+Quatre sections :
+  - Compte et abonnement : tous
+  - Presentation de l'etablissement : proprietaire
+  - Securite : tous
+  - Equipe : proprietaire
+
+Chaque section est sa propre grille : les cartes d'un meme theme restent
+ensemble, et deux sujets sans rapport ne se retrouvent jamais cote a cote.
+C'est aussi la reponse a la remarque soulee au commit precedent sur le
+regroupement des cartes en deux colonnes.
+
+La garde redondante de « Mots de passe de l'equipe » a ete retiree : la section
+entiere est deja reservee au proprietaire, et deux gardes qui se recouvrent
+finissent toujours par diverger.

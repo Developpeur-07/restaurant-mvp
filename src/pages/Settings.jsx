@@ -22,6 +22,22 @@ const STAFF_ROLES = [
   { value: "kitchen", label: "Cuisine", Icon: ChefHat },
 ];
 
+// Sections des paramètres et profils autorisés à les voir.
+//
+// Deux profils seulement atteignent cette page : le propriétaire et la
+// réception. La cuisine est arrêtée en amont par RoleGuard, et il n'existe pas
+// de rôle staff « admin » dans ce projet (STAFF_ROLES = réception, cuisine).
+//
+// Déclarer l'accès ici plutôt qu'en `isOwner &&` dispersé dans le JSX rend la
+// règle lisible d'un coup d'oeil : on voit immédiatement qui voit quoi, et
+// l'ajout d'un profil futur se limite à une ligne de ce tableau.
+const SECTIONS = {
+  compte: { roles: ["proprietaire", "reception"] },
+  presentation: { roles: ["proprietaire"] },
+  securite: { roles: ["proprietaire", "reception"] },
+  equipe: { roles: ["proprietaire"] },
+};
+
 // Feuille de style partagée des pages d'administration.
 //
 // Pourquoi des classes plutôt que des styles en ligne : un style en ligne ne
@@ -45,9 +61,21 @@ const ADMIN_CSS = `
    largeur ; les cartes se répartissent seules. */
 .adm-wrap{
   max-width:520px;margin:0 auto;padding:24px 16px 48px;
-  display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;
+  display:flex;flex-direction:column;gap:22px;
 }
-.adm-full{grid-column:1/-1}
+.adm-full{width:100%}
+
+/* Chaque section est sa propre grille : les cartes d'un meme theme restent
+   ensemble, et deux sujets sans rapport ne se retrouvent jamais cote a cote. */
+.adm-section{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;
+  min-width:0;
+}
+.adm-section-head{grid-column:1/-1;min-width:0}
+.adm-section-title{
+  margin:0 0 5px;font-family:Georgia,serif;font-size:1.05rem;color:var(--adm-text);
+}
+.adm-section-sub{margin:0;font-size:.78rem;color:var(--adm-text-2);line-height:1.5}
 
 .adm-card{
   background:var(--adm-card);border-radius:20px;padding:20px;
@@ -73,10 +101,8 @@ const ADMIN_CSS = `
 }
 
 @media (min-width:700px){
-  .adm-wrap{
-    max-width:1120px;padding:32px 24px 56px;
-    grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;
-  }
+  .adm-wrap{max-width:1120px;padding:32px 24px 56px;gap:28px}
+  .adm-section{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
   .adm-header-inner{max-width:1120px}
   .adm-card{padding:24px}
 }
@@ -132,6 +158,12 @@ export default function Settings() {
 
   // ── ABONNEMENT — restaurantId résout owner OU reception (SubscriptionProvider) ──
   const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features, restaurantId, isOwner, refreshSubscription } = useSubscription();
+
+  // Le provider n'expose pas le rôle staff, seulement l'appartenance au
+  // propriétaire. Comme la cuisine ne franchit pas RoleGuard, il ne reste que
+  // deux profils possibles ici.
+  const profil = isOwner ? "proprietaire" : "reception";
+  const peutVoir = (id) => SECTIONS[id].roles.includes(profil);
 
   const trialDaysLeft = trialEndAt
     ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
@@ -774,6 +806,12 @@ export default function Settings() {
           </div>
         )}
 
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Compte et abonnement</h2>
+            <p className="adm-section-sub">Vos informations et l'état de votre formule</p>
+          </div>
+
         {/* COMPTE ACTUEL */}
         <div className="adm-card">
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 14px" }}>
@@ -846,8 +884,14 @@ export default function Settings() {
           )}
         </div>
 
-        {/* IDENTITÉ VISUELLE — réservé au propriétaire */}
-        {isOwner && (
+        </section>
+
+        {peutVoir("presentation") && (
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Présentation de l'établissement</h2>
+            <p className="adm-section-sub">Logo et couleurs, tels que vos clients les voient</p>
+          </div>
           <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
               Identité visuelle
@@ -973,7 +1017,14 @@ export default function Settings() {
               {brandLoading ? "Sauvegarde..." : "Sauvegarder l'identité"}
             </button>
           </div>
+        </section>
         )}
+
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Sécurité</h2>
+            <p className="adm-section-sub">Mot de passe et double authentification</p>
+          </div>
 
         {/* CHANGER MOT DE PASSE — dispo pour tout compte (propriétaire ou staff) */}
         <div className="adm-card">
@@ -1255,8 +1306,14 @@ export default function Settings() {
           )}
         </div>
 
-        {/* INVITER DU STAFF — réservé au propriétaire, remplace l'ancien lien vers Supabase Dashboard */}
-        {isOwner && (
+        </section>
+
+        {peutVoir("equipe") && (
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Équipe</h2>
+            <p className="adm-section-sub">Invitations et accès des membres du restaurant</p>
+          </div>
           <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 8px" }}>
               Inviter un membre de l'équipe
@@ -1349,10 +1406,8 @@ export default function Settings() {
               </p>
             )}
           </div>
-        )}
 
-        {/* MOTS DE PASSE DE L'ÉQUIPE — réservé au propriétaire */}
-        {isOwner && (
+          {/* MOTS DE PASSE DE L'ÉQUIPE */}
           <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px", display: "flex", alignItems: "center", gap: "8px" }}>
               <Users size={17} /> Mots de passe de l'équipe
@@ -1477,6 +1532,7 @@ export default function Settings() {
               </div>
             )}
           </div>
+        </section>
         )}
 
         <button
