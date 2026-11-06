@@ -549,3 +549,35 @@ p_restaurant) et s'il en reste une autre. Le script est rejouable tel quel.
 Raisonnement tenu sur le risque du drop : l'application fonctionne aujourd'hui,
 donc aucune politique existante n'etait ambigue avant. La surcharge a un
 argument est donc bien nouvelle, donc bien la notre.
+
+## Recettes : un article partage entre plusieurs plats
+
+Question de depart : « quelle est la relation entre le menu et l'inventaire,
+si les deux ne jouent pas le meme role ? » La reponse tient en une phrase —
+un plat est une promesse faite au client, un article de stock est une
+ressource physique. On ne « vend » pas 200 g de poulet, on vend un poulet
+braise qui consomme 200 g de poulet. Le lien entre les deux, c'est la recette.
+
+Mais le lien livre en 024 etait une impasse : une colonne menu_item_id sur
+stock_items, donc UN article rattache a UN seul plat. Or le meme poulet sert
+dans trois plats. Il aurait fallu creer trois lignes « Poulet », chacune avec
+son propre stock — le total affiche aurait ete faux. C'est exactement le genre
+d'erreur qui fait perdre confiance dans un inventaire, et c'etait notre sujet.
+
+docs/025_recettes.sql cree menu_item_recipes(menu_item_id, stock_item_id,
+quantity_per_serving) : une vraie recette plusieurs-a-plusieurs. Les liens
+deja saisis sont repris automatiquement, puis l'ancienne colonne est retiree —
+deux mecanismes concurrents finiraient toujours par se contredire.
+
+La consommation lit desormais la recette plutot que la colonne. Le
+declencheur, lui, ne change pas : il appelle la fonction, seul son contenu
+bouge.
+
+Cote page, chaque fiche article liste les plats qui le consomment avec leur
+portion, et permet d'en ajouter ou d'en retirer. Lier un plat n'est plus un
+champ du formulaire de creation mais une action sur l'article : un article
+existe avant d'etre rattache a une recette, et peut servir a plusieurs plats.
+
+Le message « aucun plat lie » est affiche explicitement, pour qu'un article
+non rattache ne passe pas pour un article dont le stock ne bouge pas par
+erreur.

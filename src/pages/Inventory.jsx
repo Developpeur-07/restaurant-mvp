@@ -22,7 +22,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Package, Plus, Minus, Trash2, AlertTriangle,
-  Sun, Moon, X, Check,
+  Sun, Moon, X, Check, Link2,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../lib/useTheme";
@@ -44,8 +44,6 @@ const EMPTY_FORM = {
   quantity: "",
   alert_threshold: "",
   cost_per_unit: "",
-  menu_item_id: "",
-  quantity_per_serving: "1",
 };
 
 export default function Inventory() {
@@ -55,6 +53,10 @@ export default function Inventory() {
   const [items, setItems] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [movements, setMovements] = useState([]);
+  // Recettes : « ce plat consomme N de cet article ». Un article peut être
+  // partagé par plusieurs plats, ce qui excluait l'ancien lien unique.
+  const [recipes, setRecipes] = useState([]);
+  const [linkDraft, setLinkDraft] = useState({});
   const [loading, setLoading] = useState(true);
   const [tableMissing, setTableMissing] = useState(false);
   const [error, setError] = useState(null);
@@ -76,9 +78,13 @@ export default function Inventory() {
 
     async function load() {
       setLoading(true);
-      const [resItems, resMenu, resMoves] = await Promise.all([
+      const [resItems, resMenu, resMoves, resRecipes] = await Promise.all([
         supabase.from("stock_items").select("*").eq("restaurant_id", restaurantId).order("name"),
         supabase.from("menu_items").select("id, name").eq("restaurant_id", restaurantId).order("name"),
+        supabase
+          .from("menu_item_recipes")
+          .select("id, menu_item_id, stock_item_id, quantity_per_serving")
+          .eq("restaurant_id", restaurantId),
         supabase
           .from("stock_movements")
           .select("id, stock_item_id, delta, reason, note, created_at")
@@ -95,7 +101,7 @@ export default function Inventory() {
         setLoading(false);
         return;
       }
-      const other = [resItems, resMenu, resMoves].find((r) => r.error);
+      const other = [resItems, resMenu, resMoves, resRecipes].find((r) => r.error);
       if (other) {
         setError(other.error.message);
         setLoading(false);
@@ -130,8 +136,6 @@ export default function Inventory() {
       quantity: qty,
       alert_threshold: Number(form.alert_threshold || 0),
       cost_per_unit: form.cost_per_unit === "" ? null : Number(form.cost_per_unit),
-      menu_item_id: form.menu_item_id || null,
-      quantity_per_serving: Number(form.quantity_per_serving || 1),
     };
 
     const { data, error: err } = await supabase
@@ -215,8 +219,50 @@ export default function Inventory() {
     } else {
       setItems((prev) => prev.filter((i) => i.id !== item.id));
       setMovements((prev) => prev.filter((m) => m.stock_item_id !== item.id));
+      setRecipes((prev) => prev.filter((r) => r.stock_item_id !== item.id));
     }
     setAdjusting(null);
+  }
+
+  // ── RECETTE : quel plat consomme cet article, et combien ──
+
+  async function addLink(item) {
+    const draft = linkDraft[item.id] || {};
+    if (!draft.menu_item_id) return;
+    setError(null);
+    setAdjusting(item.id);
+
+    const { data, error: err } = await supabase
+      .from("menu_item_recipes")
+      .insert({
+        restaurant_id: restaurantId,
+        menu_item_id: draft.menu_item_id,
+        stock_item_id: item.id,
+        quantity_per_serving: Number(draft.quantity_per_serving || 1),
+      })
+      .select()
+      .single();
+
+    setAdjusting(null);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setRecipes((prev) => [...prev, data]);
+    setLinkDraft((prev) => ({ ...prev, [item.id]: {} }));
+  }
+
+  async function removeLink(recipeId) {
+    setError(null);
+    const { error: err } = await supabase
+      .from("menu_item_recipes")
+      .delete()
+      .eq("id", recipeId);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setRecipes((prev) => prev.filter((r) => r.id !== recipeId));
   }
 
   // ── DÉRIVÉS ────────────────────────────────────────────────
@@ -228,6 +274,8 @@ export default function Inventory() {
     0
   );
   const itemName = (id) => items.find((i) => i.id === id)?.name || "Article supprimé";
+  const dishName = (id) => menuItems.find((m) => m.id === id)?.name || "plat supprimé";
+  const linksFor = (item) => recipes.filter((r) => r.stock_item_id === item.id);
 
   const fill = (i) => {
     const t = Number(i.alert_threshold);
@@ -384,30 +432,11 @@ export default function Inventory() {
                     </label>
                   </div>
 
-                  <div className="inv-field-row">
-                    <label className="inv-field">
-                      <span style={{ color: theme.textSecondary }}>Plat associé (optionnel)</span>
-                      <select
-                        value={form.menu_item_id}
-                        onChange={(e) => setForm({ ...form, menu_item_id: e.target.value })}
-                        style={{ background: theme.pageBackground, color: theme.textPrimary, borderColor: theme.borderLight }}
-                      >
-                        <option value="">Aucun</option>
-                        {menuItems.map((m) => (
-                          <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="inv-field">
-                      <span style={{ color: theme.textSecondary }}>Consommé par portion</span>
-                      <input
-                        type="number" step="0.001" min="0.001"
-                        value={form.quantity_per_serving}
-                        onChange={(e) => setForm({ ...form, quantity_per_serving: e.target.value })}
-                        style={{ background: theme.pageBackground, color: theme.textPrimary, borderColor: theme.borderLight }}
-                      />
-                    </label>
-                  </div>
+                  <p className="inv-hint" style={{ color: theme.textMuted }}>
+                    Une fois l&apos;article créé, indiquez quels plats le consomment
+                    et en quelle quantité : c&apos;est ce lien qui fera tomber le
+                    stock à chaque commande servie.
+                  </p>
 
                   <button className="inv-btn inv-btn-full" type="submit" disabled={saving} style={{ background: theme.primary, color: "#fff" }}>
                     <Check size={15} /> {saving ? "Enregistrement..." : "Enregistrer l'article"}
@@ -430,10 +459,17 @@ export default function Inventory() {
                         <div className="inv-item-main">
                           <div className="inv-item-name">
                             <strong style={{ color: theme.textPrimary }}>{i.name}</strong>
-                            {i.menu_item_id && (
+                            {linksFor(i).length > 0 && (
                               <em style={{ color: theme.textMuted }}>
-                                {menuItems.find((m) => m.id === i.menu_item_id)?.name || "plat associé"}
-                                {" · "}{i.quantity_per_serving} / portion
+                                consommé par{" "}
+                                {linksFor(i)
+                                  .map(
+                                    (l) =>
+                                      `${dishName(l.menu_item_id)} (${Number(
+                                        l.quantity_per_serving,
+                                      ).toLocaleString("fr-FR")} / portion)`,
+                                  )
+                                  .join(", ")}
                               </em>
                             )}
                           </div>
@@ -496,6 +532,82 @@ export default function Inventory() {
                           >
                             <Trash2 size={15} />
                           </button>
+                        </div>
+
+                        {/* Recette : quels plats consomment cet article.
+                            Un article peut être partagé par plusieurs plats —
+                            c'est tout l'objet du passage à une table de recette
+                            (025) plutôt qu'un lien unique vers un seul plat. */}
+                        <div className="inv-recipe">
+                          <div className="inv-recipe-links">
+                            {linksFor(i).length === 0 ? (
+                              <span className="inv-recipe-none" style={{ color: theme.textMuted }}>
+                                Aucun plat lié — le stock ne bougera pas à la commande.
+                              </span>
+                            ) : (
+                              linksFor(i).map((l) => (
+                                <span
+                                  key={l.id}
+                                  className="inv-link"
+                                  style={{ borderColor: theme.borderLight, color: theme.textSecondary }}
+                                >
+                                  {dishName(l.menu_item_id)}
+                                  {" · "}
+                                  {Number(l.quantity_per_serving).toLocaleString("fr-FR")} / portion
+                                  <button
+                                    onClick={() => removeLink(l.id)}
+                                    title="Retirer ce plat de la recette"
+                                    aria-label="Retirer ce plat de la recette"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </span>
+                              ))
+                            )}
+                          </div>
+
+                          <div className="inv-recipe-add">
+                            <select
+                              value={(linkDraft[i.id] || {}).menu_item_id || ""}
+                              onChange={(e) =>
+                                setLinkDraft((prev) => ({
+                                  ...prev,
+                                  [i.id]: { ...(prev[i.id] || {}), menu_item_id: e.target.value },
+                                }))
+                              }
+                              aria-label="Plat à lier"
+                              style={{ background: theme.pageBackground, color: theme.textPrimary, borderColor: theme.borderLight }}
+                            >
+                              <option value="">Lier un plat…</option>
+                              {menuItems
+                                .filter((m) => !linksFor(i).some((l) => l.menu_item_id === m.id))
+                                .map((m) => (
+                                  <option key={m.id} value={m.id}>{m.name}</option>
+                                ))}
+                            </select>
+                            <input
+                              type="number" step="0.001" min="0.001"
+                              value={(linkDraft[i.id] || {}).quantity_per_serving || "1"}
+                              onChange={(e) =>
+                                setLinkDraft((prev) => ({
+                                  ...prev,
+                                  [i.id]: {
+                                    ...(prev[i.id] || {}),
+                                    quantity_per_serving: e.target.value,
+                                  },
+                                }))
+                              }
+                              aria-label="Quantité consommée par portion"
+                              style={{ background: theme.pageBackground, color: theme.textPrimary, borderColor: theme.borderLight }}
+                            />
+                            <button
+                              className="inv-btn inv-btn-ghost"
+                              onClick={() => addLink(i)}
+                              disabled={!(linkDraft[i.id] || {}).menu_item_id || adjusting === i.id}
+                            >
+                              <Link2 size={13} /> Lier
+                            </button>
+                          </div>
                         </div>
                       </li>
                     );
@@ -610,6 +722,20 @@ const CSS = (t) => `
 .inv-item-name{display:flex;flex-direction:column;gap:2px;min-width:0}
 .inv-item-name strong{font-size:.95rem}
 .inv-item-name em{font-style:normal;font-size:.74rem}
+
+.inv-hint{margin:2px 0 4px;font-size:.74rem;line-height:1.55}
+.inv-recipe{margin-top:11px;padding-top:11px;border-top:1px solid ${t.borderLight}}
+.inv-recipe-links{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.inv-recipe-none{font-size:.72rem;font-style:italic}
+.inv-link{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;max-width:100%;
+  border:1px solid ${t.borderLight};border-radius:999px;padding:3px 4px 3px 10px}
+.inv-link button{display:grid;place-items:center;width:20px;height:20px;flex:none;padding:0;
+  border:none;background:transparent;border-radius:50%;cursor:pointer;color:${t.textMuted}}
+.inv-recipe-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.inv-recipe-add select{flex:1 1 170px;min-width:0;box-sizing:border-box;font-family:inherit;
+  border:1px solid ${t.borderLight};border-radius:9px;padding:9px 10px;font-size:.82rem}
+.inv-recipe-add input{flex:0 1 96px;min-width:0;box-sizing:border-box;font-family:inherit;
+  border:1px solid ${t.borderLight};border-radius:9px;padding:9px 10px;font-size:.82rem}
 .inv-item-qty{display:flex;align-items:baseline;gap:5px;flex:none}
 .inv-item-qty b{font-family:Georgia,serif;font-size:1.15rem}
 .inv-item-qty span{font-size:.72rem}
