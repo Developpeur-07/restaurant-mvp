@@ -528,3 +528,24 @@ avec un utilitaire Tailwind (les cartes de la page d'accueil etaient tombees a
 
 Si les tables n'existent pas encore, la page affiche une consigne expliquant
 d'executer le script SQL, au lieu de rester blanche.
+
+## Correction 42725 — ambiguite is_restaurant_staff
+
+Premier lancement du script : `ERROR 42725: function public.is_restaurant_staff(uuid)
+is not unique`. Le script creait sa propre version de cette fonction d'aide, qui
+doublonnait une surcharge deja presente en base : deux candidats pour un appel a
+un seul argument, Postgres refuse de choisir.
+
+Le script ne depend plus d'aucune fonction d'aide. Les conditions RLS sont
+ecrites en ligne (exists() sur restaurant_staff et restaurants.owner_id) : il
+s'installe quelle que soit l'histoire du schema, et ne cassera pas au prochain
+ajout de surcharge. Le nommage des parametres existants n'est plus une
+hypothese.
+
+Un bloc de nettoyage en tete supprime la surcharge laissee par l'execution
+avortee, mais seulement s'il s'agit bien de la notre (parametre nomme
+p_restaurant) et s'il en reste une autre. Le script est rejouable tel quel.
+
+Raisonnement tenu sur le risque du drop : l'application fonctionne aujourd'hui,
+donc aucune politique existante n'etait ambigue avant. La surcharge a un
+argument est donc bien nouvelle, donc bien la notre.

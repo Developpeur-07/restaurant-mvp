@@ -83,68 +83,133 @@ create trigger stock_items_touch
   for each row execute function public.stock_touch_updated_at();
 
 -- ------------------------------------------------------------
--- 3. AIDES DE SÉCURITÉ
+-- 3. NETTOYAGE D'UNE EXÉCUTION AVORTÉE (rejouable sans risque)
 -- ------------------------------------------------------------
+--
+-- La première version de ce script créait public.is_restaurant_staff(uuid).
+-- Or cette base possède DÉJÀ une surcharge du même nom, avec un second
+-- argument : deux candidats pour un appel à un seul argument, et Postgres
+-- refuse de choisir —
+--   ERROR 42725: function public.is_restaurant_staff(uuid) is not unique
+--
+-- On supprime donc la surcharge créée par ce script, mais uniquement si c'est
+-- bien la nôtre (paramètre nommé p_restaurant) ET s'il en reste une autre :
+-- sans ces deux conditions, on risquerait de casser une fonction existante.
 
--- Le propriétaire n'a pas forcément de ligne restaurant_staff :
--- l'absence de ligne ne doit donc jamais être un motif de refus.
-create or replace function public.is_restaurant_staff(p_restaurant uuid)
-returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.restaurant_staff s
-    where s.restaurant_id = p_restaurant and s.user_id = auth.uid()
-  )
-  or exists (
-    select 1 from public.restaurants r
-    where r.id = p_restaurant and r.owner_id = auth.uid()
-  );
-$$;
+do $$
+declare
+  v_def    text;
+  v_autres integer;
+begin
+  select pg_get_functiondef(p.oid)
+    into v_def
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname     = 'public'
+     and p.proname     = 'is_restaurant_staff'
+     and p.pronargs    = 1
+     and p.proargnames = array['p_restaurant'];
 
--- Écriture réservée à l'administration : la cuisine consulte mais ne corrige
--- pas les quantités (c'est le propriétaire qui tient le stock).
-create or replace function public.can_manage_stock(p_restaurant uuid)
-returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.restaurant_staff s
-    where s.restaurant_id = p_restaurant
-      and s.user_id = auth.uid()
-      and s.role in ('admin', 'reception')
-  )
-  or exists (
-    select 1 from public.restaurants r
-    where r.id = p_restaurant and r.owner_id = auth.uid()
-  );
-$$;
+  if v_def is not null then
+    select count(*) into v_autres
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname  = 'public'
+       and p.proname  = 'is_restaurant_staff'
+       and p.pronargs > 1;
+
+    if v_autres > 0 then
+      execute 'drop function public.is_restaurant_staff(uuid)';
+      raise notice '024 : surcharge is_restaurant_staff(uuid) supprimée, l''ambiguïté est levée.';
+    else
+      raise notice '024 : surcharge is_restaurant_staff(uuid) conservée (aucune autre variante en base).';
+    end if;
+  end if;
+end $$;
+
+-- Fonction d'aide propre à ce module, retirée : les politiques ci-dessous
+-- n'appellent plus rien, donc plus aucune signature à deviner.
+drop function if exists public.can_manage_stock(uuid);
 
 -- ------------------------------------------------------------
--- 4. RLS
+-- 4. RLS — conditions écrites en ligne
 -- ------------------------------------------------------------
+--
+-- Pourquoi plus aucune fonction d'aide : la base possède plusieurs variantes
+-- de is_restaurant_staff. Les appeler reviendrait à dépendre d'une signature
+-- qu'on ne maîtrise pas, et à casser au prochain ajout de surcharge. Les
+-- conditions sont donc écrites directement dans les politiques : ce script
+-- s'installe quelle que soit l'histoire du schéma.
 
 alter table public.stock_items     enable row level security;
 alter table public.stock_movements enable row level security;
 
+-- ── Lecture : tout le personnel du restaurant, propriétaire compris. ──
+-- Attention au piège : le propriétaire n'a pas forcément de ligne
+-- restaurant_staff. L'absence de ligne ne doit donc jamais valoir refus, d'où
+-- le second exists().
 drop policy if exists stock_items_select on public.stock_items;
 create policy stock_items_select on public.stock_items
   for select to authenticated
-  using (public.is_restaurant_staff(restaurant_id));
+  using (
+       exists (select 1 from public.restaurant_staff s
+                where s.restaurant_id = stock_items.restaurant_id
+                  and s.user_id = auth.uid())
+    or exists (select 1 from public.restaurants r
+                where r.id = stock_items.restaurant_id
+                  and r.owner_id = auth.uid())
+  );
 
+-- ── Écriture : administration seulement. ──
+-- La cuisine consulte les quantités mais ne les corrige pas : c'est le
+-- propriétaire qui tient le stock, la cuisine signale.
 drop policy if exists stock_items_write on public.stock_items;
 create policy stock_items_write on public.stock_items
   for all to authenticated
-  using (public.can_manage_stock(restaurant_id))
-  with check (public.can_manage_stock(restaurant_id));
+  using (
+       exists (select 1 from public.restaurant_staff s
+                where s.restaurant_id = stock_items.restaurant_id
+                  and s.user_id = auth.uid()
+                  and s.role in ('admin', 'reception'))
+    or exists (select 1 from public.restaurants r
+                where r.id = stock_items.restaurant_id
+                  and r.owner_id = auth.uid())
+  )
+  with check (
+       exists (select 1 from public.restaurant_staff s
+                where s.restaurant_id = stock_items.restaurant_id
+                  and s.user_id = auth.uid()
+                  and s.role in ('admin', 'reception'))
+    or exists (select 1 from public.restaurants r
+                where r.id = stock_items.restaurant_id
+                  and r.owner_id = auth.uid())
+  );
 
+-- ── Journal : mêmes règles. ──
 drop policy if exists stock_movements_select on public.stock_movements;
 create policy stock_movements_select on public.stock_movements
   for select to authenticated
-  using (public.is_restaurant_staff(restaurant_id));
+  using (
+       exists (select 1 from public.restaurant_staff s
+                where s.restaurant_id = stock_movements.restaurant_id
+                  and s.user_id = auth.uid())
+    or exists (select 1 from public.restaurants r
+                where r.id = stock_movements.restaurant_id
+                  and r.owner_id = auth.uid())
+  );
 
 drop policy if exists stock_movements_insert on public.stock_movements;
 create policy stock_movements_insert on public.stock_movements
   for insert to authenticated
-  with check (public.can_manage_stock(restaurant_id));
+  with check (
+       exists (select 1 from public.restaurant_staff s
+                where s.restaurant_id = stock_movements.restaurant_id
+                  and s.user_id = auth.uid()
+                  and s.role in ('admin', 'reception'))
+    or exists (select 1 from public.restaurants r
+                where r.id = stock_movements.restaurant_id
+                  and r.owner_id = auth.uid())
+  );
 
 -- ------------------------------------------------------------
 -- 5. CONSOMMATION AUTOMATIQUE SUR COMMANDE
