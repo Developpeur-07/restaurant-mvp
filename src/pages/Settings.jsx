@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
+import { ADMIN_CSS } from "../lib/adminCss";
 import {
   Sun, Moon, ArrowLeft, Mail, Lock, ChefHat, Bell, Copy, Check,
   ShieldCheck, ShieldOff, Smartphone, KeyRound, RefreshCw, Users,
@@ -37,76 +38,6 @@ const SECTIONS = {
   securite: { roles: ["proprietaire", "reception"] },
   equipe: { roles: ["proprietaire"] },
 };
-
-// Feuille de style partagée des pages d'administration.
-//
-// Pourquoi des classes plutôt que des styles en ligne : un style en ligne ne
-// peut pas réagir à la largeur de l'écran. C'est la cause exacte de l'absence
-// de responsive sur cette page, qui restait une colonne de 480px sur un écran
-// large. Les couleurs viennent de variables posées une seule fois sur la page,
-// donc le thème (et le mode sombre) continuent de s'appliquer.
-//
-// Préfixe adm- : exclut toute collision avec un utilitaire Tailwind (les cartes
-// de la page d'accueil étaient tombées à 12px à cause de w-3 / w-2).
-const ADMIN_CSS = `
-.adm-page{min-height:100vh;background:var(--adm-page)}
-
-.adm-header-inner{
-  max-width:520px;margin:0 auto;display:flex;justify-content:space-between;
-  align-items:center;gap:12px;flex-wrap:wrap;
-}
-
-/* Le conteneur EST la grille : pas de div supplémentaire à insérer, donc pas
-   de réindentation de 700 lignes. Les éléments .adm-full occupent toute la
-   largeur ; les cartes se répartissent seules. */
-.adm-wrap{
-  max-width:520px;margin:0 auto;padding:24px 16px 48px;
-  display:flex;flex-direction:column;gap:22px;
-}
-.adm-full{width:100%}
-
-/* Chaque section est sa propre grille : les cartes d'un meme theme restent
-   ensemble, et deux sujets sans rapport ne se retrouvent jamais cote a cote. */
-.adm-section{
-  display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;
-  min-width:0;
-}
-.adm-section-head{grid-column:1/-1;min-width:0}
-.adm-section-title{
-  margin:0 0 5px;font-family:Georgia,serif;font-size:1.05rem;color:var(--adm-text);
-}
-.adm-section-sub{margin:0;font-size:.78rem;color:var(--adm-text-2);line-height:1.5}
-
-.adm-card{
-  background:var(--adm-card);border-radius:20px;padding:20px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.08);
-  /* Sans min-width:0, un contenu long (adresse e-mail, jeton d'invitation)
-     étire la piste de la grille et provoque un défilement horizontal. */
-  min-width:0;
-}
-.adm-label{
-  display:block;font-size:.78rem;color:var(--adm-text-2);
-  margin-bottom:8px;font-weight:600;
-}
-.adm-input{
-  width:100%;box-sizing:border-box;font-family:inherit;
-  border:2px solid var(--adm-border);border-radius:12px;padding:12px 15px;
-  font-size:.88rem;margin-bottom:12px;outline:none;
-  background:var(--adm-page);color:var(--adm-text);
-}
-
-/* Un mot plus long que sa carte doit se couper plutôt que déborder. */
-.adm-card p,.adm-card h2,.adm-card strong,.adm-card span,.adm-card code{
-  overflow-wrap:break-word;
-}
-
-@media (min-width:700px){
-  .adm-wrap{max-width:1120px;padding:32px 24px 56px;gap:28px}
-  .adm-section{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
-  .adm-header-inner{max-width:1120px}
-  .adm-card{padding:24px}
-}
-`;
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -751,6 +682,8 @@ export default function Settings() {
         "--adm-text-2": theme.textSecondary,
         "--adm-muted": theme.textMuted,
         "--adm-border": theme.borderLight,
+        "--adm-primary": theme.primary,
+        "--adm-accent": brand.secondary_color,
       }}
     >
 

@@ -650,3 +650,34 @@ regroupement des cartes en deux colonnes.
 La garde redondante de « Mots de passe de l'equipe » a ete retiree : la section
 entiere est deja reservee au proprietaire, et deux gardes qui se recouvrent
 finissent toujours par diverger.
+
+## Responsive de l'Historique, et feuille de style partagee
+
+L'Historique presentait exactement le meme defaut que les Parametres : une
+colonne de 640px centree qui ignorait l'ecran large, et jusqu'a 50 cartes de
+commandes empilees les unes sous les autres.
+
+C'etait la deuxieme page a avoir besoin du meme traitement. Plutot que de
+dupliquer la feuille de style, elle est sortie de Settings.jsx pour devenir
+src/lib/adminCss.js. Les deux pages l'importent desormais.
+
+Le contrat est documente en tete du fichier : une page qui utilise cette
+feuille pose les variables CSS (--adm-page, --adm-card, --adm-text,
+--adm-text-2, --adm-border, --adm-primary, --adm-accent) une seule fois sur son
+element racine. Le theme et le mode sombre continuent de s'appliquer, puisque
+les classes ne contiennent aucune couleur en dur.
+
+Coté Historique :
+- la liste des commandes devient une grille : une colonne sur mobile, deux a
+  partir de 700px, trois a partir de 1180px. Ce sont des cartes courtes et
+  repetitives, elles supportent la densite — contrairement a un formulaire.
+- le bloc « total encaisse » devient .adm-hero. Sa couleur d'accent passe par
+  --adm-accent plutot qu'en #C9A84C dur : le doré etait ecrit en dur alors que
+  la couleur secondaire est configurable par restaurant.
+- les lignes article passent par .adm-line (flex-wrap + min-width:0), pour
+  qu'un nom de plat long ne pousse pas le prix hors de l'ecran.
+
+Un point de vigilance : le build passait alors que ADMIN_CSS n'etait pas
+importe dans Settings. Undefined n'est pas une erreur de compilation mais une
+erreur a l'execution — la page aurait plante. Seul le lint l'a attrape. D'ou
+l'interet de le faire tourner systematiquement, et pas seulement le build.

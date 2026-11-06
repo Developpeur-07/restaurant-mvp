@@ -5,6 +5,7 @@ import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
 import { ArrowLeft, Sun, Moon, BarChart3, ShoppingBag, UtensilsCrossed, Receipt } from 'lucide-react'
 import ReceiptModal from '../components/ReceiptModal'
+import { ADMIN_CSS } from '../lib/adminCss'
 
 export default function History() {
   const navigate = useNavigate()
@@ -74,16 +75,26 @@ export default function History() {
   return (
     <>
       <div
-        className={selectedReceipt ? 'dashboard-print-hide' : ''}
-        style={{ background: theme.pageBackground, minHeight: '100vh' }}
+        className={`adm-page ${selectedReceipt ? 'dashboard-print-hide' : ''}`}
+        style={{
+          "--adm-page": theme.pageBackground,
+          "--adm-card": theme.cardBackground,
+          "--adm-text": theme.textPrimary,
+          "--adm-text-2": theme.textSecondary,
+          "--adm-muted": theme.textMuted,
+          "--adm-border": theme.borderLight,
+          "--adm-primary": theme.primary,
+          "--adm-accent": restaurantBrand?.secondary_color || "#C9A84C",
+        }}
       >
+      <style>{ADMIN_CSS}</style>
 
       {/* HEADER */}
       <div style={{
         background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor})`,
         padding: '24px 20px'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+        <div className="adm-header-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               onClick={() => navigate('/dashboard')}
@@ -106,32 +117,26 @@ export default function History() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 18px' }}>
+      <div className="adm-wrap">
 
         {/* TOTAL */}
-        <div style={{ background: theme.primary, borderRadius: '20px', padding: '24px', textAlign: 'center', marginBottom: '28px' }}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', margin: '0 0 6px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Total encaissé
-          </p>
-          <p style={{ color: '#C9A84C', fontSize: '2rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', margin: 0 }}>
-            {total.toLocaleString()} FCFA
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', margin: '6px 0 0' }}>
-            {orders.length} commande(s) soldée(s)
-          </p>
+        <div className="adm-hero">
+          <p className="adm-hero-label">Total encaissé</p>
+          <p className="adm-hero-value">{total.toLocaleString()} FCFA</p>
+          <p className="adm-hero-sub">{orders.length} commande(s) soldée(s)</p>
         </div>
 
         {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '56px 0', color: theme.textSecondary }}>
+          <div className="adm-empty" style={{ color: theme.textSecondary }}>
             <BarChart3 size={48} style={{ margin: '0 0 14px' }} />
             <p style={{ fontFamily: 'Georgia, serif' }}>Aucune vente enregistrée</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="adm-list">
             {orders.map(order => {
               const orderTotal = order.items.reduce((s, i) => s + i.price * i.qty, 0)
               return (
-                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '16px', padding: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+                <div key={order.id} className="adm-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                     <div>
                       <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
@@ -149,7 +154,7 @@ export default function History() {
                   </div>
                   <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: '14px' }}>
                     {order.items.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
+                      <div key={i} className="adm-line">
                         <span style={{ color: theme.textPrimary }}><span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
                         <span style={{ color: theme.textSecondary }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
                       </div>
