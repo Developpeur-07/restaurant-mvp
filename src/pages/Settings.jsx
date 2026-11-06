@@ -22,6 +22,66 @@ const STAFF_ROLES = [
   { value: "kitchen", label: "Cuisine", Icon: ChefHat },
 ];
 
+// Feuille de style partagée des pages d'administration.
+//
+// Pourquoi des classes plutôt que des styles en ligne : un style en ligne ne
+// peut pas réagir à la largeur de l'écran. C'est la cause exacte de l'absence
+// de responsive sur cette page, qui restait une colonne de 480px sur un écran
+// large. Les couleurs viennent de variables posées une seule fois sur la page,
+// donc le thème (et le mode sombre) continuent de s'appliquer.
+//
+// Préfixe adm- : exclut toute collision avec un utilitaire Tailwind (les cartes
+// de la page d'accueil étaient tombées à 12px à cause de w-3 / w-2).
+const ADMIN_CSS = `
+.adm-page{min-height:100vh;background:var(--adm-page)}
+
+.adm-header-inner{
+  max-width:520px;margin:0 auto;display:flex;justify-content:space-between;
+  align-items:center;gap:12px;flex-wrap:wrap;
+}
+
+/* Le conteneur EST la grille : pas de div supplémentaire à insérer, donc pas
+   de réindentation de 700 lignes. Les éléments .adm-full occupent toute la
+   largeur ; les cartes se répartissent seules. */
+.adm-wrap{
+  max-width:520px;margin:0 auto;padding:24px 16px 48px;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start;
+}
+.adm-full{grid-column:1/-1}
+
+.adm-card{
+  background:var(--adm-card);border-radius:20px;padding:20px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.08);
+  /* Sans min-width:0, un contenu long (adresse e-mail, jeton d'invitation)
+     étire la piste de la grille et provoque un défilement horizontal. */
+  min-width:0;
+}
+.adm-label{
+  display:block;font-size:.78rem;color:var(--adm-text-2);
+  margin-bottom:8px;font-weight:600;
+}
+.adm-input{
+  width:100%;box-sizing:border-box;font-family:inherit;
+  border:2px solid var(--adm-border);border-radius:12px;padding:12px 15px;
+  font-size:.88rem;margin-bottom:12px;outline:none;
+  background:var(--adm-page);color:var(--adm-text);
+}
+
+/* Un mot plus long que sa carte doit se couper plutôt que déborder. */
+.adm-card p,.adm-card h2,.adm-card strong,.adm-card span,.adm-card code{
+  overflow-wrap:break-word;
+}
+
+@media (min-width:700px){
+  .adm-wrap{
+    max-width:1120px;padding:32px 24px 56px;
+    grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;
+  }
+  .adm-header-inner{max-width:1120px}
+  .adm-card{padding:24px}
+}
+`;
+
 export default function Settings() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
@@ -650,11 +710,23 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+    <div
+      className="adm-page"
+      style={{
+        "--adm-page": theme.pageBackground,
+        "--adm-card": theme.cardBackground,
+        "--adm-text": theme.textPrimary,
+        "--adm-text-2": theme.textSecondary,
+        "--adm-muted": theme.textMuted,
+        "--adm-border": theme.borderLight,
+      }}
+    >
+
+      <style>{ADMIN_CSS}</style>
 
       {/* HEADER */}
       <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`, padding: "32px 20px 28px" }}>
-        <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div className="adm-header-inner">
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <button
               onClick={() => navigate("/dashboard")}
@@ -688,10 +760,10 @@ export default function Settings() {
         </div>
       </div>
 
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "28px 18px" }}>
+      <div className="adm-wrap">
 
         {message && (
-          <div style={{
+          <div className="adm-full" style={{
             background: message.type === "success" ? "#f0fff0" : "#fff0f0",
             border: `1px solid ${message.type === "success" ? "#90EE90" : "#ffcccc"}`,
             borderRadius: "14px", padding: "14px 18px", marginBottom: "24px"
@@ -703,7 +775,7 @@ export default function Settings() {
         )}
 
         {/* COMPTE ACTUEL */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        <div className="adm-card">
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 14px" }}>
             Compte actuel
           </h2>
@@ -713,7 +785,7 @@ export default function Settings() {
         </div>
 
         {/* ABONNEMENT — visible pour tous (lecture seule) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        <div className="adm-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0 }}>
               Abonnement
@@ -776,7 +848,7 @@ export default function Settings() {
 
         {/* IDENTITÉ VISUELLE — réservé au propriétaire */}
         {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
               Identité visuelle
             </h2>
@@ -803,7 +875,7 @@ export default function Settings() {
               { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
             ].map((field) => (
               <div key={field.key} style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+                <label className="adm-label">
                   {field.label}
                 </label>
                 <input
@@ -821,7 +893,7 @@ export default function Settings() {
             ))}
 
             <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+              <label className="adm-label">
                 Logo
               </label>
 
@@ -868,7 +940,7 @@ export default function Settings() {
                 { label: "Couleur accent", key: "secondary_color" },
               ].map((field) => (
                 <div key={field.key}>
-                  <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+                  <label className="adm-label">
                     {field.label}
                   </label>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -904,7 +976,7 @@ export default function Settings() {
         )}
 
         {/* CHANGER MOT DE PASSE — dispo pour tout compte (propriétaire ou staff) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        <div className="adm-card">
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
             Changer le mot de passe
           </h2>
@@ -912,12 +984,12 @@ export default function Settings() {
           <input
             type="password" placeholder="Mot de passe actuel" value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+            className="adm-input"
           />
           <input
             type="password" placeholder="Nouveau mot de passe" value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+            className="adm-input"
           />
           <input
             type="password" placeholder="Confirmer le mot de passe" value={confirmPassword}
@@ -939,7 +1011,7 @@ export default function Settings() {
         </div>
 
         {/* SÉCURITÉ — DOUBLE AUTHENTIFICATION (2FA) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        <div className="adm-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
               <ShieldCheck size={17} /> Double authentification
@@ -985,7 +1057,7 @@ export default function Settings() {
               </button>
 
               <form onSubmit={confirmEnrollment}>
-                <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+                <label className="adm-label">
                   Code à 6 chiffres affiché dans l'application
                 </label>
                 <input
@@ -1185,7 +1257,7 @@ export default function Settings() {
 
         {/* INVITER DU STAFF — réservé au propriétaire, remplace l'ancien lien vers Supabase Dashboard */}
         {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 8px" }}>
               Inviter un membre de l'équipe
             </h2>
@@ -1281,7 +1353,7 @@ export default function Settings() {
 
         {/* MOTS DE PASSE DE L'ÉQUIPE — réservé au propriétaire */}
         {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px", display: "flex", alignItems: "center", gap: "8px" }}>
               <Users size={17} /> Mots de passe de l'équipe
             </h2>
@@ -1408,6 +1480,7 @@ export default function Settings() {
         )}
 
         <button
+          className="adm-full"
           onClick={handleLogout}
           style={{ width: "100%", background: "transparent", border: `2px solid ${theme.borderLight}`, borderRadius: "14px", padding: "14px", color: theme.textSecondary, fontWeight: "600", fontSize: "0.88rem", cursor: "pointer" }}
         >

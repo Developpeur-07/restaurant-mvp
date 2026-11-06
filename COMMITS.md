@@ -581,3 +581,37 @@ existe avant d'etre rattache a une recette, et peut servir a plusieurs plats.
 Le message « aucun plat lie » est affiche explicitement, pour qu'un article
 non rattache ne passe pas pour un article dont le stock ne bouge pas par
 erreur.
+
+## Responsive de la page Parametres
+
+Premiere page traitee dans la mise a niveau responsive des pages internes.
+
+Le diagnostic n'etait pas celui qu'on attendait. Les 24 « largeurs fixes »
+reperees au comptage etaient en fait des width:100%, donc deja fluides. Le
+defaut reel : une colonne de 480px centree qui ne grandissait jamais, meme sur
+un ecran large. Le probleme n'etait donc pas le debordement, mais l'espace
+perdu sur desktop.
+
+D'ou le choix de ne pas tout reecrire : 130 styles en ligne, dont une centaine
+uniques, et aucune verification visuelle possible de mon cote. Reecrire 700
+lignes de JSX a l'aveugle etait le meilleur moyen de casser une page qui
+marche. Seuls les motifs qui bloquent reellement la mise en page sont devenus
+des classes : 7 cartes, 4 libelles, 2 champs, les deux conteneurs.
+
+Les couleurs restent pilotables par le theme malgre les classes : elles
+passent par des variables CSS posees une seule fois sur la page. Mode sombre et
+couleur de marque fonctionnent comme avant.
+
+Le conteneur EST la grille, plutot que d'envelopper les cartes dans un div
+supplementaire : cela evite la reindentation de 700 lignes pour un resultat
+identique. Les elements .adm-full (message, deconnexion) occupent toute la
+largeur.
+
+Deux details qui comptent : min-width:0 sur les cartes, sans quoi une adresse
+e-mail ou un jeton d'invitation etire la piste de la grille et declenche un
+defilement horizontal ; et overflow-wrap:break-word, pour qu'un mot plus long
+que sa carte se coupe au lieu de deborder.
+
+Base mobile, deux colonnes a partir de 700px, plafond a 1120px.
+
+L'erreur de lint restante (setMessage dans un effect) est preexistante.
