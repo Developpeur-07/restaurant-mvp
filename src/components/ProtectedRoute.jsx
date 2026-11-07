@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import useSessionGuard from '../hooks/useSessionGuard'
 
 export default function ProtectedRoute({ children }) {
   const [user, setUser] = useState(undefined)
+
+  // Un seul appareil actif par compte. Monté ici plutôt que dans chaque page :
+  // toute route protégée est surveillée, sans qu'on puisse l'oublier.
+  useSessionGuard()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {

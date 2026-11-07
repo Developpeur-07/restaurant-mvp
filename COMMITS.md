@@ -716,3 +716,49 @@ memes variables, au lieu de recopier huit lignes dont une finissait toujours
 par diverger.
 
 Converti : Historique, Inventaire, Parametres, MenuManager (ses deux en-tetes).
+
+## Sessions : un seul appareil actif par compte, sous verification 2FA
+
+Regle decidiee : quand un second appareil se connecte, l'ancien est deconnecte,
+MAIS seulement apres verification de la double authentification. Sans cette
+verification, une personne ayant vole un mot de passe pourrait evacuer le
+proprietaire legitime de son propre compte — ce serait une prise de controle
+offerte a l'attaquant, pas une protection.
+
+Repartition des roles, qui est le point important du dispositif :
+
+  - docs/026_sessions.sql ne fait que DETECTER et JOURNALISER. Ce n'est pas une
+    barriere de securite : y ecrire ne deconnecte personne.
+  - la revocation reelle est faite par api/sessions/revoke-others.js via
+    auth.admin.signOut(jwt, 'others'), qui invalide les jetons de
+    rafraichissement. Supabase reste la source d'autorite.
+  - la regle 2FA est appliquee COTE SERVEUR (requireAal2IfEnrolled). L'exiger
+    dans le client n'aurait aucune valeur : le client est contournable.
+
+Consequence voulue : si la table est vide ou fausse, on perd la detection, pas
+la securite.
+
+Fenetre d'activite de 5 minutes pour un battement toutes les 60 secondes. Sans
+fenetre, un appareil reste actif eternellement des qu'on ferme un onglet — rien
+ne previent le serveur — et le proprietaire se voit reclamer un code a chaque
+reconnexion sur son propre telephone. Deux battements peuvent se perdre sans
+fausse alerte.
+
+Cas traite explicitement : si le compte n'a PAS active la 2FA, on ne peut rien
+exiger de plus et on evince quand meme. Refuser reviendrait a enfermer dehors
+le proprietaire qui a perdu son telephone. Un message l'invite a activer la 2FA.
+
+L'appareil evince est prevenu par deux signaux redondants : le 401 renvoye par
+l'API (jetons revolues, le plus sur car il vient de Supabase), et le drapeau
+revoked de la table (filet si les jetons sont encore valides).
+
+## 027 : une seule version de is_restaurant_staff
+
+Cette base possede plusieurs surcharges de is_restaurant_staff, apparues en
+dehors des migrations du depot — verifie : aucune migration 018 a 023 ne la
+cree. D'ou l'erreur 42725 rencontree a l'installation de l'inventaire.
+
+Le script se REFUSE a agir s'il trouve un appel a plus d'un argument quelque
+part : Postgres ne trace pas les dependances entre une fonction et les
+politiques RLS qui l'appellent, donc supprimer une surcharge casserait ces
+appels a l'execution, silencieusement. Mieux vaut avorter que casser.
