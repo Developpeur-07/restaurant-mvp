@@ -3,8 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
-import { ArrowLeft, Sun, Moon, BarChart3, ShoppingBag, UtensilsCrossed, Receipt } from 'lucide-react'
+import { BarChart3, ShoppingBag, UtensilsCrossed, Receipt } from 'lucide-react'
 import ReceiptModal from '../components/ReceiptModal'
+import PageHeader from '../components/PageHeader'
+import PageLoader from '../components/PageLoader'
+import { ADMIN_CSS, adminVars } from '../lib/adminCss'
 
 export default function History() {
   const navigate = useNavigate()
@@ -57,15 +60,12 @@ export default function History() {
     return () => { cancelled = true }
   }, [contextLoading, restaurantId])
 
-  if (contextLoading || loading) return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.textSecondary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
-    </div>
-  )
+  if (contextLoading || loading) return <PageLoader theme={theme} />
 
   if (!restaurantId) return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <p style={{ color: theme.textPrimary, textAlign: 'center' }}>
+    <div className="adm-page adm-loader" style={adminVars(theme, restaurantBrand)}>
+      <style>{ADMIN_CSS}</style>
+      <p className="adm-loader-label">
         Ce compte n'a pas accès à l'historique.
       </p>
     </div>
@@ -74,64 +74,41 @@ export default function History() {
   return (
     <>
       <div
-        className={selectedReceipt ? 'dashboard-print-hide' : ''}
-        style={{ background: theme.pageBackground, minHeight: '100vh' }}
+        className={`adm-page ${selectedReceipt ? 'dashboard-print-hide' : ''}`}
+        style={adminVars(theme, restaurantBrand)}
       >
+      <style>{ADMIN_CSS}</style>
 
-      {/* HEADER */}
-      <div style={{
-        background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor})`,
-        padding: '24px 20px'
-      }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => navigate('/dashboard')}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 14px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              <ArrowLeft size={15} /> Retour
-            </button>
-            <div>
-              <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-                Historique
-              </p>
-              <h1 style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                Ventes soldées
-              </h1>
-            </div>
-          </div>
-          <button onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer' }}>
-            {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        brand={restaurantBrand}
+        theme={theme}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+        onBack={() => navigate('/dashboard')}
+        subtitle="Historique"
+        title="Ventes soldées"
+      />
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '28px 18px' }}>
+      <div className="adm-wrap">
 
         {/* TOTAL */}
-        <div style={{ background: theme.primary, borderRadius: '20px', padding: '24px', textAlign: 'center', marginBottom: '28px' }}>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', margin: '0 0 6px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Total encaissé
-          </p>
-          <p style={{ color: '#C9A84C', fontSize: '2rem', fontWeight: 'bold', fontFamily: 'Georgia, serif', margin: 0 }}>
-            {total.toLocaleString()} FCFA
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', margin: '6px 0 0' }}>
-            {orders.length} commande(s) soldée(s)
-          </p>
+        <div className="adm-hero">
+          <p className="adm-hero-label">Total encaissé</p>
+          <p className="adm-hero-value">{total.toLocaleString()} FCFA</p>
+          <p className="adm-hero-sub">{orders.length} commande(s) soldée(s)</p>
         </div>
 
         {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '56px 0', color: theme.textSecondary }}>
+          <div className="adm-empty" style={{ color: theme.textSecondary }}>
             <BarChart3 size={48} style={{ margin: '0 0 14px' }} />
             <p style={{ fontFamily: 'Georgia, serif' }}>Aucune vente enregistrée</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="adm-list">
             {orders.map(order => {
               const orderTotal = order.items.reduce((s, i) => s + i.price * i.qty, 0)
               return (
-                <div key={order.id} style={{ background: theme.cardBackground, borderRadius: '16px', padding: '20px', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+                <div key={order.id} className="adm-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                     <div>
                       <p style={{ margin: 0, fontWeight: 'bold', color: theme.textPrimary, fontFamily: 'Georgia, serif', display: 'flex', alignItems: 'center', gap: '7px' }}>
@@ -149,7 +126,7 @@ export default function History() {
                   </div>
                   <div style={{ borderTop: `1px solid ${theme.borderLight}`, paddingTop: '14px' }}>
                     {order.items.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
+                      <div key={i} className="adm-line">
                         <span style={{ color: theme.textPrimary }}><span style={{ color: theme.textPrimary, fontWeight: 'bold' }}>{item.qty}×</span> {item.name}</span>
                         <span style={{ color: theme.textSecondary }}>{(item.price * item.qty).toLocaleString()} FCFA</span>
                       </div>

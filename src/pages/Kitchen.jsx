@@ -133,6 +133,7 @@ export default function Kitchen() {
 
   return (
     <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+      <style>{KT_CSS}</style>
 
       {/* HEADER */}
       <div style={{
@@ -140,7 +141,7 @@ export default function Kitchen() {
         padding: '24px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+        <div className="kt-head-inner">
           <div>
             {/* Bug corrigé : `textBold: 'bold'` n'est pas une propriété CSS valide
                 (ignorée silencieusement) — remplacé par `fontWeight: 'bold'`. */}
@@ -170,7 +171,7 @@ export default function Kitchen() {
         </div>
       </div>
 
-      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "28px 18px" }}>
+      <div className="kt-wrap">
 
         {/* COMPTEUR */}
         <div style={{
@@ -194,7 +195,7 @@ export default function Kitchen() {
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="kt-orders">
             {orders.map((order) => {
               const estimatedTime = order.estimated_ready_at
                 ? new Date(order.estimated_ready_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
@@ -269,3 +270,37 @@ export default function Kitchen() {
     </div>
   );
 }
+
+/* Mise en page de l'ecran cuisine.
+   Meme cause que le tableau de bord : tout etait en styles en ligne, donc sans
+   media query possible, et le conteneur etait bloque a 640px.
+   Seuls les conteneurs structurels sont convertis. */
+const KT_CSS = `
+.kt-wrap{max-width:640px;margin:0 auto;padding:28px 18px}
+.kt-head-inner{
+  max-width:640px;margin:0 auto;display:flex;justify-content:space-between;
+  align-items:center;flex-wrap:wrap;gap:14px;
+}
+.kt-orders{display:flex;flex-direction:column;gap:16px}
+
+@media (min-width:700px){
+  .kt-wrap{max-width:1120px;padding:32px 24px 56px}
+  .kt-head-inner{max-width:1120px}
+  .kt-orders{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;align-items:start;
+  }
+}
+
+@media (min-width:1180px){
+  .kt-wrap,.kt-head-inner{max-width:1320px}
+  .kt-orders{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Une cuisine affiche souvent sur un grand ecran ou un television : une
+   colonne de plus exploite la largeur, la encore sans etirer les cartes. */
+@media (min-width:1600px){
+  .kt-wrap,.kt-head-inner{max-width:1720px}
+  .kt-orders{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+`

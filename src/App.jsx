@@ -13,6 +13,7 @@ import SuperAdminRoute from './components/SuperAdminRoute';
 const Tracking = lazy(() => import("./pages/Tracking"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MenuManager = lazy(() => import("./pages/MenuManager"));
+const Inventory = lazy(() => import("./pages/Inventory"));
 const Settings = lazy(() => import("./pages/Settings"));
 const History = lazy(() => import("./pages/History"));
 const QRCodePage = lazy(() => import("./pages/QRCode"));
@@ -79,6 +80,15 @@ export default function App() {
           element={
             <AdminRoute>
               <MenuManager />
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/inventory"
+          element={
+            <AdminRoute>
+              <Inventory />
             </AdminRoute>
           }
         />

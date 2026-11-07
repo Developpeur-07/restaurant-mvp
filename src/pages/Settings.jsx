@@ -3,9 +3,11 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
+import { ADMIN_CSS } from "../lib/adminCss";
+import PageHeader from "../components/PageHeader";
 import {
-  Sun, Moon, ArrowLeft, Mail, Lock, ChefHat, Bell, Copy, Check,
-  ShieldCheck, ShieldOff, Smartphone, KeyRound, RefreshCw, Users,
+  Mail, Lock, ChefHat, Bell, Copy, Check,
+  ShieldCheck, ShieldOff, Smartphone, KeyRound, RefreshCw, Users, Trash2,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { apiRequest } from "../lib/api";
@@ -21,6 +23,22 @@ const STAFF_ROLES = [
   { value: "reception", label: "Réception", Icon: Bell },
   { value: "kitchen", label: "Cuisine", Icon: ChefHat },
 ];
+
+// Sections des paramètres et profils autorisés à les voir.
+//
+// Deux profils seulement atteignent cette page : le propriétaire et la
+// réception. La cuisine est arrêtée en amont par RoleGuard, et il n'existe pas
+// de rôle staff « admin » dans ce projet (STAFF_ROLES = réception, cuisine).
+//
+// Déclarer l'accès ici plutôt qu'en `isOwner &&` dispersé dans le JSX rend la
+// règle lisible d'un coup d'oeil : on voit immédiatement qui voit quoi, et
+// l'ajout d'un profil futur se limite à une ligne de ce tableau.
+const SECTIONS = {
+  compte: { roles: ["proprietaire", "reception"] },
+  presentation: { roles: ["proprietaire"] },
+  securite: { roles: ["proprietaire", "reception"] },
+  equipe: { roles: ["proprietaire"] },
+};
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -47,6 +65,10 @@ export default function Settings() {
   const [staffTokens, setStaffTokens] = useState([]);
   const [loadingTokens, setLoadingTokens] = useState(true);
   const [copiedTokenId, setCopiedTokenId] = useState(null);
+  const [deletingTokenId, setDeletingTokenId] = useState(null);
+  // Supprimer un lien est definitif et coupe l'acces d'un membre qui ne l'a
+  // pas encore utilise : confirmation en deux temps plutot qu'un window.confirm.
+  const [confirmingTokenId, setConfirmingTokenId] = useState(null);
 
   // ── SÉCURITÉ — double authentification (TOTP) ──
   const [mfaLoading, setMfaLoading] = useState(true);
@@ -72,6 +94,12 @@ export default function Settings() {
 
   // ── ABONNEMENT — restaurantId résout owner OU reception (SubscriptionProvider) ──
   const { subscriptionStatus, plan, trialEndAt, nextBillingDate, features, restaurantId, isOwner, refreshSubscription } = useSubscription();
+
+  // Le provider n'expose pas le rôle staff, seulement l'appartenance au
+  // propriétaire. Comme la cuisine ne franchit pas RoleGuard, il ne reste que
+  // deux profils possibles ici.
+  const profil = isOwner ? "proprietaire" : "reception";
+  const peutVoir = (id) => SECTIONS[id].roles.includes(profil);
 
   const trialDaysLeft = trialEndAt
     ? Math.ceil((new Date(trialEndAt) - new Date()) / (1000 * 60 * 60 * 24))
@@ -392,6 +420,46 @@ export default function Settings() {
     setTimeout(() => setMessage(null), 3000);
   }
 
+  // ── Suppression manuelle d'un lien d'invitation ──
+  //
+  // Sans la politique RLS de docs/028, cette suppression NE RENVOIE AUCUNE
+  // ERREUR : Postgres ne supprime simplement aucune ligne. C'est le piege
+  // classique du RLS — l'absence d'erreur n'est pas un succes. D'ou le
+  // controle explicite sur le nombre de lignes annoncees.
+  async function deleteStaffToken(tokenId) {
+    if (!isOwner || !restaurantId) return;
+    setDeletingTokenId(tokenId);
+
+    const { data, error } = await supabase
+      .from("staff_invitation_tokens")
+      .delete()
+      .eq("id", tokenId)
+      // Defense en profondeur : meme si le RLS laissait passer, on ne peut
+      // pas supprimer le lien d'un autre restaurant.
+      .eq("restaurant_id", restaurantId)
+      .select("id");
+
+    setDeletingTokenId(null);
+    setConfirmingTokenId(null);
+
+    if (error) {
+      setMessage({ type: "error", text: "Suppression impossible : " + error.message });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setMessage({
+        type: "error",
+        text: "Suppression refusée. Exécute docs/028_suppression_invitations.sql dans l'éditeur Supabase pour autoriser cette action.",
+      });
+      return;
+    }
+
+    setStaffTokens((prev) => prev.filter((t) => t.id !== tokenId));
+    setMessage({ type: "success", text: "Lien d'invitation supprimé ✓" });
+    setTimeout(() => setMessage(null), 3000);
+  }
+
   function copyStaffLink(token, id) {
     const url = `${window.location.origin}/staff-onboarding/${token}`;
     navigator.clipboard.writeText(url);
@@ -650,48 +718,36 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ background: theme.pageBackground, minHeight: "100vh" }}>
+    <div
+      className="adm-page"
+      style={{
+        "--adm-page": theme.pageBackground,
+        "--adm-card": theme.cardBackground,
+        "--adm-text": theme.textPrimary,
+        "--adm-text-2": theme.textSecondary,
+        "--adm-muted": theme.textMuted,
+        "--adm-border": theme.borderLight,
+        "--adm-primary": theme.primary,
+        "--adm-accent": brand.secondary_color,
+      }}
+    >
 
-      {/* HEADER */}
-      <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`, padding: "32px 20px 28px" }}>
-        <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "10px",
-                padding: "9px 14px", color: "#fff", cursor: "pointer", fontSize: "0.85rem",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-              }}
-            >
-              <ArrowLeft size={15} /> Retour
-            </button>
-            <div>
-              <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: 0, fontFamily: "Georgia, serif" }}>
-                Administration
-              </p>
-              <h1 style={{ color: "#fff", fontSize: "1.4rem", fontFamily: "Georgia, serif", margin: 0 }}>
-                Paramètres
-              </h1>
-            </div>
-          </div>
-          <button
-            onClick={toggleDarkMode}
-            style={{
-              background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "10px",
-              padding: "9px 11px", cursor: "pointer", display: "inline-flex",
-              alignItems: "center", justifyContent: "center", color: "inherit",
-            }}
-          >
-            {darkMode ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-          </button>
-        </div>
-      </div>
+      <style>{ADMIN_CSS}</style>
 
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "28px 18px" }}>
+      <PageHeader
+        brand={brand}
+        theme={theme}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+        onBack={() => navigate("/dashboard")}
+        subtitle="Administration"
+        title="Paramètres"
+      />
+
+      <div className="adm-wrap">
 
         {message && (
-          <div style={{
+          <div className="adm-full" style={{
             background: message.type === "success" ? "#f0fff0" : "#fff0f0",
             border: `1px solid ${message.type === "success" ? "#90EE90" : "#ffcccc"}`,
             borderRadius: "14px", padding: "14px 18px", marginBottom: "24px"
@@ -702,50 +758,83 @@ export default function Settings() {
           </div>
         )}
 
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Compte et abonnement</h2>
+            <p className="adm-section-sub">Vos informations et l'état de votre formule</p>
+          </div>
+
         {/* COMPTE ACTUEL */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 14px" }}>
-            Compte actuel
-          </h2>
-          <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Mail size={15} /> {user?.email}
-          </p>
+        <div className="adm-card">
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-title">Compte actuel</p>
+              <p className="adm-row-sub">L'adresse e-mail avec laquelle vous vous connectez</p>
+            </div>
+            <div className="adm-row-control">
+              {/* overflow-wrap : une adresse longue ne doit pas etirer la rangee. */}
+              <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0, display: "flex", alignItems: "center", gap: "8px", overflowWrap: "anywhere" }}>
+                <Mail size={15} /> {user?.email}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* ABONNEMENT — visible pour tous (lecture seule) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
-            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0 }}>
-              Abonnement
-            </h2>
-            {statusDisplay && (
-              <span style={{
-                background: statusDisplay.bg, color: statusDisplay.color,
-                fontSize: "0.72rem", fontWeight: "600", padding: "5px 12px", borderRadius: "20px",
-              }}>
-                {statusDisplay.label}
-              </span>
-            )}
+        <div className="adm-card">
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-title">Abonnement</p>
+            </div>
+            <div className="adm-row-control">
+              {statusDisplay && (
+                <span style={{
+                  background: statusDisplay.bg, color: statusDisplay.color,
+                  fontSize: "0.72rem", fontWeight: "600", padding: "5px 12px", borderRadius: "20px",
+                }}>
+                  {statusDisplay.label}
+                </span>
+              )}
+            </div>
           </div>
 
-          <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
-            Plan : <strong style={{ color: theme.textPrimary }}>{plan === "pro" ? "Pro" : "Free"}</strong>
-          </p>
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-sub">Formule</p>
+            </div>
+            <div className="adm-row-control">
+              <strong style={{ color: theme.textPrimary, fontSize: "0.85rem" }}>{plan === "pro" ? "Pro" : "Free"}</strong>
+            </div>
+          </div>
 
           {subscriptionStatus === "trial" && trialDaysLeft !== null && (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
-              Essai : <strong style={{ color: theme.textPrimary }}>{trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}</strong>
-            </p>
+            <div className="adm-row">
+              <div className="adm-row-label">
+                <p className="adm-row-sub">Essai en cours</p>
+              </div>
+              <div className="adm-row-control">
+                <strong style={{ color: theme.textPrimary, fontSize: "0.85rem" }}>
+                  {trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}
+                </strong>
+              </div>
+            </div>
           )}
 
           {subscriptionStatus === "active" && nextBillingDate && (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
-              Prochaine échéance : <strong style={{ color: theme.textPrimary }}>
-                {new Date(nextBillingDate).toLocaleDateString("fr-FR")}
-              </strong>
-            </p>
+            <div className="adm-row">
+              <div className="adm-row-label">
+                <p className="adm-row-sub">Prochaine échéance</p>
+              </div>
+              <div className="adm-row-control">
+                <strong style={{ color: theme.textPrimary, fontSize: "0.85rem" }}>
+                  {new Date(nextBillingDate).toLocaleDateString("fr-FR")}
+                </strong>
+              </div>
+            </div>
           )}
 
+          {/* Le bloc de réactivation n'est pas une rangée : c'est un appel à
+              l'action, il doit rester pleine largeur sous les lignes. */}
           {subscriptionStatus === "suspended" && isOwner && (
             <>
               <p style={{ color: theme.textSecondary, fontSize: "0.82rem", lineHeight: 1.5, margin: "8px 0 16px" }}>
@@ -774,9 +863,15 @@ export default function Settings() {
           )}
         </div>
 
-        {/* IDENTITÉ VISUELLE — réservé au propriétaire */}
-        {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        </section>
+
+        {peutVoir("presentation") && (
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Présentation de l'établissement</h2>
+            <p className="adm-section-sub">Logo et couleurs, tels que vos clients les voient</p>
+          </div>
+          <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
               Identité visuelle
             </h2>
@@ -802,26 +897,30 @@ export default function Settings() {
               { label: "Slogan", key: "slogan", type: "text", placeholder: "Ex: Le Goût Du Bon Gâteau" },
               { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
             ].map((field) => (
-              <div key={field.key} style={{ marginBottom: "16px" }}>
-                <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
-                  {field.label}
-                </label>
-                <input
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  value={brand[field.key] || ""}
-                  onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  style={{
-                    width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
-                    padding: "11px 15px", fontSize: "0.88rem", background: theme.pageBackground,
-                    color: theme.textPrimary, outline: "none", boxSizing: "border-box"
-                  }}
-                />
+              <div key={field.key} className="adm-row">
+                {/* Un champ par rangee : libelle a gauche, saisie a droite sur
+                    grand ecran ; l'un sous l'autre sur mobile. */}
+                <div className="adm-row-label">
+                  <span className="adm-row-sub">{field.label}</span>
+                </div>
+                <div className="adm-row-control">
+                  <input
+                    type={field.type}
+                    placeholder={field.placeholder}
+                    value={brand[field.key] || ""}
+                    onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    style={{
+                      width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
+                      padding: "11px 15px", fontSize: "0.88rem", background: theme.pageBackground,
+                      color: theme.textPrimary, outline: "none", boxSizing: "border-box"
+                    }}
+                  />
+                </div>
               </div>
             ))}
 
             <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+              <label className="adm-label">
                 Logo
               </label>
 
@@ -868,7 +967,7 @@ export default function Settings() {
                 { label: "Couleur accent", key: "secondary_color" },
               ].map((field) => (
                 <div key={field.key}>
-                  <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+                  <label className="adm-label">
                     {field.label}
                   </label>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -901,29 +1000,61 @@ export default function Settings() {
               {brandLoading ? "Sauvegarde..." : "Sauvegarder l'identité"}
             </button>
           </div>
+        </section>
         )}
 
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Sécurité</h2>
+            <p className="adm-section-sub">Mot de passe et double authentification</p>
+          </div>
+
         {/* CHANGER MOT DE PASSE — dispo pour tout compte (propriétaire ou staff) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        <div className="adm-card">
           <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 18px" }}>
             Changer le mot de passe
           </h2>
 
-          <input
-            type="password" placeholder="Mot de passe actuel" value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-          />
-          <input
-            type="password" placeholder="Nouveau mot de passe" value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "12px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-          />
-          <input
-            type="password" placeholder="Confirmer le mot de passe" value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "16px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-          />
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <span className="adm-row-sub">Mot de passe actuel</span>
+            </div>
+            <div className="adm-row-control">
+              <input
+                type="password" placeholder="Mot de passe actuel" value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="adm-input"
+                style={{ marginBottom: 0 }}
+              />
+            </div>
+          </div>
+
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <span className="adm-row-sub">Nouveau mot de passe</span>
+            </div>
+            <div className="adm-row-control">
+              <input
+                type="password" placeholder="Nouveau mot de passe" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="adm-input"
+                style={{ marginBottom: 0 }}
+              />
+            </div>
+          </div>
+
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <span className="adm-row-sub">Confirmer le mot de passe</span>
+            </div>
+            <div className="adm-row-control">
+              <input
+                type="password" placeholder="Confirmer le mot de passe" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: 0, outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+              />
+            </div>
+          </div>
           <button
             type="button"
             onClick={handlePasswordChange}
@@ -939,21 +1070,28 @@ export default function Settings() {
         </div>
 
         {/* SÉCURITÉ — DOUBLE AUTHENTIFICATION (2FA) */}
-        <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-              <ShieldCheck size={17} /> Double authentification
-            </h2>
-            {!mfaLoading && (
-              <span style={{
-                background: mfaFactor ? "#DCFCE7" : "#FEE2E2",
-                color: mfaFactor ? "#166534" : "#991B1B",
-                fontSize: "0.68rem", fontWeight: "600", padding: "5px 11px",
-                borderRadius: "20px", whiteSpace: "nowrap",
-              }}>
-                {mfaFactor ? "Activée" : "Désactivée"}
-              </span>
-            )}
+        <div className="adm-card">
+          {/* Cet en-tete etait une rangee ecrite a la main : on la confie au
+              mecanisme commun, pour qu'elle s'empile comme les autres sur
+              mobile au lieu de rester cote a cote. */}
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <ShieldCheck size={17} /> Double authentification
+              </p>
+            </div>
+            <div className="adm-row-control">
+              {!mfaLoading && (
+                <span style={{
+                  background: mfaFactor ? "#DCFCE7" : "#FEE2E2",
+                  color: mfaFactor ? "#166534" : "#991B1B",
+                  fontSize: "0.68rem", fontWeight: "600", padding: "5px 11px",
+                  borderRadius: "20px", whiteSpace: "nowrap",
+                }}>
+                  {mfaFactor ? "Activée" : "Désactivée"}
+                </span>
+              )}
+            </div>
           </div>
 
           {mfaLoading ? (
@@ -985,7 +1123,7 @@ export default function Settings() {
               </button>
 
               <form onSubmit={confirmEnrollment}>
-                <label style={{ display: "block", fontSize: "0.78rem", color: theme.textSecondary, marginBottom: "8px", fontWeight: "600" }}>
+                <label className="adm-label">
                   Code à 6 chiffres affiché dans l'application
                 </label>
                 <input
@@ -1183,9 +1321,15 @@ export default function Settings() {
           )}
         </div>
 
-        {/* INVITER DU STAFF — réservé au propriétaire, remplace l'ancien lien vers Supabase Dashboard */}
-        {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+        </section>
+
+        {peutVoir("equipe") && (
+        <section className="adm-section">
+          <div className="adm-section-head">
+            <h2 className="adm-section-title">Équipe</h2>
+            <p className="adm-section-sub">Invitations et accès des membres du restaurant</p>
+          </div>
+          <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 8px" }}>
               Inviter un membre de l'équipe
             </h2>
@@ -1243,13 +1387,40 @@ export default function Settings() {
                               <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", fontWeight: "600", color: theme.textPrimary }}>
                                 <roleInfo.Icon size={14} /> {roleInfo.label}
                               </span>
-                              <span style={{
-                                fontSize: "0.68rem", fontWeight: "600", padding: "4px 10px", borderRadius: "14px",
-                                background: t.used ? "#F3F4F6" : isExpired ? "#fee2e2" : "#DCFCE7",
-                                color: t.used ? "#6B7280" : isExpired ? "#dc2626" : "#166534",
-                              }}>
-                                {t.used ? "Utilisé" : isExpired ? "Expiré" : "Actif"}
-                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                                <span style={{
+                                  fontSize: "0.68rem", fontWeight: "600", padding: "4px 10px", borderRadius: "14px",
+                                  background: t.used ? "#F3F4F6" : isExpired ? "#fee2e2" : "#DCFCE7",
+                                  color: t.used ? "#6B7280" : isExpired ? "#dc2626" : "#166534",
+                                }}>
+                                  {t.used ? "Utilisé" : isExpired ? "Expiré" : "Actif"}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    if (confirmingTokenId === t.id) deleteStaffToken(t.id);
+                                    else setConfirmingTokenId(t.id);
+                                  }}
+                                  onBlur={() => setConfirmingTokenId((c) => (c === t.id ? null : c))}
+                                  disabled={deletingTokenId === t.id}
+                                  title={confirmingTokenId === t.id ? "Confirmer la suppression" : "Supprimer ce lien"}
+                                  aria-label={confirmingTokenId === t.id ? "Confirmer la suppression" : "Supprimer ce lien"}
+                                  style={{
+                                    background: confirmingTokenId === t.id ? "#dc2626" : "transparent",
+                                    border: `1px solid ${confirmingTokenId === t.id ? "#dc2626" : theme.borderLight}`,
+                                    borderRadius: "10px", padding: "5px 8px", cursor: "pointer",
+                                    color: confirmingTokenId === t.id ? "#fff" : theme.textSecondary,
+                                    display: "flex", alignItems: "center", gap: "5px",
+                                    fontSize: "0.68rem", fontWeight: "600",
+                                    opacity: deletingTokenId === t.id ? 0.5 : 1,
+                                  }}
+                                >
+                                  {deletingTokenId === t.id
+                                    ? <RefreshCw size={13} />
+                                    : confirmingTokenId === t.id
+                                      ? <><Trash2 size={13} /> Sûr ?</>
+                                      : <Trash2 size={13} />}
+                                </button>
+                              </div>
                             </div>
                             {!t.used && !isExpired && (
                               <button
@@ -1277,11 +1448,9 @@ export default function Settings() {
               </p>
             )}
           </div>
-        )}
 
-        {/* MOTS DE PASSE DE L'ÉQUIPE — réservé au propriétaire */}
-        {isOwner && (
-          <div style={{ background: theme.cardBackground, borderRadius: "20px", padding: "24px", marginBottom: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+          {/* MOTS DE PASSE DE L'ÉQUIPE */}
+          <div className="adm-card">
             <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 6px", display: "flex", alignItems: "center", gap: "8px" }}>
               <Users size={17} /> Mots de passe de l'équipe
             </h2>
@@ -1313,12 +1482,15 @@ export default function Settings() {
                       key={member.id}
                       style={{ background: theme.pageBackground, borderRadius: "14px", padding: "14px 16px" }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: "600", color: theme.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {/* Meme motif que les autres : le membre a gauche,
+                          l'action a droite. Rangee ecrite a la main jusqu'ici,
+                          donc sans empilement sur mobile. */}
+                      <div className="adm-row">
+                        <div className="adm-row-label">
+                          <p className="adm-row-title" style={{ fontFamily: "inherit", fontSize: "0.85rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {member.email || "Email indisponible"}
                           </p>
-                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary, display: "flex", alignItems: "center", gap: "5px" }}>
+                          <p className="adm-row-sub" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                             <roleInfo.Icon size={12} /> {roleInfo.label}
                             {member.last_sign_in_at
                               ? ` · vu le ${new Date(member.last_sign_in_at).toLocaleDateString("fr-FR")}`
@@ -1327,18 +1499,20 @@ export default function Settings() {
                         </div>
 
                         {!isTarget && (
-                          <button
-                            type="button"
-                            onClick={() => { setResetTarget(member); setResetPassword(""); setMessage(null); }}
-                            style={{
-                              background: theme.cardBackground, border: `1px solid ${theme.borderLight}`,
-                              borderRadius: "10px", padding: "9px 13px", color: theme.primary,
-                              fontSize: "0.76rem", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap",
-                              display: "flex", alignItems: "center", gap: "6px",
-                            }}
-                          >
-                            <KeyRound size={13} /> Réinitialiser
-                          </button>
+                          <div className="adm-row-control">
+                            <button
+                              type="button"
+                              onClick={() => { setResetTarget(member); setResetPassword(""); setMessage(null); }}
+                              style={{
+                                background: theme.cardBackground, border: `1px solid ${theme.borderLight}`,
+                                borderRadius: "10px", padding: "9px 13px", color: theme.primary,
+                                fontSize: "0.76rem", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap",
+                                display: "flex", alignItems: "center", gap: "6px",
+                              }}
+                            >
+                              <KeyRound size={13} /> Réinitialiser
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -1405,9 +1579,11 @@ export default function Settings() {
               </div>
             )}
           </div>
+        </section>
         )}
 
         <button
+          className="adm-full"
           onClick={handleLogout}
           style={{ width: "100%", background: "transparent", border: `2px solid ${theme.borderLight}`, borderRadius: "14px", padding: "14px", color: theme.textSecondary, fontWeight: "600", fontSize: "0.88rem", cursor: "pointer" }}
         >

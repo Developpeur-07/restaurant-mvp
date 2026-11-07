@@ -109,7 +109,7 @@ export default function SuperAdmin() {
                 background: "linear-gradient(135deg, #1F2A44, #16203a)",
                 padding: "48px 24px 40px",
             }}>
-                <div style={{ maxWidth: "960px", margin: "0 auto" }}>
+                <div className="sa-head-inner">
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
                         <ShieldCheck size={20} color="#C9A84C" />
                         <p style={{ color: "#C9A84C", fontSize: "0.7rem", letterSpacing: "0.25em", textTransform: "uppercase", margin: 0, fontFamily: "Georgia, serif" }}>
@@ -125,7 +125,7 @@ export default function SuperAdmin() {
                 </div>
             </div>
 
-            <div style={{ maxWidth: "960px", margin: "0 auto", padding: "40px 24px 80px" }}>
+            <div className="sa-wrap">
 
                 {/* TOAST */}
                 {toast && (
@@ -165,7 +165,7 @@ export default function SuperAdmin() {
                     </div>
                 ) : (
                     // ── Cards espacées généreusement, pas collées — chacune a de l'air ──
-                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    <div className="sa-list">
                         {filtered.map((r) => {
                             const status = STATUS_CONFIG[r.subscription_status] || STATUS_CONFIG.trial;
                             const StatusIcon = status.icon;
@@ -365,7 +365,37 @@ export default function SuperAdmin() {
                     </div>
                 </div>
             )}
+            <style>{SA_CSS}</style>
             <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </div>
     );
 }
+
+/* Mise en page de la console super-administrateur.
+   Conteneur a 960px et aucune media query : memes causes que le tableau de bord
+   et la cuisine (styles en ligne, donc pas de media query possible). */
+const SA_CSS = `
+.sa-wrap{max-width:960px;margin:0 auto;padding:40px 24px 80px}
+.sa-head-inner{max-width:960px;margin:0 auto}
+.sa-list{display:flex;flex-direction:column;gap:20px}
+
+@media (min-width:700px){
+  .sa-wrap{max-width:1120px}
+  .sa-head-inner{max-width:1120px}
+  .sa-list{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:20px;align-items:start;
+  }
+}
+
+@media (min-width:1180px){
+  .sa-wrap,.sa-head-inner{max-width:1320px}
+}
+
+/* Les cartes restaurant sont denses (nom, plan, statut, actions, resultat des
+   ventes) : la troisieme colonne n'arrive qu'a 1400px, sinon les boutons
+   d'action se chevauchent. */
+@media (min-width:1400px){
+  .sa-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+`

@@ -447,3 +447,541 @@ reduits).
 element ne depasse les bords de l'ecran, et sur toute la plage mobile
 (320 a 768) le hero comme Pilotage sont exactement a egale distance des deux
 bords.
+
+## Lisibilite du mode sombre : contraste garanti pour toutes les couleurs de marque
+
+Le mode sombre existait deja (useTheme + theme.js), mais sa lisibilite
+dependait de la couleur choisie par chaque restaurant. Deux defauts mesures.
+
+**1. La teinte des surfaces etait brouillee.** generateDarkTheme calculait
+`blendedHue = (230 + h * 13.01) % 360`. Ce coefficient agit comme une fonction
+de hachage : une variation minime de la couleur de marque donnait une teinte
+sans rapport. Un primaire magenta produisait une carte olive (#57603e), un
+primaire jaune une carte vert-jaune tres claire. Rien ne garantissait donc la
+luminosite des fonds.
+
+Remplace par une inflexion bornee vers le bleu-marine de reference :
+`230 + plusCourtEcart(h, 230) * 0.18`, soit au plus ~32 degres d'ecart. Les
+surfaces restent sombres et coherentes quelle que soit la marque.
+
+**2. Les fonds n'etaient jamais verifies.** Ajout de `contrastRatio` (WCAG) et
+de `ensureContrast`, qui assombrit une surface jusqu'a ce que les textes
+atteignent 4,5:1. Le contraste ne depend plus d'un reglage manuel : il est
+garanti par construction, pour n'importe quelle couleur.
+
+`textMuted` passe de #8B92A8 a #A8AFC4 : l'ancienne valeur plafonnait a 3,28:1
+sur fond de carte, sous le seuil AA de 4,5:1.
+
+**Mesures, sur fond de carte, en balayant 18 teintes de marque :**
+
+    avant : blanc 6,67 | secondaire 4,16 | discret 2,15   (7 teintes sur 18
+            faisaient tomber le texte secondaire sous 4,5:1 ; le texte discret
+            echouait systematiquement)
+    apres : blanc 9,92 | secondaire 6,19 | discret 4,53   (18/18 conformes)
+
+Les memes mesures sur le fond de page : 13,12 / 8,19 / 6,00.
+
+La cause restante — des couleurs codees en dur dans les pages plutot que le
+theme — n'est pas traitee ici : elle demande une passe par composant.
+
+## Module inventaire / stock
+
+L'inventaire manquait, alors que la page d'accueil l'annonce : la section
+« Livraison & stock » promet « Suivez vos quantites en direct et soyez alerte
+avant la rupture ». C'etait donc une promesse non tenue — le premier ecart
+visible des le test en salle.
+
+**Base (docs/024_inventaire.sql, a executer dans Supabase).**
+
+- `stock_items` : un article par restaurant (nom, unite, quantite, seuil
+  d'alerte, cout, plat associe et quantite consommee par portion).
+- `stock_movements` : le journal de chaque entree et sortie, avec le motif
+  (commande, achat, ajustement, perte, stock initial).
+- `consume_stock_for_order()` : decremente le stock quand une commande est
+  servie, d'apres `orders.items` (JSON `[{id, name, price, qty}]`).
+- RLS : tout le personnel du restaurant consulte ; seuls admin, reception et
+  le proprietaire ecrivent. La cuisine consulte mais ne corrige pas les
+  quantites.
+
+Deux robustesses deliberées, parce qu'une erreur de stock ne doit jamais
+bloquer un service en cours : la consommation est **idempotente** (un index
+unique et une verification explicite empechent de decrementer deux fois la
+meme commande), et la fonction est enveloppee dans un bloc d'exception qui
+renvoie 0 sans propager l'erreur. L'identifiant du plat est de plus valide par
+une expression reguliere avant conversion : un ancien identifiant malforme ne
+peut pas faire echouer le declencheur, donc la mise a jour du statut.
+
+**Page (/inventaire, protegee par AdminRoute).**
+
+Ecrite contre deux travers du code existant :
+
+1. Styles en classes CSS avec media queries au lieu de `style={{...}}` en
+   ligne. Un style en ligne ne peut pas reagir a la largeur de l'ecran — c'est
+   pourquoi Dashboard, Settings et MenuManager ne sont pas responsives. Base
+   mobile, elargissement a partir de 700px.
+2. Aucune couleur en dur : tout vient de `useTheme`, donc le mode sombre reste
+   lisible quelle que soit la couleur de marque.
+
+Les classes sont prefixees `inv-` pour qu'aucune ne puisse entrer en collision
+avec un utilitaire Tailwind (les cartes de la page d'accueil etaient tombees a
+12px a cause de `w-3` / `w-2`).
+
+Si les tables n'existent pas encore, la page affiche une consigne expliquant
+d'executer le script SQL, au lieu de rester blanche.
+
+## Correction 42725 — ambiguite is_restaurant_staff
+
+Premier lancement du script : `ERROR 42725: function public.is_restaurant_staff(uuid)
+is not unique`. Le script creait sa propre version de cette fonction d'aide, qui
+doublonnait une surcharge deja presente en base : deux candidats pour un appel a
+un seul argument, Postgres refuse de choisir.
+
+Le script ne depend plus d'aucune fonction d'aide. Les conditions RLS sont
+ecrites en ligne (exists() sur restaurant_staff et restaurants.owner_id) : il
+s'installe quelle que soit l'histoire du schema, et ne cassera pas au prochain
+ajout de surcharge. Le nommage des parametres existants n'est plus une
+hypothese.
+
+Un bloc de nettoyage en tete supprime la surcharge laissee par l'execution
+avortee, mais seulement s'il s'agit bien de la notre (parametre nomme
+p_restaurant) et s'il en reste une autre. Le script est rejouable tel quel.
+
+Raisonnement tenu sur le risque du drop : l'application fonctionne aujourd'hui,
+donc aucune politique existante n'etait ambigue avant. La surcharge a un
+argument est donc bien nouvelle, donc bien la notre.
+
+## Recettes : un article partage entre plusieurs plats
+
+Question de depart : « quelle est la relation entre le menu et l'inventaire,
+si les deux ne jouent pas le meme role ? » La reponse tient en une phrase —
+un plat est une promesse faite au client, un article de stock est une
+ressource physique. On ne « vend » pas 200 g de poulet, on vend un poulet
+braise qui consomme 200 g de poulet. Le lien entre les deux, c'est la recette.
+
+Mais le lien livre en 024 etait une impasse : une colonne menu_item_id sur
+stock_items, donc UN article rattache a UN seul plat. Or le meme poulet sert
+dans trois plats. Il aurait fallu creer trois lignes « Poulet », chacune avec
+son propre stock — le total affiche aurait ete faux. C'est exactement le genre
+d'erreur qui fait perdre confiance dans un inventaire, et c'etait notre sujet.
+
+docs/025_recettes.sql cree menu_item_recipes(menu_item_id, stock_item_id,
+quantity_per_serving) : une vraie recette plusieurs-a-plusieurs. Les liens
+deja saisis sont repris automatiquement, puis l'ancienne colonne est retiree —
+deux mecanismes concurrents finiraient toujours par se contredire.
+
+La consommation lit desormais la recette plutot que la colonne. Le
+declencheur, lui, ne change pas : il appelle la fonction, seul son contenu
+bouge.
+
+Cote page, chaque fiche article liste les plats qui le consomment avec leur
+portion, et permet d'en ajouter ou d'en retirer. Lier un plat n'est plus un
+champ du formulaire de creation mais une action sur l'article : un article
+existe avant d'etre rattache a une recette, et peut servir a plusieurs plats.
+
+Le message « aucun plat lie » est affiche explicitement, pour qu'un article
+non rattache ne passe pas pour un article dont le stock ne bouge pas par
+erreur.
+
+## Responsive de la page Parametres
+
+Premiere page traitee dans la mise a niveau responsive des pages internes.
+
+Le diagnostic n'etait pas celui qu'on attendait. Les 24 « largeurs fixes »
+reperees au comptage etaient en fait des width:100%, donc deja fluides. Le
+defaut reel : une colonne de 480px centree qui ne grandissait jamais, meme sur
+un ecran large. Le probleme n'etait donc pas le debordement, mais l'espace
+perdu sur desktop.
+
+D'ou le choix de ne pas tout reecrire : 130 styles en ligne, dont une centaine
+uniques, et aucune verification visuelle possible de mon cote. Reecrire 700
+lignes de JSX a l'aveugle etait le meilleur moyen de casser une page qui
+marche. Seuls les motifs qui bloquent reellement la mise en page sont devenus
+des classes : 7 cartes, 4 libelles, 2 champs, les deux conteneurs.
+
+Les couleurs restent pilotables par le theme malgre les classes : elles
+passent par des variables CSS posees une seule fois sur la page. Mode sombre et
+couleur de marque fonctionnent comme avant.
+
+Le conteneur EST la grille, plutot que d'envelopper les cartes dans un div
+supplementaire : cela evite la reindentation de 700 lignes pour un resultat
+identique. Les elements .adm-full (message, deconnexion) occupent toute la
+largeur.
+
+Deux details qui comptent : min-width:0 sur les cartes, sans quoi une adresse
+e-mail ou un jeton d'invitation etire la piste de la grille et declenche un
+defilement horizontal ; et overflow-wrap:break-word, pour qu'un mot plus long
+que sa carte se coupe au lieu de deborder.
+
+Base mobile, deux colonnes a partir de 700px, plafond a 1120px.
+
+L'erreur de lint restante (setMessage dans un effect) est preexistante.
+
+## Parametres decoupes en sections selon le profil
+
+Reponse a « pourquoi ne pas le faire en section propre en fonction du role
+defini ? ». C'etait la bonne question, et pour une raison concrete : un compte
+reception ouvrait les memes reglages que le proprietaire, alors que le RLS lui
+refuse l'ecriture. Il voyait donc des sections qui echouent sans qu'il
+comprenne pourquoi.
+
+Deux faits ont borne la conception, decouverts en lisant le code :
+
+1. Deux profils seulement atteignent cette page. La cuisine est arretee en
+   amont par RoleGuard, et il n'existe pas de role staff « admin » dans ce
+   projet : STAFF_ROLES ne contient que reception et cuisine.
+2. Le provider n'expose pas le role, seulement isOwner.
+
+La matrice est donc reduite : proprietaire et reception. L'interet n'est pas
+dans une matrice complexe mais dans la lisibilite — une regle d'acces ecrite
+une fois, au lieu de isOwner && disperse a quatre endroits du JSX. Ajouter un
+profil futur (un role livreur, par exemple) se limite a une ligne du tableau.
+
+Quatre sections :
+  - Compte et abonnement : tous
+  - Presentation de l'etablissement : proprietaire
+  - Securite : tous
+  - Equipe : proprietaire
+
+Chaque section est sa propre grille : les cartes d'un meme theme restent
+ensemble, et deux sujets sans rapport ne se retrouvent jamais cote a cote.
+C'est aussi la reponse a la remarque soulee au commit precedent sur le
+regroupement des cartes en deux colonnes.
+
+La garde redondante de « Mots de passe de l'equipe » a ete retiree : la section
+entiere est deja reservee au proprietaire, et deux gardes qui se recouvrent
+finissent toujours par diverger.
+
+## Responsive de l'Historique, et feuille de style partagee
+
+L'Historique presentait exactement le meme defaut que les Parametres : une
+colonne de 640px centree qui ignorait l'ecran large, et jusqu'a 50 cartes de
+commandes empilees les unes sous les autres.
+
+C'etait la deuxieme page a avoir besoin du meme traitement. Plutot que de
+dupliquer la feuille de style, elle est sortie de Settings.jsx pour devenir
+src/lib/adminCss.js. Les deux pages l'importent desormais.
+
+Le contrat est documente en tete du fichier : une page qui utilise cette
+feuille pose les variables CSS (--adm-page, --adm-card, --adm-text,
+--adm-text-2, --adm-border, --adm-primary, --adm-accent) une seule fois sur son
+element racine. Le theme et le mode sombre continuent de s'appliquer, puisque
+les classes ne contiennent aucune couleur en dur.
+
+Coté Historique :
+- la liste des commandes devient une grille : une colonne sur mobile, deux a
+  partir de 700px, trois a partir de 1180px. Ce sont des cartes courtes et
+  repetitives, elles supportent la densite — contrairement a un formulaire.
+- le bloc « total encaisse » devient .adm-hero. Sa couleur d'accent passe par
+  --adm-accent plutot qu'en #C9A84C dur : le doré etait ecrit en dur alors que
+  la couleur secondaire est configurable par restaurant.
+- les lignes article passent par .adm-line (flex-wrap + min-width:0), pour
+  qu'un nom de plat long ne pousse pas le prix hors de l'ecran.
+
+Un point de vigilance : le build passait alors que ADMIN_CSS n'etait pas
+importe dans Settings. Undefined n'est pas une erreur de compilation mais une
+erreur a l'execution — la page aurait plante. Seul le lint l'a attrape. D'ou
+l'interet de le faire tourner systematiquement, et pas seulement le build.
+
+## En-tete commun : Retour a gauche, theme a droite, sur toutes les pages
+
+Le bouton « Retour » et l'interrupteur de mode sombre etaient reconstruits a la
+main dans chaque page. Sur l'Historique, les Parametres et l'Inventaire, Retour
+etait a gauche. Sur MenuManager, les deux etaient a droite. Et sous 430px, un
+menu burger les faisait disparaitre. D'une page a l'autre, le meme bouton
+changeait donc de place.
+
+src/components/PageHeader.jsx fixe la regle une fois : Retour est toujours le
+premier element a gauche, l'interrupteur de theme toujours le dernier a droite.
+Les actions propres a une page se glissent entre les deux, sans jamais
+deplacer les deux bouts.
+
+Le detail qui tient la promesse : flex-wrap:nowrap avec min-width:0 sur le
+groupe de gauche. Le titre se comprime et tronque avec une ellipse, mais ne
+pousse jamais le bouton de theme hors de sa place. Sous 430px, le libelle
+« Retour » disparait pour garder la place — le bouton reste ou il est.
+
+Le menu burger de MenuManager est remplace par une action d'en-tete
+permanente. Il cachait « Ajouter un plat » : en dessous de 430px, on ne
+pouvait plus ajouter de plat. L'action est maintenant visible a toutes les
+largeurs, a une place previsible.
+
+src/components/PageLoader.jsx fait la meme chose pour les ecrans de
+chargement. Chaque page ecrivait le sien, avec son fond et sa couleur de
+texte : le passage du chargement a la page provoquait un saut visuel. Le
+composant utilise les memes variables et la meme feuille de style que les
+pages, donc le fond ne bouge plus.
+
+adminCss.js exporte aussi adminVars() : toutes les pages posent exactement les
+memes variables, au lieu de recopier huit lignes dont une finissait toujours
+par diverger.
+
+Converti : Historique, Inventaire, Parametres, MenuManager (ses deux en-tetes).
+
+## Sessions : un seul appareil actif par compte, sous verification 2FA
+
+Regle decidiee : quand un second appareil se connecte, l'ancien est deconnecte,
+MAIS seulement apres verification de la double authentification. Sans cette
+verification, une personne ayant vole un mot de passe pourrait evacuer le
+proprietaire legitime de son propre compte — ce serait une prise de controle
+offerte a l'attaquant, pas une protection.
+
+Repartition des roles, qui est le point important du dispositif :
+
+  - docs/026_sessions.sql ne fait que DETECTER et JOURNALISER. Ce n'est pas une
+    barriere de securite : y ecrire ne deconnecte personne.
+  - la revocation reelle est faite par api/sessions/revoke-others.js via
+    auth.admin.signOut(jwt, 'others'), qui invalide les jetons de
+    rafraichissement. Supabase reste la source d'autorite.
+  - la regle 2FA est appliquee COTE SERVEUR (requireAal2IfEnrolled). L'exiger
+    dans le client n'aurait aucune valeur : le client est contournable.
+
+Consequence voulue : si la table est vide ou fausse, on perd la detection, pas
+la securite.
+
+Fenetre d'activite de 5 minutes pour un battement toutes les 60 secondes. Sans
+fenetre, un appareil reste actif eternellement des qu'on ferme un onglet — rien
+ne previent le serveur — et le proprietaire se voit reclamer un code a chaque
+reconnexion sur son propre telephone. Deux battements peuvent se perdre sans
+fausse alerte.
+
+Cas traite explicitement : si le compte n'a PAS active la 2FA, on ne peut rien
+exiger de plus et on evince quand meme. Refuser reviendrait a enfermer dehors
+le proprietaire qui a perdu son telephone. Un message l'invite a activer la 2FA.
+
+L'appareil evince est prevenu par deux signaux redondants : le 401 renvoye par
+l'API (jetons revolues, le plus sur car il vient de Supabase), et le drapeau
+revoked de la table (filet si les jetons sont encore valides).
+
+## 027 : une seule version de is_restaurant_staff
+
+Cette base possede plusieurs surcharges de is_restaurant_staff, apparues en
+dehors des migrations du depot — verifie : aucune migration 018 a 023 ne la
+cree. D'ou l'erreur 42725 rencontree a l'installation de l'inventaire.
+
+Le script se REFUSE a agir s'il trouve un appel a plus d'un argument quelque
+part : Postgres ne trace pas les dependances entre une fonction et les
+politiques RLS qui l'appellent, donc supprimer une surcharge casserait ces
+appels a l'execution, silencieusement. Mieux vaut avorter que casser.
+
+## Suppression d'express, seule source de l'avertissement url.parse()
+
+Un avertissement remonte par les journaux Vercel :
+  DEP0169 DeprecationWarning: url.parse() behavior is not standardized and
+  prone to errors that have security implications.
+
+Ce n'est pas une erreur — rien n'etait casse — mais url.parse() est
+effectivement deconseille, donc la source a ete cherchee.
+
+Verdict : url.parse() n'apparait dans aucun fichier de src/ ni de api/. Un seul
+fichier de tout node_modules l'appelait : express/lib/request.js. Et express
+n'etait importe nulle part dans le projet — aucune occurrence, ni dans le code
+ni dans les scripts npm. Dependance morte, arrivee avec la fusion #2.
+
+Sa suppression retire 65 paquets (183 -> 121 dans node_modules).
+
+A noter : si l'avertissement revenait apres deploiement, il viendrait alors de
+l'environnement d'execution Vercel lui-meme (le journal indique node:8, soit
+l'amorcage du runtime), et non de notre code — nous n'y pouvons rien.
+
+Le lint reste a ses 10 erreurs preexistantes, toutes dans les paiements,
+ReceiptModal, Dashboard et Settings. Aucune dans le code des sessions.
+
+## Regroupement des endpoints de sessions (limite Vercel Hobby)
+
+Le deploiement a echoue : « No more than 12 Serverless Functions can be added
+to a Deployment on the Hobby plan. »
+
+Le projet comptait 11 fonctions. Les trois endpoints de sessions (claim,
+heartbeat, revoke-others) faisaient monter le compte a 14.
+
+Ils sont regroupes en une seule route, api/sessions.js, qui dispatch sur un
+champ `action`. Le regroupement ne coute rien ici : ces trois actions servent
+le meme appelant, au meme moment, et partagent la meme authentification. On
+retombe a 12, soit pile la limite — aucune marge.
+
+Deux pistes pour liberer de la place, non tranchees car ce sont des choix qui
+appartiennent au metier :
+  - api/webhooks/yabetoo-debug.js : 13 lignes, simple renvoi vers
+    yabetoo-subscription.js, etiquete « route legacy ». A verifier cote
+    configuration Yabetoo avant suppression — une URL de webhook y pointe
+    peut-etre encore.
+  - api/check-test-session.js : outil de reconciliation temporaire, dont
+    l'en-tete indique lui-meme « pas destine a rester en prod tel quel ».
+
+A noter : regrouper trois fonctions internes derriere un `action` est acceptable
+pour un ensemble coherent comme celui-ci, mais generalise a tout le projet cela
+deviendrait un plat de spaghettis. La limite Hobby finira par se payer : soit
+en passant a une equipe (plan Pro), soit en supprimant les routes devenues
+inutiles.
+
+## Tableau de bord : sortir de la bande de 640 px
+
+La page etait ecrite ENTIEREMENT en styles en ligne : 86 blocs style={{}}. C'est
+la cause racine, et elle explique tout le reste.
+
+    Un style en ligne ne peut pas porter de media query.
+
+Les zero media query du tableau de bord n'etaient donc pas un oubli : c'etait
+structurellement impossible. Et le conteneur racine etait
+
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "28px 18px" }}>
+
+soit une bande de 640 px centree au milieu d'un grand ecran, avec tout empile
+dedans. D'ou l'impression d'une application mobile.
+
+Seuls les SEPT conteneurs structuraux sont convertis en classes db-. Les 86
+styles decoratifs (couleurs, polices) restent en ligne : les convertir
+n'apporterait rien et ferait courir un risque pour rien.
+
+Grandeurs retenues :
+
+                     mobile    >=700px    >=1180px
+    conteneur         640px     1120px     1320px
+    commandes         1 col     2 col      3 col
+    annulees          1 col     2 col      3 col
+
+Les seuils 700 et 1180 sont ceux de la feuille partagee adminCss.js. J'avais
+d'abord mis 760 et 1200 : deux pages qui changent de forme a des largeurs
+differentes donnent une navigation bancale en passant de l'une a l'autre.
+
+Trois details :
+  - les trois chiffres du jour forment une bande a separateurs verticaux ; sans
+    eux les valeurs flottaient sans repere ;
+  - le bouton « Voir l'historique » est borne a 420 px, sinon il s'etirait sur
+    1320 px ;
+  - align-items:start sur les grilles : une carte garde sa hauteur propre au
+    lieu de s'etirer sur celle de sa voisine.
+
+A savoir : avec peu de commandes, une grille laisse du vide a droite, une carte
+occupant une piste entiere. C'est le comportement normal d'une grille.
+
+## Suppression manuelle des liens d'invitation (Settings)
+
+Le proprietaire peut desormais supprimer un lien d'invitation depuis
+Parametres -> Equipe, et pas seulement en generer.
+
+Deux points qui meritent d'etre relus :
+
+1. LA POLITIQUE RLS N'EXISTE NULLE PART DANS LE DEPOT. La table
+   staff_invitation_tokens n'apparait dans AUCUNE migration du depot — comme
+   is_restaurant_staff, elle a ete creee hors depot, dans l'editeur. Ses
+   politiques ne sont donc pas tracables ici. docs/028 ajoute la politique de
+   suppression.
+
+   Piege evite : sans politique, un bouton « Supprimer » n'aurait renvoye
+   AUCUNE ERREUR. Postgres ne refuse rien, il ne supprime simplement aucune
+   ligne. En RLS, l'absence d'erreur n'est pas un succes. D'ou le controle
+   explicite sur le nombre de lignes annoncees par le .select("id") : si rien
+   n'est revenu, on affiche qu'il faut executer docs/028, au lieu de laisser
+   croire a une suppression reussie.
+
+2. PROPRIETAIRE SEULEMENT. Un lien d'invitation donne acces au restaurant :
+   savoir qui peut le revoquer est une decision de securite, pas une commodite.
+   La generation est deja reservee au proprietaire ; la suppression suit la
+   meme regle, celui qui ouvre la porte est celui qui la referme. Les roles
+   admin et reception sont volontairement exclus.
+
+Confirmation en deux temps plutot qu'un window.confirm : supprimer un lien
+non encore utilise coupe l'acces d'un membre en cours d'arrivee. Le premier
+clic demande « Sur ? », le second confirme.
+
+## Ecran cuisine : sortir de la bande de 640 px
+
+Meme cause racine que le tableau de bord — tout en styles en ligne, donc aucune
+media query possible — et meme conteneur bloque a 640 px. Trois conteneurs
+structurels convertis en classes kt-.
+
+     mobile      >=700px     >=1180px     >=1600px
+     640px       1120px      1320px       1720px
+     1 col       2 col       3 col        4 col
+
+La quatrieme colonne au-dela de 1600px n'est pas un luxe : une cuisine affiche
+souvent sur un grand ecran ou un television, et c'est precisement la que la
+bande de 640px etait la plus absurde.
+
+## Console super-administrateur : 960 px, zéro media query
+
+Conteneur a 960px, aucune media query, tout en styles en ligne : memes causes
+que le tableau de bord et la cuisine. Trois conteneurs convertis en classes sa-.
+
+     mobile      >=700px     >=1180px    >=1400px
+     960px       1120px      1320px      1320px
+     1 col       2 col       2 col       3 col
+
+La troisieme colonne n'arrive qu'a 1400px, et c'est voulu : les cartes
+restaurant sont denses (nom, plan, statut, quatre boutons d'action, resultat
+des ventes). A 1320px sur trois colonnes, chaque carte tombe a 440px et les
+boutons d'action se chevauchent.
+
+## Inventaire : 960 px -> 1320 px, et correction d'un doublon de responsabilite
+
+Conteneur elargi de 960px a 1120px (>=700px) puis 1320px (>=1180px). La liste
+d'articles passe a deux colonnes (>=700px) puis trois (>=1400px).
+
+Correction de fond au passage : .inv-list ET chaque .inv-item se declaraient
+tous deux en « flex column ». La mere et les enfants portaient donc la meme
+responsabilite du flux, ce qui est redondant et rend l'ensemble difficile a
+lire. Desormais la liste est une grille qui place ses enfants ; les enfants se
+contentent d'arranger leur propre interieur, qui est deja en rangees
+(.inv-item-main, .inv-item-actions).
+
+La troisieme colonne attend 1400px : les cartes d'articles sont denses (nom,
+jauge de seuil, actions, recette liee).
+
+## Gestionnaire de menu : deux corps de page de 900 px
+
+La page comporte DEUX rendus distincts (vue categories, vue plats), chacun avec
+son propre corps bloque a 900 px et ses styles en ligne. La feuille est donc
+injectee deux fois, a cote de ADMIN_CSS dans les deux.
+
+Quatre conteneurs convertis en classes mm- : les deux corps, la liste des plats
+et la grille des categories.
+
+Deux points de jugement :
+
+1. La liste des plats passe a deux colonnes, pas trois. Les cartes de plat sont
+   denses (nom, prix, description, boutons d'action) ; une troisieme colonne les
+   ecraserait.
+
+2. La grille des categories etait deja en auto-fill(minmax(155px,1fr)) — donc
+   deja fluide. Mais a 155px de plancher, un ecran de 1320px aligne HUIT tuiles
+   par rangee et les rend minuscules. Le plancher monte a 190px (>=700px) puis
+   215px (>=1180px) : la grille reste fluide sans rapetisser ses tuiles.
+
+La modale d'ajout de plat reste a 480px, volontairement : c'est une feuille
+montee depuis le bas, pas une page.
+
+## Rangees de reglages : le parent empile, l'enfant se dispose en rangee
+
+Regle demandee, appliquee litteralement :
+
+    le PARENT (section) contient ses enfants en COLONNE
+    les ENFANTS (cartes, puis rangees) se disposent en ROW
+
+Concretement, trois niveaux :
+
+    .adm-section   colonne      <- empile les cartes, sur toute largeur
+      .adm-card    colonne      <- empile ses rangees
+        .adm-row   RANGEE       <- libelle a gauche, controle a droite
+
+Avant, la section etait une grille a deux colonnes des 700px : les cartes se
+plaçaient cote a cote, et l'interieur de chaque carte s'empilait. C'est
+l'inverse de la regle demandee.
+
+.adm-row est en colonne par defaut et devient une grille a deux pistes
+(minmax(0,1fr) / minmax(0,1.1fr)) a partir de 700px. Donc : rangee sur grand
+ecran, colonne sur mobile — le comportement demande, et deja en place ailleurs.
+
+Deux pistes larges plutot qu'un `auto` cote controle : avec auto, un bouton au
+libelle long ecrase la colonne du libelle.
+
+.adm-card passe en flex column SANS gap : les enfants gardent leurs marges
+propres, sinon l'espacement serait compte deux fois.
+
+Six cartes converties : compte, abonnement, identite visuelle (3 champs), mot de
+passe (3 champs), double authentification, liste des membres. Sont laisses en
+blocs pleine largeur, volontairement : l'apercu de la carte de visite, le QR
+code 2FA et le bouton de reactivation — ce sont des appels a l'action ou des
+previsualisations, pas des couples libelle/valeur.
+
+Rien de casse cote History, qui partage .adm-card mais passe par .adm-list.

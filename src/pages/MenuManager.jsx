@@ -1,13 +1,15 @@
-import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
+import PageHeader from "../components/PageHeader"
+import PageLoader from "../components/PageLoader"
+import { ADMIN_CSS } from "../lib/adminCss"
 import {
-  Camera, Pencil, Loader2, Menu as BurgerIcon, Lock, Clipboard, Search, Trash2,
+  Camera, Pencil, Loader2, Lock, Clipboard, Search, Trash2,
   Croissant, Cake, Wheat, Beef, Sandwich, EggFried, Drumstick, Fish, Pizza,
-  Salad, Utensils, Coffee, CupSoda, IceCream2, UtensilsCrossed, Sun, Moon, X, Check, ArrowLeft,
+  Salad, Utensils, Coffee, CupSoda, IceCream2, UtensilsCrossed, X, Check,
 } from 'lucide-react'
 
 const CATEGORIES = [
@@ -77,7 +79,6 @@ export default function MenuManager() {
   const [categoryImages, setCategoryImages] = useState({})
   const [uploadingCategory, setUploadingCategory] = useState(null)
   const [hoveredCategory, setHoveredCategory] = useState(null)
-  const [burgerOpen, setBurgerOpen] = useState(false)
 
   const { theme, darkMode, toggleDarkMode } = useTheme(brand.primary_color)
 
@@ -337,11 +338,7 @@ export default function MenuManager() {
 
   const categorized = categorize(items)
 
-  if (loading) return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.textPrimary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
-    </div>
-  )
+  if (loading) return <PageLoader theme={theme} />
 
   // PAGE CATÉGORIE
   if (activeCategory) {
@@ -354,129 +351,36 @@ export default function MenuManager() {
 
     return (
       <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
-        <style>{`
-          @media (max-width: 429px) {
-            .mm-desktop-controls { display: none !important; }
-            .mm-burger-btn { display: flex !important; }
-          }
-        `}</style>
-        <div style={{
-          background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
-          padding: '18px 20px 22px',
-          position: 'sticky', top: 0, zIndex: 40,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <button
-                onClick={() => { setActiveCategory(null); setSearch(''); setBurgerOpen(false) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '8px 14px', color: '#fff', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}
-              >
-                <ArrowLeft size={14} /> Retour
-              </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
-                <button className="mm-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '8px 11px', cursor: 'pointer', color: '#fff' }}>
-                  {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-                </button>
-                {brand.logo_url && (
-                  <img className="mm-desktop-controls" src={brand.logo_url} alt="logo" style={{ display: 'flex', width: '34px', height: '34px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
-                )}
-                {isOwner && (
-                  <button
-                    className="mm-desktop-controls"
-                    onClick={openAdd}
-                    disabled={atMenuLimit}
-                    title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px', background: brand.secondary_color, border: 'none', borderRadius: '10px', padding: '8px 16px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
-                  >
-                    {atMenuLimit ? <><Lock size={14} /> Ajouter</> : '+ Ajouter'}
-                  </button>
-                )}
+        <style>{ADMIN_CSS}</style>
+        <style>{MM_CSS}</style>
 
-                <button
-                  className="mm-burger-btn"
-                  onClick={() => setBurgerOpen(o => !o)}
-                  style={{ display: 'none', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '8px 10px', color: '#fff', cursor: 'pointer', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <BurgerIcon size={18} />
-                </button>
+        <PageHeader
+          brand={brand}
+          theme={theme}
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
+          onBack={() => setActiveCategory(null)}
+          subtitle={`Gestion menu · ${brand.name}`}
+          title={activeCategory}
+          icon={<CatIcon size={20} />}
+        >
+          {/* « Ajouter » vivait dans un menu burger, donc n'existait qu'en
+              dessous de 430px. Action d'en-tête permanente : même place sur
+              toutes les largeurs, et fonction aussi accessible sur mobile. */}
+          {isOwner && (
+            <button
+              className="adm-icon-btn"
+              onClick={openAdd}
+              disabled={atMenuLimit}
+              title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
+              style={{ opacity: atMenuLimit ? 0.5 : 1 }}
+            >
+              {atMenuLimit ? <><Lock size={14} /> Ajouter</> : '+ Ajouter'}
+            </button>
+          )}
+        </PageHeader>
 
-                {burgerOpen && (
-                  <>
-                    <div onClick={() => setBurgerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 59 }} />
-                    <div style={{
-                      position: 'absolute', top: '110%', right: 0, zIndex: 60,
-                      background: theme.cardBackground, borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
-                      padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '190px'
-                    }}>
-                      {isOwner && (
-                        <button
-                          onClick={openAdd}
-                          disabled={atMenuLimit}
-                          title={atMenuLimit ? `Limite de ${features.maxMenuItems} plats atteinte` : undefined}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: brand.secondary_color, border: 'none', borderRadius: '10px', padding: '8px 16px', color: '#fff', fontWeight: 'bold', cursor: atMenuLimit ? 'not-allowed' : 'pointer', fontSize: '0.82rem', opacity: atMenuLimit ? 0.5 : 1 }}
-                        >
-                          {atMenuLimit ? <><Lock size={14} /> Ajouter</> : '+ Ajouter'}
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => { toggleDarkMode(); setBurgerOpen(false) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '10px', padding: '10px 11px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
-                      >
-                        {darkMode ? <Sun size={15} /> : <Moon size={15} />} {darkMode ? 'Mode clair' : 'Mode sombre'}
-                      </button>
-                      {brand.logo_url && (
-                        <Link
-                          to={`/dashboard`}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            padding: "9px 12px",
-                            borderRadius: "999px",
-                            textDecoration: "none",
-                            transition: "background .2s",
-                          }}
-                        >
-                          <img
-                            src={brand.logo_url}
-                            alt={`${brand.name} logo`}
-                            style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }}
-                          />
-                          <span style={{ color: theme.textPrimary, fontWeight: 600, fontSize: ".85rem" }}>
-                            {brand.name}
-                          </span>
-                        </Link>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <div>
-              <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>
-                Gestion menu · {brand.name}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                {categoryImages[activeCategory]?.image_url ? (
-                  <img
-                    src={categoryImages[activeCategory].image_url}
-                    alt={activeCategory}
-                    style={{ width: '28px', height: '28px', borderRadius: '10px', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }}
-                  />
-                ) : (
-                  <CatIcon size={20} color={brand.secondary_color} />
-                )}
-                <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                  {activeCategory}
-                </h1>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px' }}>
+        <div className="mm-wrap mm-pad-cat">
 
           {message && (
             <div style={{
@@ -510,7 +414,7 @@ export default function MenuManager() {
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="mm-dishes">
             {filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 0', color: theme.textSecondary }}>
                 <UtensilsCrossed size={38} style={{ margin: '0 0 12px' }} />
@@ -713,80 +617,20 @@ export default function MenuManager() {
   // PAGE ACCUEIL — GRILLE CATÉGORIES
   return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
-      <style>{`
-        @media (max-width: 429px) {
-          .mm-desktop-controls { display: none !important; }
-          .mm-burger-btn { display: flex !important; }
-        }
-      `}</style>
-      <div style={{
-        background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`,
-        padding: '22px 20px', position: 'sticky', top: 0, zIndex: 40,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {brand.logo_url && (
-              <img src={brand.logo_url} alt="logo" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}` }} />
-            )}
-            <div>
-              <p style={{ color: brand.secondary_color, fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-                Administration · {brand.name}
-              </p>
-              <h1 style={{ color: '#fff', fontSize: '1.2rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                Gestion du menu
-              </h1>
-            </div>
-          </div>
+      <style>{ADMIN_CSS}</style>
+      <style>{MM_CSS}</style>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
-            <button
-              className="mm-desktop-controls"
-              onClick={() => navigate('/dashboard')}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 14px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              <ArrowLeft size={14} /> Retour
-            </button>
-            <button className="mm-desktop-controls" onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '10px', padding: '9px 11px', color: '#fff', cursor: 'pointer' }}>
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+      <PageHeader
+        brand={brand}
+        theme={theme}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+        onBack={() => navigate('/dashboard')}
+        subtitle={`Administration · ${brand.name}`}
+        title="Gestion du menu"
+      />
 
-            <button
-              className="mm-burger-btn"
-              onClick={() => setBurgerOpen(o => !o)}
-              style={{ display: 'none', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 10px', color: '#fff', cursor: 'pointer', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <BurgerIcon size={18} />
-            </button>
-
-            {burgerOpen && (
-              <>
-                <div onClick={() => setBurgerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 59 }} />
-                <div style={{
-                  position: 'absolute', top: '110%', right: 0, zIndex: 60,
-                  background: theme.cardBackground, borderRadius: '14px', boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
-                  padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '190px'
-                }}>
-                  <button
-                    onClick={() => { navigate('/dashboard'); setBurgerOpen(false) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '10px', padding: '10px 11px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
-                  >
-                    <ArrowLeft size={15} /> Retour
-                  </button>
-                  <button
-                    onClick={() => { toggleDarkMode(); setBurgerOpen(false) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'transparent', border: 'none', borderRadius: '10px', padding: '10px 11px', color: theme.textPrimary, cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
-                  >
-                    {darkMode ? <Sun size={15} /> : <Moon size={15} />} {darkMode ? 'Mode clair' : 'Mode sombre'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '28px 18px' }}>
+      <div className="mm-wrap mm-pad-main">
 
         {message && (
           <div style={{
@@ -840,11 +684,7 @@ export default function MenuManager() {
 
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
-          gap: '14px'
-        }}>
+        <div className="mm-cats">
           {Object.entries(categorized).map(([label, data]) => {
             const catImage = categoryImages[label]?.image_url
             const isUploadingThis = uploadingCategory === label
@@ -981,3 +821,38 @@ export default function MenuManager() {
     </div>
   )
 }
+
+/* Mise en page du gestionnaire de menu.
+   Deux corps de page bloques a 900px et aucune media query, pour les memes
+   raisons que les autres pages : tout etait en styles en ligne.
+   La modale d'ajout (480px) reste volontairement etroite. */
+const MM_CSS = `
+.mm-wrap{margin:0 auto;max-width:900px}
+.mm-pad-cat{padding:24px 16px}
+.mm-pad-main{padding:28px 18px}
+.mm-dishes{display:flex;flex-direction:column;gap:10px}
+.mm-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px}
+
+@media (min-width:700px){
+  .mm-wrap{max-width:1120px}
+  .mm-pad-cat{padding:32px 24px 48px}
+  .mm-pad-main{padding:32px 24px 48px}
+
+  /* La liste des plats cesse de declarer sa propre colonne : la mere place,
+     les enfants s'arrangent. Les cartes de plat sont denses (nom, prix,
+     description, actions) : deux colonnes, pas trois. */
+  .mm-dishes{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;align-items:start;
+  }
+
+  /* Tuiles de categorie : avec un plancher de 155px, un ecran large en aligne
+     huit par rangee et les rend minuscules. On remonte le plancher. */
+  .mm-cats{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+}
+
+@media (min-width:1180px){
+  .mm-wrap{max-width:1320px}
+  .mm-cats{grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+}
+`
