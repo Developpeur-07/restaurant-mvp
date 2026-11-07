@@ -898,3 +898,17 @@ structurels convertis en classes kt-.
 La quatrieme colonne au-dela de 1600px n'est pas un luxe : une cuisine affiche
 souvent sur un grand ecran ou un television, et c'est precisement la que la
 bande de 640px etait la plus absurde.
+
+## Console super-administrateur : 960 px, zéro media query
+
+Conteneur a 960px, aucune media query, tout en styles en ligne : memes causes
+que le tableau de bord et la cuisine. Trois conteneurs convertis en classes sa-.
+
+     mobile      >=700px     >=1180px    >=1400px
+     960px       1120px      1320px      1320px
+     1 col       2 col       2 col       3 col
+
+La troisieme colonne n'arrive qu'a 1400px, et c'est voulu : les cartes
+restaurant sont denses (nom, plan, statut, quatre boutons d'action, resultat
+des ventes). A 1320px sur trois colonnes, chaque carte tombe a 440px et les
+boutons d'action se chevauchent.
