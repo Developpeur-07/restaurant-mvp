@@ -762,3 +762,26 @@ Le script se REFUSE a agir s'il trouve un appel a plus d'un argument quelque
 part : Postgres ne trace pas les dependances entre une fonction et les
 politiques RLS qui l'appellent, donc supprimer une surcharge casserait ces
 appels a l'execution, silencieusement. Mieux vaut avorter que casser.
+
+## Suppression d'express, seule source de l'avertissement url.parse()
+
+Un avertissement remonte par les journaux Vercel :
+  DEP0169 DeprecationWarning: url.parse() behavior is not standardized and
+  prone to errors that have security implications.
+
+Ce n'est pas une erreur — rien n'etait casse — mais url.parse() est
+effectivement deconseille, donc la source a ete cherchee.
+
+Verdict : url.parse() n'apparait dans aucun fichier de src/ ni de api/. Un seul
+fichier de tout node_modules l'appelait : express/lib/request.js. Et express
+n'etait importe nulle part dans le projet — aucune occurrence, ni dans le code
+ni dans les scripts npm. Dependance morte, arrivee avec la fusion #2.
+
+Sa suppression retire 65 paquets (183 -> 121 dans node_modules).
+
+A noter : si l'avertissement revenait apres deploiement, il viendrait alors de
+l'environnement d'execution Vercel lui-meme (le journal indique node:8, soit
+l'amorcage du runtime), et non de notre code — nous n'y pouvons rien.
+
+Le lint reste a ses 10 erreurs preexistantes, toutes dans les paiements,
+ReceiptModal, Dashboard et Settings. Aucune dans le code des sessions.
