@@ -927,3 +927,26 @@ contentent d'arranger leur propre interieur, qui est deja en rangees
 
 La troisieme colonne attend 1400px : les cartes d'articles sont denses (nom,
 jauge de seuil, actions, recette liee).
+
+## Gestionnaire de menu : deux corps de page de 900 px
+
+La page comporte DEUX rendus distincts (vue categories, vue plats), chacun avec
+son propre corps bloque a 900 px et ses styles en ligne. La feuille est donc
+injectee deux fois, a cote de ADMIN_CSS dans les deux.
+
+Quatre conteneurs convertis en classes mm- : les deux corps, la liste des plats
+et la grille des categories.
+
+Deux points de jugement :
+
+1. La liste des plats passe a deux colonnes, pas trois. Les cartes de plat sont
+   denses (nom, prix, description, boutons d'action) ; une troisieme colonne les
+   ecraserait.
+
+2. La grille des categories etait deja en auto-fill(minmax(155px,1fr)) — donc
+   deja fluide. Mais a 155px de plancher, un ecran de 1320px aligne HUIT tuiles
+   par rangee et les rend minuscules. Le plancher monte a 190px (>=700px) puis
+   215px (>=1180px) : la grille reste fluide sans rapetisser ses tuiles.
+
+La modale d'ajout de plat reste a 480px, volontairement : c'est une feuille
+montee depuis le bas, pas une page.

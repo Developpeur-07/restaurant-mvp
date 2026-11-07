@@ -352,6 +352,7 @@ export default function MenuManager() {
     return (
       <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
         <style>{ADMIN_CSS}</style>
+        <style>{MM_CSS}</style>
 
         <PageHeader
           brand={brand}
@@ -379,7 +380,7 @@ export default function MenuManager() {
           )}
         </PageHeader>
 
-        <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px' }}>
+        <div className="mm-wrap mm-pad-cat">
 
           {message && (
             <div style={{
@@ -413,7 +414,7 @@ export default function MenuManager() {
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="mm-dishes">
             {filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 0', color: theme.textSecondary }}>
                 <UtensilsCrossed size={38} style={{ margin: '0 0 12px' }} />
@@ -617,6 +618,7 @@ export default function MenuManager() {
   return (
     <div style={{ background: theme.pageBackground, minHeight: '100vh', paddingBottom: '40px' }}>
       <style>{ADMIN_CSS}</style>
+      <style>{MM_CSS}</style>
 
       <PageHeader
         brand={brand}
@@ -628,7 +630,7 @@ export default function MenuManager() {
         title="Gestion du menu"
       />
 
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '28px 18px' }}>
+      <div className="mm-wrap mm-pad-main">
 
         {message && (
           <div style={{
@@ -682,11 +684,7 @@ export default function MenuManager() {
 
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))',
-          gap: '14px'
-        }}>
+        <div className="mm-cats">
           {Object.entries(categorized).map(([label, data]) => {
             const catImage = categoryImages[label]?.image_url
             const isUploadingThis = uploadingCategory === label
@@ -823,3 +821,38 @@ export default function MenuManager() {
     </div>
   )
 }
+
+/* Mise en page du gestionnaire de menu.
+   Deux corps de page bloques a 900px et aucune media query, pour les memes
+   raisons que les autres pages : tout etait en styles en ligne.
+   La modale d'ajout (480px) reste volontairement etroite. */
+const MM_CSS = `
+.mm-wrap{margin:0 auto;max-width:900px}
+.mm-pad-cat{padding:24px 16px}
+.mm-pad-main{padding:28px 18px}
+.mm-dishes{display:flex;flex-direction:column;gap:10px}
+.mm-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px}
+
+@media (min-width:700px){
+  .mm-wrap{max-width:1120px}
+  .mm-pad-cat{padding:32px 24px 48px}
+  .mm-pad-main{padding:32px 24px 48px}
+
+  /* La liste des plats cesse de declarer sa propre colonne : la mere place,
+     les enfants s'arrangent. Les cartes de plat sont denses (nom, prix,
+     description, actions) : deux colonnes, pas trois. */
+  .mm-dishes{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;align-items:start;
+  }
+
+  /* Tuiles de categorie : avec un plancher de 155px, un ecran large en aligne
+     huit par rangee et les rend minuscules. On remonte le plancher. */
+  .mm-cats{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+}
+
+@media (min-width:1180px){
+  .mm-wrap{max-width:1320px}
+  .mm-cats{grid-template-columns:repeat(auto-fill,minmax(215px,1fr))}
+}
+`
