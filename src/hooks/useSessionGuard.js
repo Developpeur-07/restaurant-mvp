@@ -35,9 +35,9 @@ export default function useSessionGuard() {
 
     async function beat() {
       try {
-        const result = await apiRequest('/api/sessions/heartbeat', {
+        const result = await apiRequest('/api/sessions', {
           method: 'POST',
-          body: { deviceId: getDeviceId() },
+          body: { action: 'heartbeat', deviceId: getDeviceId() },
         })
         if (!cancelled && result?.revoked) {
           await signOutAndWarn()

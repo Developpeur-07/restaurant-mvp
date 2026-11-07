@@ -55,9 +55,9 @@ export default function Login() {
     // Un seul appareil actif par compte : on déclare celui-ci, puis on regarde
     // s'il y en a un autre.
     try {
-      const claim = await apiRequest('/api/sessions/claim', {
+      const claim = await apiRequest('/api/sessions', {
         method: 'POST',
-        body: { deviceId: getDeviceId() },
+        body: { action: 'claim', deviceId: getDeviceId() },
       })
 
       if (claim.others > 0) {
@@ -77,9 +77,9 @@ export default function Login() {
         // Pas de 2FA activée : on ne peut rien exiger de plus, et refuser
         // reviendrait à enfermer dehors le propriétaire qui a perdu son
         // téléphone. On évince, puis on invitera à activer la 2FA.
-        await apiRequest('/api/sessions/revoke-others', {
+        await apiRequest('/api/sessions', {
           method: 'POST',
-          body: { deviceId: getDeviceId() },
+          body: { action: 'revoke-others', deviceId: getDeviceId() },
         })
         setNotice('Un autre appareil utilisait ce compte : il a été déconnecté. Active la double authentification dans Paramètres → Sécurité.')
         await redirectByRole(data.user.id)
@@ -123,9 +123,9 @@ export default function Login() {
 
     // Le jeton est passé en aal2 : le serveur acceptera la révocation.
     try {
-      await apiRequest('/api/sessions/revoke-others', {
+      await apiRequest('/api/sessions', {
         method: 'POST',
-        body: { deviceId: getDeviceId() },
+        body: { action: 'revoke-others', deviceId: getDeviceId() },
       })
     } catch (revokeError) {
       setBusy(false)

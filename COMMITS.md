@@ -785,3 +785,31 @@ l'amorcage du runtime), et non de notre code — nous n'y pouvons rien.
 
 Le lint reste a ses 10 erreurs preexistantes, toutes dans les paiements,
 ReceiptModal, Dashboard et Settings. Aucune dans le code des sessions.
+
+## Regroupement des endpoints de sessions (limite Vercel Hobby)
+
+Le deploiement a echoue : « No more than 12 Serverless Functions can be added
+to a Deployment on the Hobby plan. »
+
+Le projet comptait 11 fonctions. Les trois endpoints de sessions (claim,
+heartbeat, revoke-others) faisaient monter le compte a 14.
+
+Ils sont regroupes en une seule route, api/sessions.js, qui dispatch sur un
+champ `action`. Le regroupement ne coute rien ici : ces trois actions servent
+le meme appelant, au meme moment, et partagent la meme authentification. On
+retombe a 12, soit pile la limite — aucune marge.
+
+Deux pistes pour liberer de la place, non tranchees car ce sont des choix qui
+appartiennent au metier :
+  - api/webhooks/yabetoo-debug.js : 13 lignes, simple renvoi vers
+    yabetoo-subscription.js, etiquete « route legacy ». A verifier cote
+    configuration Yabetoo avant suppression — une URL de webhook y pointe
+    peut-etre encore.
+  - api/check-test-session.js : outil de reconciliation temporaire, dont
+    l'en-tete indique lui-meme « pas destine a rester en prod tel quel ».
+
+A noter : regrouper trois fonctions internes derriere un `action` est acceptable
+pour un ensemble coherent comme celui-ci, mais generalise a tout le projet cela
+deviendrait un plat de spaghettis. La limite Hobby finira par se payer : soit
+en passant a une equipe (plan Pro), soit en supprimant les routes devenues
+inutiles.
