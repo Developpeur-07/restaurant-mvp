@@ -7,7 +7,7 @@ import { ADMIN_CSS } from "../lib/adminCss";
 import PageHeader from "../components/PageHeader";
 import {
   Mail, Lock, ChefHat, Bell, Copy, Check,
-  ShieldCheck, ShieldOff, Smartphone, KeyRound, RefreshCw, Users,
+  ShieldCheck, ShieldOff, Smartphone, KeyRound, RefreshCw, Users, Trash2,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { apiRequest } from "../lib/api";
@@ -65,6 +65,10 @@ export default function Settings() {
   const [staffTokens, setStaffTokens] = useState([]);
   const [loadingTokens, setLoadingTokens] = useState(true);
   const [copiedTokenId, setCopiedTokenId] = useState(null);
+  const [deletingTokenId, setDeletingTokenId] = useState(null);
+  // Supprimer un lien est definitif et coupe l'acces d'un membre qui ne l'a
+  // pas encore utilise : confirmation en deux temps plutot qu'un window.confirm.
+  const [confirmingTokenId, setConfirmingTokenId] = useState(null);
 
   // ── SÉCURITÉ — double authentification (TOTP) ──
   const [mfaLoading, setMfaLoading] = useState(true);
@@ -413,6 +417,46 @@ export default function Settings() {
 
     setStaffTokens((prev) => [data, ...prev]);
     setMessage({ type: "success", text: "Lien d'invitation généré ✓" });
+    setTimeout(() => setMessage(null), 3000);
+  }
+
+  // ── Suppression manuelle d'un lien d'invitation ──
+  //
+  // Sans la politique RLS de docs/028, cette suppression NE RENVOIE AUCUNE
+  // ERREUR : Postgres ne supprime simplement aucune ligne. C'est le piege
+  // classique du RLS — l'absence d'erreur n'est pas un succes. D'ou le
+  // controle explicite sur le nombre de lignes annoncees.
+  async function deleteStaffToken(tokenId) {
+    if (!isOwner || !restaurantId) return;
+    setDeletingTokenId(tokenId);
+
+    const { data, error } = await supabase
+      .from("staff_invitation_tokens")
+      .delete()
+      .eq("id", tokenId)
+      // Defense en profondeur : meme si le RLS laissait passer, on ne peut
+      // pas supprimer le lien d'un autre restaurant.
+      .eq("restaurant_id", restaurantId)
+      .select("id");
+
+    setDeletingTokenId(null);
+    setConfirmingTokenId(null);
+
+    if (error) {
+      setMessage({ type: "error", text: "Suppression impossible : " + error.message });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setMessage({
+        type: "error",
+        text: "Suppression refusée. Exécute docs/028_suppression_invitations.sql dans l'éditeur Supabase pour autoriser cette action.",
+      });
+      return;
+    }
+
+    setStaffTokens((prev) => prev.filter((t) => t.id !== tokenId));
+    setMessage({ type: "success", text: "Lien d'invitation supprimé ✓" });
     setTimeout(() => setMessage(null), 3000);
   }
 
@@ -1280,13 +1324,40 @@ export default function Settings() {
                               <span style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", fontWeight: "600", color: theme.textPrimary }}>
                                 <roleInfo.Icon size={14} /> {roleInfo.label}
                               </span>
-                              <span style={{
-                                fontSize: "0.68rem", fontWeight: "600", padding: "4px 10px", borderRadius: "14px",
-                                background: t.used ? "#F3F4F6" : isExpired ? "#fee2e2" : "#DCFCE7",
-                                color: t.used ? "#6B7280" : isExpired ? "#dc2626" : "#166534",
-                              }}>
-                                {t.used ? "Utilisé" : isExpired ? "Expiré" : "Actif"}
-                              </span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                                <span style={{
+                                  fontSize: "0.68rem", fontWeight: "600", padding: "4px 10px", borderRadius: "14px",
+                                  background: t.used ? "#F3F4F6" : isExpired ? "#fee2e2" : "#DCFCE7",
+                                  color: t.used ? "#6B7280" : isExpired ? "#dc2626" : "#166534",
+                                }}>
+                                  {t.used ? "Utilisé" : isExpired ? "Expiré" : "Actif"}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    if (confirmingTokenId === t.id) deleteStaffToken(t.id);
+                                    else setConfirmingTokenId(t.id);
+                                  }}
+                                  onBlur={() => setConfirmingTokenId((c) => (c === t.id ? null : c))}
+                                  disabled={deletingTokenId === t.id}
+                                  title={confirmingTokenId === t.id ? "Confirmer la suppression" : "Supprimer ce lien"}
+                                  aria-label={confirmingTokenId === t.id ? "Confirmer la suppression" : "Supprimer ce lien"}
+                                  style={{
+                                    background: confirmingTokenId === t.id ? "#dc2626" : "transparent",
+                                    border: `1px solid ${confirmingTokenId === t.id ? "#dc2626" : theme.borderLight}`,
+                                    borderRadius: "10px", padding: "5px 8px", cursor: "pointer",
+                                    color: confirmingTokenId === t.id ? "#fff" : theme.textSecondary,
+                                    display: "flex", alignItems: "center", gap: "5px",
+                                    fontSize: "0.68rem", fontWeight: "600",
+                                    opacity: deletingTokenId === t.id ? 0.5 : 1,
+                                  }}
+                                >
+                                  {deletingTokenId === t.id
+                                    ? <RefreshCw size={13} />
+                                    : confirmingTokenId === t.id
+                                      ? <><Trash2 size={13} /> Sûr ?</>
+                                      : <Trash2 size={13} />}
+                                </button>
+                              </div>
                             </div>
                             {!t.used && !isExpired && (
                               <button

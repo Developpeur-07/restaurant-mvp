@@ -854,3 +854,33 @@ Trois details :
 
 A savoir : avec peu de commandes, une grille laisse du vide a droite, une carte
 occupant une piste entiere. C'est le comportement normal d'une grille.
+
+## Suppression manuelle des liens d'invitation (Settings)
+
+Le proprietaire peut desormais supprimer un lien d'invitation depuis
+Parametres -> Equipe, et pas seulement en generer.
+
+Deux points qui meritent d'etre relus :
+
+1. LA POLITIQUE RLS N'EXISTE NULLE PART DANS LE DEPOT. La table
+   staff_invitation_tokens n'apparait dans AUCUNE migration du depot — comme
+   is_restaurant_staff, elle a ete creee hors depot, dans l'editeur. Ses
+   politiques ne sont donc pas tracables ici. docs/028 ajoute la politique de
+   suppression.
+
+   Piege evite : sans politique, un bouton « Supprimer » n'aurait renvoye
+   AUCUNE ERREUR. Postgres ne refuse rien, il ne supprime simplement aucune
+   ligne. En RLS, l'absence d'erreur n'est pas un succes. D'ou le controle
+   explicite sur le nombre de lignes annoncees par le .select("id") : si rien
+   n'est revenu, on affiche qu'il faut executer docs/028, au lieu de laisser
+   croire a une suppression reussie.
+
+2. PROPRIETAIRE SEULEMENT. Un lien d'invitation donne acces au restaurant :
+   savoir qui peut le revoquer est une decision de securite, pas une commodite.
+   La generation est deja reservee au proprietaire ; la suppression suit la
+   meme regle, celui qui ouvre la porte est celui qui la referme. Les roles
+   admin et reception sont volontairement exclus.
+
+Confirmation en deux temps plutot qu'un window.confirm : supprimer un lien
+non encore utilise coupe l'acces d'un membre en cours d'arrivee. Le premier
+clic demande « Sur ? », le second confirme.
