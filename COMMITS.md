@@ -912,3 +912,18 @@ La troisieme colonne n'arrive qu'a 1400px, et c'est voulu : les cartes
 restaurant sont denses (nom, plan, statut, quatre boutons d'action, resultat
 des ventes). A 1320px sur trois colonnes, chaque carte tombe a 440px et les
 boutons d'action se chevauchent.
+
+## Inventaire : 960 px -> 1320 px, et correction d'un doublon de responsabilite
+
+Conteneur elargi de 960px a 1120px (>=700px) puis 1320px (>=1180px). La liste
+d'articles passe a deux colonnes (>=700px) puis trois (>=1400px).
+
+Correction de fond au passage : .inv-list ET chaque .inv-item se declaraient
+tous deux en « flex column ». La mere et les enfants portaient donc la meme
+responsabilite du flux, ce qui est redondant et rend l'ensemble difficile a
+lire. Desormais la liste est une grille qui place ses enfants ; les enfants se
+contentent d'arranger leur propre interieur, qui est deja en rangees
+(.inv-item-main, .inv-item-actions).
+
+La troisieme colonne attend 1400px : les cartes d'articles sont denses (nom,
+jauge de seuil, actions, recette liee).

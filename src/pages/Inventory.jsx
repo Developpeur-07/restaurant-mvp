@@ -745,10 +745,27 @@ const CSS = (t) => `
 
 /* ── À partir de 700px : on élargit au lieu de rester en colonne ── */
 @media (min-width:700px){
-  .inv-wrap{padding:22px 24px 48px}
+  .inv-wrap{max-width:1120px;padding:22px 24px 48px}
   .inv-field-row{grid-template-columns:1fr 1fr}
   .inv-stat b{font-size:1.6rem}
   .inv-journal li{grid-template-columns:2fr 1fr auto auto;align-items:center}
   .inv-jr-date{text-align:left}
+
+  /* La liste devient une grille et cesse de déclarer sa propre colonne :
+     c'est la mère qui place ses enfants, pas l'inverse. Jusqu'ici la mère et
+     chaque enfant se déclaraient tous deux en colonne, ce qui doublonnait la
+     responsabilité du flux. align-items:start : une carte garde la hauteur de
+     son contenu au lieu de s'étirer sur celle de sa voisine. */
+  .inv-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+}
+
+@media (min-width:1180px){
+  .inv-wrap{max-width:1320px}
+}
+
+/* Les articles de stock sont des cartes denses (nom, jauge de seuil, actions,
+   recette liée) : la troisième colonne attend 1400px. */
+@media (min-width:1400px){
+  .inv-list{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 `;
