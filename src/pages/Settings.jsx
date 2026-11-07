@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
 import { ADMIN_CSS } from "../lib/adminCss";
+import PageHeader from "../components/PageHeader";
 import {
-  Sun, Moon, ArrowLeft, Mail, Lock, ChefHat, Bell, Copy, Check,
+  Mail, Lock, ChefHat, Bell, Copy, Check,
   ShieldCheck, ShieldOff, Smartphone, KeyRound, RefreshCw, Users,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -689,41 +690,15 @@ export default function Settings() {
 
       <style>{ADMIN_CSS}</style>
 
-      {/* HEADER */}
-      <div style={{ background: `linear-gradient(135deg, ${brand.primary_color}CC, ${brand.primary_color})`, padding: "32px 20px 28px" }}>
-        <div className="adm-header-inner">
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "10px",
-                padding: "9px 14px", color: "#fff", cursor: "pointer", fontSize: "0.85rem",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-              }}
-            >
-              <ArrowLeft size={15} /> Retour
-            </button>
-            <div>
-              <p style={{ color: brand.secondary_color, fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", margin: 0, fontFamily: "Georgia, serif" }}>
-                Administration
-              </p>
-              <h1 style={{ color: "#fff", fontSize: "1.4rem", fontFamily: "Georgia, serif", margin: 0 }}>
-                Paramètres
-              </h1>
-            </div>
-          </div>
-          <button
-            onClick={toggleDarkMode}
-            style={{
-              background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "10px",
-              padding: "9px 11px", cursor: "pointer", display: "inline-flex",
-              alignItems: "center", justifyContent: "center", color: "inherit",
-            }}
-          >
-            {darkMode ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        brand={brand}
+        theme={theme}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+        onBack={() => navigate("/dashboard")}
+        subtitle="Administration"
+        title="Paramètres"
+      />
 
       <div className="adm-wrap">
 

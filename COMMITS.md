@@ -681,3 +681,38 @@ Un point de vigilance : le build passait alors que ADMIN_CSS n'etait pas
 importe dans Settings. Undefined n'est pas une erreur de compilation mais une
 erreur a l'execution — la page aurait plante. Seul le lint l'a attrape. D'ou
 l'interet de le faire tourner systematiquement, et pas seulement le build.
+
+## En-tete commun : Retour a gauche, theme a droite, sur toutes les pages
+
+Le bouton « Retour » et l'interrupteur de mode sombre etaient reconstruits a la
+main dans chaque page. Sur l'Historique, les Parametres et l'Inventaire, Retour
+etait a gauche. Sur MenuManager, les deux etaient a droite. Et sous 430px, un
+menu burger les faisait disparaitre. D'une page a l'autre, le meme bouton
+changeait donc de place.
+
+src/components/PageHeader.jsx fixe la regle une fois : Retour est toujours le
+premier element a gauche, l'interrupteur de theme toujours le dernier a droite.
+Les actions propres a une page se glissent entre les deux, sans jamais
+deplacer les deux bouts.
+
+Le detail qui tient la promesse : flex-wrap:nowrap avec min-width:0 sur le
+groupe de gauche. Le titre se comprime et tronque avec une ellipse, mais ne
+pousse jamais le bouton de theme hors de sa place. Sous 430px, le libelle
+« Retour » disparait pour garder la place — le bouton reste ou il est.
+
+Le menu burger de MenuManager est remplace par une action d'en-tete
+permanente. Il cachait « Ajouter un plat » : en dessous de 430px, on ne
+pouvait plus ajouter de plat. L'action est maintenant visible a toutes les
+largeurs, a une place previsible.
+
+src/components/PageLoader.jsx fait la meme chose pour les ecrans de
+chargement. Chaque page ecrivait le sien, avec son fond et sa couleur de
+texte : le passage du chargement a la page provoquait un saut visuel. Le
+composant utilise les memes variables et la meme feuille de style que les
+pages, donc le fond ne bouge plus.
+
+adminCss.js exporte aussi adminVars() : toutes les pages posent exactement les
+memes variables, au lieu de recopier huit lignes dont une finissait toujours
+par diverger.
+
+Converti : Historique, Inventaire, Parametres, MenuManager (ses deux en-tetes).

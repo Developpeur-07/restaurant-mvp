@@ -21,9 +21,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Package, Plus, Minus, Trash2, AlertTriangle,
-  Sun, Moon, X, Check, Link2,
+  Plus, Minus, Trash2, AlertTriangle, X, Check, Link2,
 } from "lucide-react";
+import PageHeader from "../components/PageHeader";
+import PageLoader from "../components/PageLoader";
+import { ADMIN_CSS } from "../lib/adminCss";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "../lib/useTheme";
 import { useSubscription } from "../hooks/useSubscription";
@@ -287,30 +289,24 @@ export default function Inventory() {
 
   if (subLoading || loading) {
     return (
-      <div className="inv-loader" style={{ background: theme.pageBackground }}>
-        <p style={{ color: theme.textSecondary }}>Chargement de l&apos;inventaire...</p>
-      </div>
+      <PageLoader theme={theme} label="Chargement de l'inventaire..." />
     );
   }
 
   return (
     <div className="inv-page" style={{ background: theme.pageBackground, color: theme.textPrimary }}>
+      <style>{ADMIN_CSS}</style>
       <style>{CSS(theme)}</style>
 
-      <header className="inv-head" style={{ background: theme.cardBackground, borderColor: theme.borderLight }}>
-        <button className="inv-icon-btn" onClick={() => navigate("/dashboard")} title="Retour" style={{ color: theme.textPrimary }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div className="inv-head-title">
-          <h1 style={{ color: theme.textPrimary }}>
-            <Package size={19} /> Inventaire
-          </h1>
-          {restaurantName && <span style={{ color: theme.textMuted }}>{restaurantName}</span>}
-        </div>
-        <button className="inv-icon-btn" onClick={toggleDarkMode} title="Basculer le thème" style={{ color: theme.textPrimary }}>
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-      </header>
+      <PageHeader
+        brand={restaurantBrand}
+        theme={theme}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+        onBack={() => navigate("/dashboard")}
+        subtitle={restaurantName || "Stock"}
+        title="Inventaire"
+      />
 
       <main className="inv-wrap">
         {tableMissing && (
@@ -656,24 +652,6 @@ export default function Inventory() {
 // ---------------------------------------------------------------------------
 const CSS = (t) => `
 .inv-page{min-height:100vh;font-family:'Outfit',system-ui,sans-serif}
-.inv-loader{min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif}
-
-.inv-head{
-  display:flex;align-items:center;gap:12px;
-  padding:14px 16px;border-bottom:1px solid ${t.borderLight};
-  position:sticky;top:0;z-index:20;
-}
-.inv-head-title{flex:1;min-width:0}
-.inv-head-title h1{
-  margin:0;font-family:Georgia,serif;font-weight:400;font-size:1.15rem;
-  display:flex;align-items:center;gap:8px;
-}
-.inv-head-title span{display:block;font-size:.74rem;margin-top:2px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.inv-icon-btn{
-  flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
-  background:transparent;border:1px solid ${t.borderLight};cursor:pointer;
-}
 
 .inv-wrap{max-width:960px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:16px}
 
@@ -769,7 +747,6 @@ const CSS = (t) => `
 @media (min-width:700px){
   .inv-wrap{padding:22px 24px 48px}
   .inv-field-row{grid-template-columns:1fr 1fr}
-  .inv-head-title h1{font-size:1.4rem}
   .inv-stat b{font-size:1.6rem}
   .inv-journal li{grid-template-columns:2fr 1fr auto auto;align-items:center}
   .inv-jr-date{text-align:left}

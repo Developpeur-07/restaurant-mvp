@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/useTheme'
 import { useSubscription } from '../hooks/useSubscription'
-import { ArrowLeft, Sun, Moon, BarChart3, ShoppingBag, UtensilsCrossed, Receipt } from 'lucide-react'
+import { BarChart3, ShoppingBag, UtensilsCrossed, Receipt } from 'lucide-react'
 import ReceiptModal from '../components/ReceiptModal'
-import { ADMIN_CSS } from '../lib/adminCss'
+import PageHeader from '../components/PageHeader'
+import PageLoader from '../components/PageLoader'
+import { ADMIN_CSS, adminVars } from '../lib/adminCss'
 
 export default function History() {
   const navigate = useNavigate()
@@ -58,15 +60,12 @@ export default function History() {
     return () => { cancelled = true }
   }, [contextLoading, restaurantId])
 
-  if (contextLoading || loading) return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: theme.textSecondary, fontFamily: 'Georgia, serif' }}>Chargement...</p>
-    </div>
-  )
+  if (contextLoading || loading) return <PageLoader theme={theme} />
 
   if (!restaurantId) return (
-    <div style={{ background: theme.pageBackground, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <p style={{ color: theme.textPrimary, textAlign: 'center' }}>
+    <div className="adm-page adm-loader" style={adminVars(theme, restaurantBrand)}>
+      <style>{ADMIN_CSS}</style>
+      <p className="adm-loader-label">
         Ce compte n'a pas accès à l'historique.
       </p>
     </div>
@@ -76,46 +75,19 @@ export default function History() {
     <>
       <div
         className={`adm-page ${selectedReceipt ? 'dashboard-print-hide' : ''}`}
-        style={{
-          "--adm-page": theme.pageBackground,
-          "--adm-card": theme.cardBackground,
-          "--adm-text": theme.textPrimary,
-          "--adm-text-2": theme.textSecondary,
-          "--adm-muted": theme.textMuted,
-          "--adm-border": theme.borderLight,
-          "--adm-primary": theme.primary,
-          "--adm-accent": restaurantBrand?.secondary_color || "#C9A84C",
-        }}
+        style={adminVars(theme, restaurantBrand)}
       >
       <style>{ADMIN_CSS}</style>
 
-      {/* HEADER */}
-      <div style={{
-        background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor})`,
-        padding: '24px 20px'
-      }}>
-        <div className="adm-header-inner">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => navigate('/dashboard')}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 14px', color: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}
-            >
-              <ArrowLeft size={15} /> Retour
-            </button>
-            <div>
-              <p style={{ color: '#C9A84C', fontSize: '0.65rem', letterSpacing: '0.25em', textTransform: 'uppercase', margin: 0, fontFamily: 'Georgia, serif' }}>
-                Historique
-              </p>
-              <h1 style={{ color: '#fff', fontSize: '1.4rem', fontFamily: 'Georgia, serif', margin: 0 }}>
-                Ventes soldées
-              </h1>
-            </div>
-          </div>
-          <button onClick={toggleDarkMode} style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '10px', padding: '9px 11px', cursor: 'pointer' }}>
-            {darkMode ? <Sun size={16} color="#fff" /> : <Moon size={16} color="#fff" />}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        brand={restaurantBrand}
+        theme={theme}
+        darkMode={darkMode}
+        toggleDarkMode={toggleDarkMode}
+        onBack={() => navigate('/dashboard')}
+        subtitle="Historique"
+        title="Ventes soldées"
+      />
 
       <div className="adm-wrap">
 

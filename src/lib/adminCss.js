@@ -21,13 +21,76 @@
 // Préfixe adm- : exclut toute collision avec un utilitaire Tailwind (les cartes
 // de la page d'accueil étaient tombées à 12px à cause de w-3 / w-2).
 
+// Contrat centralisé. Chaque page pose ces variables sur son élément racine ;
+// passer par cette fonction garantit qu'aucune page n'en oublie une, ni
+// n'invente sa propre teinte pour un même usage.
+export const adminVars = (theme, brand) => ({
+  '--adm-page': theme.pageBackground,
+  '--adm-card': theme.cardBackground,
+  '--adm-text': theme.textPrimary,
+  '--adm-text-2': theme.textSecondary,
+  '--adm-muted': theme.textMuted,
+  '--adm-border': theme.borderLight,
+  '--adm-primary': theme.primary,
+  '--adm-accent': brand?.secondary_color || '#C9A84C',
+})
+
 export const ADMIN_CSS = `
 .adm-page{min-height:100vh;background:var(--adm-page)}
 
-.adm-header-inner{
-  max-width:520px;margin:0 auto;display:flex;justify-content:space-between;
-  align-items:center;gap:12px;flex-wrap:wrap;
+/* En-tête : « Retour » collé à gauche, thème collé à droite, quoi qu'il arrive.
+   nowrap + min-width:0 : le titre se comprime et tronque, mais jamais il ne
+   pousse l'interrupteur de thème hors de sa place. */
+.adm-header{
+  position:sticky;top:0;z-index:40;padding:20px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
 }
+.adm-header-inner{
+  max-width:520px;margin:0 auto;display:flex;align-items:center;gap:12px;
+  flex-wrap:nowrap;
+}
+.adm-header-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 auto}
+.adm-header-right{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}
+.adm-header-titles{min-width:0}
+.adm-header-kicker{
+  margin:0;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;
+  font-family:Georgia,serif;color:var(--adm-accent,#C9A84C);
+}
+.adm-header-title{
+  margin:0;font-size:1.25rem;font-family:Georgia,serif;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.adm-header-icon{
+  display:inline-flex;vertical-align:-3px;margin-right:8px;flex:none;
+  color:var(--adm-accent,#C9A84C);
+}
+.adm-header-logo{
+  width:36px;height:36px;flex:none;border-radius:50%;object-fit:cover;
+  border:2px solid var(--adm-accent,#C9A84C);
+}
+
+/* Boutons d'en-tête : même gabarit partout. */
+.adm-icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;
+  background:rgba(255,255,255,.2);border:none;border-radius:10px;
+  padding:9px 14px;color:#fff;cursor:pointer;font-size:.85rem;
+  font-family:inherit;line-height:1;
+}
+.adm-icon-btn--square{padding:9px 11px}
+
+/* Écran de chargement : mêmes variables que les pages, donc passage du
+   chargement au contenu sans saut de couleur. */
+.adm-loader{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;gap:14px;padding:20px;
+}
+.adm-loader-label{margin:0;font-family:Georgia,serif;color:var(--adm-text-2)}
+.adm-spinner{
+  width:30px;height:30px;flex:none;border-radius:50%;
+  border:3px solid var(--adm-border);border-top-color:var(--adm-primary,#1F2A44);
+  animation:adm-spin .8s linear infinite;
+}
+@keyframes adm-spin{to{transform:rotate(360deg)}}
 
 .adm-wrap{
   max-width:520px;margin:0 auto;padding:24px 16px 48px;
@@ -109,6 +172,14 @@ export const ADMIN_CSS = `
   .adm-card{padding:24px}
   .adm-list{gap:16px}
   .adm-section-title{font-size:1.15rem}
+  .adm-header-title{font-size:1.4rem}
+}
+
+/* Sous 430px, le libellé « Retour » est sacrifié : le bouton reste à sa place
+   et garde sa cible tactile, au lieu de comprimer le titre. */
+@media (max-width:430px){
+  .adm-icon-btn-text{display:none}
+  .adm-icon-btn{padding:9px 11px}
 }
 
 /* Les listes longues gagnent une troisieme colonne sur grand ecran : ce sont
