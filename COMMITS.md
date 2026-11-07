@@ -813,3 +813,44 @@ pour un ensemble coherent comme celui-ci, mais generalise a tout le projet cela
 deviendrait un plat de spaghettis. La limite Hobby finira par se payer : soit
 en passant a une equipe (plan Pro), soit en supprimant les routes devenues
 inutiles.
+
+## Tableau de bord : sortir de la bande de 640 px
+
+La page etait ecrite ENTIEREMENT en styles en ligne : 86 blocs style={{}}. C'est
+la cause racine, et elle explique tout le reste.
+
+    Un style en ligne ne peut pas porter de media query.
+
+Les zero media query du tableau de bord n'etaient donc pas un oubli : c'etait
+structurellement impossible. Et le conteneur racine etait
+
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "28px 18px" }}>
+
+soit une bande de 640 px centree au milieu d'un grand ecran, avec tout empile
+dedans. D'ou l'impression d'une application mobile.
+
+Seuls les SEPT conteneurs structuraux sont convertis en classes db-. Les 86
+styles decoratifs (couleurs, polices) restent en ligne : les convertir
+n'apporterait rien et ferait courir un risque pour rien.
+
+Grandeurs retenues :
+
+                     mobile    >=700px    >=1180px
+    conteneur         640px     1120px     1320px
+    commandes         1 col     2 col      3 col
+    annulees          1 col     2 col      3 col
+
+Les seuils 700 et 1180 sont ceux de la feuille partagee adminCss.js. J'avais
+d'abord mis 760 et 1200 : deux pages qui changent de forme a des largeurs
+differentes donnent une navigation bancale en passant de l'une a l'autre.
+
+Trois details :
+  - les trois chiffres du jour forment une bande a separateurs verticaux ; sans
+    eux les valeurs flottaient sans repere ;
+  - le bouton « Voir l'historique » est borne a 420 px, sinon il s'etirait sur
+    1320 px ;
+  - align-items:start sur les grilles : une carte garde sa hauteur propre au
+    lieu de s'etirer sur celle de sa voisine.
+
+A savoir : avec peu de commandes, une grille laisse du vide a droite, une carte
+occupant une piste entiere. C'est le comportement normal d'une grille.

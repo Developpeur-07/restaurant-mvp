@@ -517,6 +517,8 @@ export default function Dashboard() {
         className={receipt ? "dashboard-print-hide" : ""}
         style={{ background: theme.pageBackground, minHeight: "100vh" }}
       >
+        <style>{DASH_CSS}</style>
+
 
       {/* HEADER */}
       <div style={{
@@ -524,7 +526,7 @@ export default function Dashboard() {
         padding: '24px 20px', position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 2px 12px rgba(0,0,0,0.2)'
       }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+        <div className="db-head-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             {brand.logo_url && (
               <img src={brand.logo_url} alt="logo" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${brand.secondary_color}`, flexShrink: 0 }} />
@@ -602,7 +604,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "28px 18px" }}>
+      <div className="db-wrap">
 
         {/* BANNIÈRE ABONNEMENT — visible seulement si accès dégradé.
             Responsive : passe en colonne sous ~420px (bouton pleine largeur)
@@ -681,7 +683,7 @@ export default function Dashboard() {
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.68rem', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 16px', fontFamily: 'Georgia, serif' }}>
               Aujourd'hui
             </p>
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+            <div className="db-hero-stats">
               <div style={{ flex: '1 1 auto', minWidth: '80px' }}>
                 <p style={{ margin: 0, color: '#fff', fontSize: '1.6rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
                   {todayStats.count}
@@ -723,7 +725,7 @@ export default function Dashboard() {
         )}
 
         {/* STATS RAPIDES — fond et texte thème */}
-        <div style={{ display: "flex", gap: "14px", marginBottom: "28px" }}>
+        <div className="db-kpis">
           {[
             { label: "En cours", value: activeOrders.length, color: theme.textPrimary },
             { label: "En préparation", value: orders.filter((o) => o.status === "preparing").length, color: "#1E40AF" },
@@ -759,7 +761,7 @@ export default function Dashboard() {
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginBottom: "36px" }}>
+          <div className="db-orders">
             {activeGroups.map((group) => {
               const isGrouped = group.sessionId && group.orders.length > 1;
               const isPendingClosure = group.sessionId && pendingClosureSessions.has(group.sessionId);
@@ -950,7 +952,7 @@ export default function Dashboard() {
                 Annulées
               </h2>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="db-cancelled">
               {cancelledOrders.map((order) => {
                 const total = order.items.reduce((s, i) => s + i.price * i.qty, 0);
                 return (
@@ -1002,6 +1004,7 @@ export default function Dashboard() {
         {/* HISTORIQUE */}
         <button
           onClick={() => navigate("/history")}
+          className="db-history-btn"
           style={{
             width: "100%",
             background: "transparent",
@@ -1033,3 +1036,54 @@ export default function Dashboard() {
   </>
   );
 }
+
+/* Mise en page du tableau de bord.
+   La page etait ecrite entierement en styles en ligne (86 blocs style={{}}).
+   Un style en ligne ne peut pas porter de media query : c'est ce qui la
+   bloquait a 640px et lui donnait l'air d'une application mobile sur grand
+   ecran. Seuls les conteneurs structuraux sont convertis ici ; les styles
+   decoratifs (couleurs, polices) restent en ligne, ou ils sont inoffensifs. */
+const DASH_CSS = `
+.db-wrap{max-width:640px;margin:0 auto;padding:28px 18px}
+.db-head-inner{
+  max-width:640px;margin:0 auto;display:flex;justify-content:space-between;
+  align-items:center;flex-wrap:wrap;gap:14px;
+}
+.db-hero-stats{display:flex;gap:20px;flex-wrap:wrap}
+.db-kpis{display:flex;gap:14px;margin-bottom:28px}
+.db-orders{display:flex;flex-direction:column;gap:20px;margin-bottom:36px}
+.db-cancelled{display:flex;flex-direction:column;gap:10px}
+.db-history-btn{max-width:420px;margin:0 auto}
+
+/* 700px, et non 760 : la feuille partagée (.adm-wrap) bascule à cette largeur.
+   Deux pages qui changent de forme à des seuils différents donnent une
+   navigation bancale. */
+@media (min-width:700px){
+  .db-wrap{max-width:1120px;padding:32px 24px 56px}
+  .db-head-inner{max-width:1120px}
+
+  /* Les trois chiffres du jour forment une bande : un separateur vertical
+     plutot qu'un simple espace, sinon les valeurs flottent sans repere. */
+  .db-hero-stats{gap:0}
+  .db-hero-stats > div{padding:0 24px}
+  .db-hero-stats > div + div{border-left:1px solid rgba(255,255,255,.18)}
+
+  /* Les commandes passent en grille. align-items:start : une carte garde sa
+     hauteur propre au lieu de s'etirer sur celle de sa voisine. */
+  .db-orders{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:20px;align-items:start;
+  }
+  .db-cancelled{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;align-items:start;
+  }
+}
+
+/* 1180px, même seuil que .adm-list dans la feuille partagée. */
+@media (min-width:1180px){
+  .db-wrap,.db-head-inner{max-width:1320px}
+  .db-orders{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .db-cancelled{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+`
