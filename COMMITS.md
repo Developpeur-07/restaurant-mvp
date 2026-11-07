@@ -884,3 +884,17 @@ Deux points qui meritent d'etre relus :
 Confirmation en deux temps plutot qu'un window.confirm : supprimer un lien
 non encore utilise coupe l'acces d'un membre en cours d'arrivee. Le premier
 clic demande « Sur ? », le second confirme.
+
+## Ecran cuisine : sortir de la bande de 640 px
+
+Meme cause racine que le tableau de bord — tout en styles en ligne, donc aucune
+media query possible — et meme conteneur bloque a 640 px. Trois conteneurs
+structurels convertis en classes kt-.
+
+     mobile      >=700px     >=1180px     >=1600px
+     640px       1120px      1320px       1720px
+     1 col       2 col       3 col        4 col
+
+La quatrieme colonne au-dela de 1600px n'est pas un luxe : une cuisine affiche
+souvent sur un grand ecran ou un television, et c'est precisement la que la
+bande de 640px etait la plus absurde.
