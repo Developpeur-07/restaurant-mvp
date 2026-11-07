@@ -950,3 +950,38 @@ Deux points de jugement :
 
 La modale d'ajout de plat reste a 480px, volontairement : c'est une feuille
 montee depuis le bas, pas une page.
+
+## Rangees de reglages : le parent empile, l'enfant se dispose en rangee
+
+Regle demandee, appliquee litteralement :
+
+    le PARENT (section) contient ses enfants en COLONNE
+    les ENFANTS (cartes, puis rangees) se disposent en ROW
+
+Concretement, trois niveaux :
+
+    .adm-section   colonne      <- empile les cartes, sur toute largeur
+      .adm-card    colonne      <- empile ses rangees
+        .adm-row   RANGEE       <- libelle a gauche, controle a droite
+
+Avant, la section etait une grille a deux colonnes des 700px : les cartes se
+plaçaient cote a cote, et l'interieur de chaque carte s'empilait. C'est
+l'inverse de la regle demandee.
+
+.adm-row est en colonne par defaut et devient une grille a deux pistes
+(minmax(0,1fr) / minmax(0,1.1fr)) a partir de 700px. Donc : rangee sur grand
+ecran, colonne sur mobile — le comportement demande, et deja en place ailleurs.
+
+Deux pistes larges plutot qu'un `auto` cote controle : avec auto, un bouton au
+libelle long ecrase la colonne du libelle.
+
+.adm-card passe en flex column SANS gap : les enfants gardent leurs marges
+propres, sinon l'espacement serait compte deux fois.
+
+Six cartes converties : compte, abonnement, identite visuelle (3 champs), mot de
+passe (3 champs), double authentification, liste des membres. Sont laisses en
+blocs pleine largeur, volontairement : l'apercu de la carte de visite, le QR
+code 2FA et le bouton de reactivation — ce sont des appels a l'action ou des
+previsualisations, pas des couples libelle/valeur.
+
+Rien de casse cote History, qui partage .adm-card mais passe par .adm-list.

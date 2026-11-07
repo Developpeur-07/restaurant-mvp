@@ -766,48 +766,75 @@ export default function Settings() {
 
         {/* COMPTE ACTUEL */}
         <div className="adm-card">
-          <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: "0 0 14px" }}>
-            Compte actuel
-          </h2>
-          <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            <Mail size={15} /> {user?.email}
-          </p>
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-title">Compte actuel</p>
+              <p className="adm-row-sub">L'adresse e-mail avec laquelle vous vous connectez</p>
+            </div>
+            <div className="adm-row-control">
+              {/* overflow-wrap : une adresse longue ne doit pas etirer la rangee. */}
+              <p style={{ color: theme.textPrimary, fontSize: "0.85rem", margin: 0, display: "flex", alignItems: "center", gap: "8px", overflowWrap: "anywhere" }}>
+                <Mail size={15} /> {user?.email}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* ABONNEMENT — visible pour tous (lecture seule) */}
         <div className="adm-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
-            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0 }}>
-              Abonnement
-            </h2>
-            {statusDisplay && (
-              <span style={{
-                background: statusDisplay.bg, color: statusDisplay.color,
-                fontSize: "0.72rem", fontWeight: "600", padding: "5px 12px", borderRadius: "20px",
-              }}>
-                {statusDisplay.label}
-              </span>
-            )}
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-title">Abonnement</p>
+            </div>
+            <div className="adm-row-control">
+              {statusDisplay && (
+                <span style={{
+                  background: statusDisplay.bg, color: statusDisplay.color,
+                  fontSize: "0.72rem", fontWeight: "600", padding: "5px 12px", borderRadius: "20px",
+                }}>
+                  {statusDisplay.label}
+                </span>
+              )}
+            </div>
           </div>
 
-          <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
-            Plan : <strong style={{ color: theme.textPrimary }}>{plan === "pro" ? "Pro" : "Free"}</strong>
-          </p>
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-sub">Formule</p>
+            </div>
+            <div className="adm-row-control">
+              <strong style={{ color: theme.textPrimary, fontSize: "0.85rem" }}>{plan === "pro" ? "Pro" : "Free"}</strong>
+            </div>
+          </div>
 
           {subscriptionStatus === "trial" && trialDaysLeft !== null && (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
-              Essai : <strong style={{ color: theme.textPrimary }}>{trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}</strong>
-            </p>
+            <div className="adm-row">
+              <div className="adm-row-label">
+                <p className="adm-row-sub">Essai en cours</p>
+              </div>
+              <div className="adm-row-control">
+                <strong style={{ color: theme.textPrimary, fontSize: "0.85rem" }}>
+                  {trialDaysLeft} jour{trialDaysLeft > 1 ? "s" : ""} restant{trialDaysLeft > 1 ? "s" : ""}
+                </strong>
+              </div>
+            </div>
           )}
 
           {subscriptionStatus === "active" && nextBillingDate && (
-            <p style={{ color: theme.textSecondary, fontSize: "0.82rem", margin: "0 0 6px" }}>
-              Prochaine échéance : <strong style={{ color: theme.textPrimary }}>
-                {new Date(nextBillingDate).toLocaleDateString("fr-FR")}
-              </strong>
-            </p>
+            <div className="adm-row">
+              <div className="adm-row-label">
+                <p className="adm-row-sub">Prochaine échéance</p>
+              </div>
+              <div className="adm-row-control">
+                <strong style={{ color: theme.textPrimary, fontSize: "0.85rem" }}>
+                  {new Date(nextBillingDate).toLocaleDateString("fr-FR")}
+                </strong>
+              </div>
+            </div>
           )}
 
+          {/* Le bloc de réactivation n'est pas une rangée : c'est un appel à
+              l'action, il doit rester pleine largeur sous les lignes. */}
           {subscriptionStatus === "suspended" && isOwner && (
             <>
               <p style={{ color: theme.textSecondary, fontSize: "0.82rem", lineHeight: 1.5, margin: "8px 0 16px" }}>
@@ -870,21 +897,25 @@ export default function Settings() {
               { label: "Slogan", key: "slogan", type: "text", placeholder: "Ex: Le Goût Du Bon Gâteau" },
               { label: "Adresse", key: "address", type: "text", placeholder: "Ex: Marché Moungali, Brazzaville" },
             ].map((field) => (
-              <div key={field.key} style={{ marginBottom: "16px" }}>
-                <label className="adm-label">
-                  {field.label}
-                </label>
-                <input
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  value={brand[field.key] || ""}
-                  onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  style={{
-                    width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
-                    padding: "11px 15px", fontSize: "0.88rem", background: theme.pageBackground,
-                    color: theme.textPrimary, outline: "none", boxSizing: "border-box"
-                  }}
-                />
+              <div key={field.key} className="adm-row">
+                {/* Un champ par rangee : libelle a gauche, saisie a droite sur
+                    grand ecran ; l'un sous l'autre sur mobile. */}
+                <div className="adm-row-label">
+                  <span className="adm-row-sub">{field.label}</span>
+                </div>
+                <div className="adm-row-control">
+                  <input
+                    type={field.type}
+                    placeholder={field.placeholder}
+                    value={brand[field.key] || ""}
+                    onChange={(e) => setBrand((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    style={{
+                      width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px",
+                      padding: "11px 15px", fontSize: "0.88rem", background: theme.pageBackground,
+                      color: theme.textPrimary, outline: "none", boxSizing: "border-box"
+                    }}
+                  />
+                </div>
               </div>
             ))}
 
@@ -984,21 +1015,46 @@ export default function Settings() {
             Changer le mot de passe
           </h2>
 
-          <input
-            type="password" placeholder="Mot de passe actuel" value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="adm-input"
-          />
-          <input
-            type="password" placeholder="Nouveau mot de passe" value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="adm-input"
-          />
-          <input
-            type="password" placeholder="Confirmer le mot de passe" value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: "16px", outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
-          />
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <span className="adm-row-sub">Mot de passe actuel</span>
+            </div>
+            <div className="adm-row-control">
+              <input
+                type="password" placeholder="Mot de passe actuel" value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="adm-input"
+                style={{ marginBottom: 0 }}
+              />
+            </div>
+          </div>
+
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <span className="adm-row-sub">Nouveau mot de passe</span>
+            </div>
+            <div className="adm-row-control">
+              <input
+                type="password" placeholder="Nouveau mot de passe" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="adm-input"
+                style={{ marginBottom: 0 }}
+              />
+            </div>
+          </div>
+
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <span className="adm-row-sub">Confirmer le mot de passe</span>
+            </div>
+            <div className="adm-row-control">
+              <input
+                type="password" placeholder="Confirmer le mot de passe" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{ width: "100%", border: `2px solid ${theme.borderLight}`, borderRadius: "12px", padding: "12px 15px", fontSize: "0.88rem", marginBottom: 0, outline: "none", boxSizing: "border-box", background: theme.pageBackground, color: theme.textPrimary }}
+              />
+            </div>
+          </div>
           <button
             type="button"
             onClick={handlePasswordChange}
@@ -1015,20 +1071,27 @@ export default function Settings() {
 
         {/* SÉCURITÉ — DOUBLE AUTHENTIFICATION (2FA) */}
         <div className="adm-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-            <h2 style={{ color: theme.textPrimary, fontFamily: "Georgia, serif", fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-              <ShieldCheck size={17} /> Double authentification
-            </h2>
-            {!mfaLoading && (
-              <span style={{
-                background: mfaFactor ? "#DCFCE7" : "#FEE2E2",
-                color: mfaFactor ? "#166534" : "#991B1B",
-                fontSize: "0.68rem", fontWeight: "600", padding: "5px 11px",
-                borderRadius: "20px", whiteSpace: "nowrap",
-              }}>
-                {mfaFactor ? "Activée" : "Désactivée"}
-              </span>
-            )}
+          {/* Cet en-tete etait une rangee ecrite a la main : on la confie au
+              mecanisme commun, pour qu'elle s'empile comme les autres sur
+              mobile au lieu de rester cote a cote. */}
+          <div className="adm-row">
+            <div className="adm-row-label">
+              <p className="adm-row-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <ShieldCheck size={17} /> Double authentification
+              </p>
+            </div>
+            <div className="adm-row-control">
+              {!mfaLoading && (
+                <span style={{
+                  background: mfaFactor ? "#DCFCE7" : "#FEE2E2",
+                  color: mfaFactor ? "#166534" : "#991B1B",
+                  fontSize: "0.68rem", fontWeight: "600", padding: "5px 11px",
+                  borderRadius: "20px", whiteSpace: "nowrap",
+                }}>
+                  {mfaFactor ? "Activée" : "Désactivée"}
+                </span>
+              )}
+            </div>
           </div>
 
           {mfaLoading ? (
@@ -1419,12 +1482,15 @@ export default function Settings() {
                       key={member.id}
                       style={{ background: theme.pageBackground, borderRadius: "14px", padding: "14px 16px" }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: "600", color: theme.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {/* Meme motif que les autres : le membre a gauche,
+                          l'action a droite. Rangee ecrite a la main jusqu'ici,
+                          donc sans empilement sur mobile. */}
+                      <div className="adm-row">
+                        <div className="adm-row-label">
+                          <p className="adm-row-title" style={{ fontFamily: "inherit", fontSize: "0.85rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {member.email || "Email indisponible"}
                           </p>
-                          <p style={{ margin: "4px 0 0", fontSize: "0.72rem", color: theme.textSecondary, display: "flex", alignItems: "center", gap: "5px" }}>
+                          <p className="adm-row-sub" style={{ display: "flex", alignItems: "center", gap: "5px" }}>
                             <roleInfo.Icon size={12} /> {roleInfo.label}
                             {member.last_sign_in_at
                               ? ` · vu le ${new Date(member.last_sign_in_at).toLocaleDateString("fr-FR")}`
@@ -1433,18 +1499,20 @@ export default function Settings() {
                         </div>
 
                         {!isTarget && (
-                          <button
-                            type="button"
-                            onClick={() => { setResetTarget(member); setResetPassword(""); setMessage(null); }}
-                            style={{
-                              background: theme.cardBackground, border: `1px solid ${theme.borderLight}`,
-                              borderRadius: "10px", padding: "9px 13px", color: theme.primary,
-                              fontSize: "0.76rem", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap",
-                              display: "flex", alignItems: "center", gap: "6px",
-                            }}
-                          >
-                            <KeyRound size={13} /> Réinitialiser
-                          </button>
+                          <div className="adm-row-control">
+                            <button
+                              type="button"
+                              onClick={() => { setResetTarget(member); setResetPassword(""); setMessage(null); }}
+                              style={{
+                                background: theme.cardBackground, border: `1px solid ${theme.borderLight}`,
+                                borderRadius: "10px", padding: "9px 13px", color: theme.primary,
+                                fontSize: "0.76rem", fontWeight: "600", cursor: "pointer", whiteSpace: "nowrap",
+                                display: "flex", alignItems: "center", gap: "6px",
+                              }}
+                            >
+                              <KeyRound size={13} /> Réinitialiser
+                            </button>
+                          </div>
                         )}
                       </div>
 

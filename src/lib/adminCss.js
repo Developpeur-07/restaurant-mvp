@@ -117,6 +117,32 @@ export const ADMIN_CSS = `
      nom de plat) etire la piste de la grille et provoque un defilement
      horizontal. C'est le piege numero un des grilles CSS. */
   min-width:0;
+  /* La carte est une COLONNE de rangees : c'est elle, le parent, qui empile.
+     Pas de gap volontairement — les enfants gardent leurs marges propres, sinon
+     l'espacement serait compte deux fois. */
+  display:flex;flex-direction:column;
+}
+
+/* ── Rangee de reglage ──────────────────────────────────────────────────────
+   Le motif demande : le parent empile en colonne, l'enfant se dispose en
+   rangee. La rangee est donc l'unite de base d'une carte de reglages :
+   libelle a gauche, controle a droite sur grand ecran ; elle redevient une
+   colonne sur mobile, ou la largeur manque pour les mettre cote a cote. */
+.adm-row{display:flex;flex-direction:column;gap:10px;min-width:0}
+.adm-row-label{min-width:0}
+.adm-row-title{
+  margin:0;font-family:Georgia,serif;font-size:.95rem;
+  color:var(--adm-text);font-weight:600;
+}
+.adm-row-sub{margin:4px 0 0;font-size:.78rem;color:var(--adm-text-2);line-height:1.5}
+.adm-row-control{
+  min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+
+/* Separateur entre rangees d'une meme carte : donne un rythme de liste sans
+   enfermer chaque rangee dans un cadre. */
+.adm-row + .adm-row{
+  border-top:1px solid var(--adm-border);padding-top:16px;margin-top:2px;
 }
 .adm-label{
   display:block;font-size:.78rem;color:var(--adm-text-2);
@@ -165,14 +191,23 @@ export const ADMIN_CSS = `
 
 @media (min-width:700px){
   .adm-wrap{max-width:1120px;padding:32px 24px 56px;gap:28px}
-  /* Deux colonnes dans une section : suffisant pour aerer, sans ecraser les
-     cartes dont le contenu est dense. */
-  .adm-section{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+  /* La section reste sur UNE colonne : elle empile ses cartes. Ce sont les
+     cartes qui se disposent en rangees, pas la section. */
+  .adm-section{gap:20px}
   .adm-header-inner{max-width:1120px}
   .adm-card{padding:24px}
   .adm-list{gap:16px}
   .adm-section-title{font-size:1.15rem}
   .adm-header-title{font-size:1.4rem}
+
+  /* La rangee devient horizontale : libelle a gauche, controle a droite.
+     Deux pistes larges plutot qu'un auto cote controle, sinon un bouton long
+     ecrase le libelle. */
+  .adm-row{
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
+    gap:24px;align-items:center;
+  }
+  .adm-row-control{justify-content:flex-end}
 }
 
 /* Sous 430px, le libellé « Retour » est sacrifié : le bouton reste à sa place
